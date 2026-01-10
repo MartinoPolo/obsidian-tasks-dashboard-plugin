@@ -1,0 +1,10 @@
+{
+  "id": "tasks-dashboard",
+  "name": "Tasks Dashboard",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Manage task dashboards with high-level issues, progress tracking, and priority-based organization",
+  "author": "MartinoPolo",
+  "authorUrl": "https://github.com/MartinoPolo",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,190 @@
+/* Hide %% comments in Live Preview (except when cursor is on line) */
+.cm-line:not(.cm-active) .cm-comment {
+    display: none;
+}
+/* Priority Colors */
+.tdc-priority-low { color: #4caf50; }
+.tdc-priority-medium { color: #ff9800; }
+.tdc-priority-high { color: #f44336; }
+.tdc-priority-top { color: #9c27b0; }
+/* Issue Modal */
+.tdc-issue-modal { padding: 0; }
+.tdc-issue-modal .modal-content { padding: 20px; }
+.tdc-priority-selector {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0 16px 0;
+}
+.tdc-priority-btn {
+    padding: 6px 16px;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+.tdc-priority-btn.tdc-priority-low {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+}
+.tdc-priority-btn.tdc-priority-medium {
+    background: rgba(255, 152, 0, 0.15);
+    color: #ff9800;
+}
+.tdc-priority-btn.tdc-priority-high {
+    background: rgba(244, 67, 54, 0.15);
+    color: #f44336;
+}
+.tdc-priority-btn.tdc-priority-top {
+    background: rgba(156, 39, 176, 0.15);
+    color: #9c27b0;
+}
+.tdc-priority-btn.selected {
+    border-color: currentColor;
+}
+.tdc-priority-btn:hover { opacity: 0.85; }
+/* Issue Container */
+.tdc-issue-container {
+    margin: 8px 0;
+}
+/* Issue Header with Priority Border */
+.tdc-issue-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-left: 4px solid var(--text-muted);
+    margin-bottom: 4px;
+    background: var(--background-primary-alt);
+    border-radius: 0 6px 6px 0;
+}
+.tdc-issue-header.priority-low { border-left-color: #4caf50; }
+.tdc-issue-header.priority-medium { border-left-color: #ff9800; }
+.tdc-issue-header.priority-high { border-left-color: #f44336; }
+.tdc-issue-header.priority-top { border-left-color: #9c27b0; }
+.tdc-issue-header a {
+    font-size: 1.25em;
+    font-weight: 600;
+    color: var(--text-normal);
+    text-decoration: none;
+}
+.tdc-issue-header a:hover {
+    color: var(--text-accent);
+}
+/* Dashboard Controls */
+.tdc-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+.tdc-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+.tdc-progress-bar {
+    width: 100px;
+    height: 8px;
+    background: var(--background-modifier-border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.tdc-progress-fill {
+    height: 100%;
+    transition: width 0.2s ease;
+    border-radius: 4px;
+}
+.tdc-progress-text {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    min-width: 90px;
+}
+.tdc-btn-group {
+    display: flex;
+    gap: 6px;
+}
+/* Square Buttons with SVG Icons */
+.tdc-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    transition: all 0.15s ease;
+}
+.tdc-btn:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.tdc-btn svg {
+    width: 16px;
+    height: 16px;
+}
+.tdc-btn-move:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.tdc-btn-archive {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+.tdc-btn-archive:hover {
+    background: #f44336;
+    color: white;
+}
+/* Sort Button */
+.tdc-sort-container {
+    margin: 8px 0 16px 0;
+}
+.tdc-btn-sort {
+    width: auto;
+    height: auto;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: 0.9em;
+    font-weight: 500;
+}
+.tdc-btn-sort:hover {
+    background: var(--interactive-accent-hover);
+    opacity: 0.9;
+}
+.tdc-btn-sort svg {
+    width: 16px;
+    height: 16px;
+}
+/* Settings */
+.tdc-dashboard-config {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+}
+.tdc-dashboard-config h3 {
+    margin: 0 0 12px 0;
+    font-size: 1.1em;
+}
+.tdc-no-dashboards {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+}
+/* Error */
+.tdc-error {
+    color: var(--text-error);
+    font-size: 0.85em;
+}
