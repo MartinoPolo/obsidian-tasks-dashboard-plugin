@@ -166,6 +166,147 @@
     width: 16px;
     height: 16px;
 }
+/* Refresh Button */
+.tdc-btn-refresh {
+    width: auto;
+    height: auto;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 8px;
+}
+.tdc-btn-refresh:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.tdc-btn-refresh svg {
+    width: 16px;
+    height: 16px;
+}
+/* Add Issue Button */
+.tdc-btn-add {
+    width: auto;
+    height: auto;
+    padding: 8px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-right: 8px;
+}
+.tdc-btn-add:hover {
+    background: var(--interactive-accent-hover);
+}
+.tdc-btn-add svg {
+    width: 16px;
+    height: 16px;
+}
+/* Top-positioned Modal (like SuggestModal) */
+.tdc-top-modal.modal-container {
+    align-items: flex-start !important;
+    padding-top: 10vh;
+}
+.tdc-top-modal .modal {
+    width: 600px;
+    max-width: 90vw;
+}
+/* Prompt Modal Styling */
+.tdc-prompt-modal {
+    padding: 16px 20px;
+}
+.tdc-prompt-title {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.tdc-prompt-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    font-size: 1.1em;
+    background: var(--background-primary);
+    color: var(--text-normal);
+}
+.tdc-prompt-input:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2);
+}
+.tdc-prompt-input.tdc-input-error {
+    border-color: var(--text-error);
+    animation: shake 0.3s ease;
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+/* Prompt Buttons */
+.tdc-prompt-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+}
+.tdc-prompt-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+.tdc-prompt-btn kbd {
+    background: rgba(0,0,0,0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: inherit;
+}
+.tdc-prompt-btn-confirm {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.tdc-prompt-btn-confirm:hover {
+    background: var(--interactive-accent-hover);
+}
+.tdc-prompt-btn-cancel {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+.tdc-prompt-btn-cancel:hover {
+    background: var(--background-modifier-border);
+}
+/* Priority Suggestion */
+.tdc-priority-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+}
+.tdc-priority-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.tdc-priority-dot.priority-low { background: #4caf50; }
+.tdc-priority-dot.priority-medium { background: #ff9800; }
+.tdc-priority-dot.priority-high { background: #f44336; }
+.tdc-priority-dot.priority-top { background: #9c27b0; }
 /* Settings */
 .tdc-dashboard-config {
     border: 1px solid var(--background-modifier-border);

@@ -3,10 +3,11 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 ## Features
 - **Multiple Dashboards**: Configure separate dashboards for different projects
 - **Issue Management**: Create, archive, and organize issues with priorities
-- **Progress Tracking**: Visual progress bars showing task completion
+- **Progress Tracking**: Visual progress bars with configurable display modes
 - **Priority Colors**: Low (green), Medium (yellow), High (red), Top (purple)
 - **Tasks Integration**: Automatically generates Obsidian Tasks queries for each issue
-- **Quick Actions**: Archive, move up/down, and sort issues directly from the dashboard
+- **Quick Actions**: Add Issue, Sort, Refresh, Archive, and reorder directly from the dashboard
+- **Keyboard-Driven**: Sequential prompts at top of screen for fast issue creation
 ## Installation
 ### From Source
 1. Clone this repository into your vault's `.obsidian/plugins/` folder:
@@ -33,40 +34,56 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 3. Configure:
    - **Dashboard Name**: Display name for your dashboard
    - **Root Path**: Folder path (e.g., `Projects/MyProject`)
-4. The plugin will create `dashboard.md` in your root path when you create your first issue
+4. Click **Create Files** to generate the dashboard.md and issue folders
+5. Optionally configure **Progress Display** mode:
+   - Number only (1/5)
+   - Percentage only (20%)
+   - Progress bar only
+   - Number & percentage (1/5 (20%))
+   - All (bar + percentage + number)
 ## Usage
 ### Creating an Issue
-1. Press `Ctrl+Shift+E` (default hotkey)
+1. Press `Ctrl+Shift+E` or click **Add Issue** button on dashboard
 2. If multiple dashboards exist, select one from the list
-3. Fill in the issue details:
-   - **Issue Name**: Descriptive title
-   - **Priority**: Low, Medium, High, or Top
-   - **GitHub Link**: Optional link to related GitHub issue
-4. Click "Create Issue"
+3. **Step 1**: Type issue name → press Enter
+4. **Step 2**: Select priority using ↑↓ arrows → press Enter (Medium preselected)
+5. **Step 3**: Type GitHub link (optional) → press Enter to create
+6. Issue file opens automatically with cursor ready to add tasks
 ### Dashboard Structure
-The dashboard automatically manages two sections:
+The dashboard has four sections:
 ```markdown
-## Active Tasks
+# Active Issues
 [Your active issues with task queries and controls]
-## Archive
+# Notes
+[Free-form notes section]
+# Archive
 [Completed/archived issues]
+# How to Use This Dashboard
+[Usage instructions]
 ```
+### Dashboard Buttons
+- **Add Issue**: Opens the issue creation flow
+- **Sort**: Organizes all issues by priority level
+- **Refresh**: Manually updates progress counts
+### Issue Controls
 Each issue entry includes:
-- Link to the issue note
-- Embedded tasks query showing up to 10 uncompleted tasks
-- Progress bar with completion percentage
-- Control buttons (↑ ↓ Archive)
+- Link to the issue note with priority-colored left border
+- Progress indicator (configurable display mode)
+- ↑ ↓ buttons to reorder
+- Archive button (trash icon)
+- Embedded tasks query
 ### Issue Notes
 Created issues contain:
 - YAML frontmatter (created date, status, priority)
 - Back link to dashboard
 - Issue title
 - GitHub link (if provided)
-- Tasks section for adding subtasks
+- Blank task ready for input
 ### Managing Issues
-- **Archive**: Click the "Archive" button to move an issue to the Archive section
+- **Archive**: Click the trash icon to archive an issue
 - **Reorder**: Use ↑ and ↓ buttons to change issue order
-- **Sort**: Use "Sort by Priority" to organize all issues by priority level
+- **Sort**: Use "Sort" button to organize all issues by priority
+- **Refresh**: Click "Refresh" to manually update progress counts
 ## Hotkeys
 Configure custom hotkeys in Settings → Hotkeys:
 - Search for "Create Issue" to find per-dashboard commands

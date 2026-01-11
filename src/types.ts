@@ -1,5 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high' | 'top';
 export type IssueStatus = 'active' | 'archived';
+export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-percentage' | 'all';
 export interface Issue {
     id: string;
     name: string;
@@ -16,6 +17,7 @@ export interface DashboardConfig {
 }
 export interface TasksDashboardSettings {
     dashboards: DashboardConfig[];
+    progressDisplayMode: ProgressDisplayMode;
 }
 export interface IssueProgress {
     done: number;
@@ -23,7 +25,8 @@ export interface IssueProgress {
     percentage: number;
 }
 export const DEFAULT_SETTINGS: TasksDashboardSettings = {
-    dashboards: []
+    dashboards: [],
+    progressDisplayMode: 'all'
 };
 export const PRIORITY_COLORS: Record<Priority, string> = {
     low: '#4caf50',

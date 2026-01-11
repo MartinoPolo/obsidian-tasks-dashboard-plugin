@@ -80,15 +80,17 @@ ${this.ACTIVE_START}
 dashboard: ${dashboardId}
 \`\`\`
 ${this.ACTIVE_END}
+# Notes
+%% TASKS-DASHBOARD:NOTES %%
 # Archive
 ${this.ARCHIVE_START}
 ${this.ARCHIVE_END}
----
-## How to Use This Dashboard
+# How to Use This Dashboard
 - Press \`Ctrl+Shift+E\` to create a new issue
 - Use ↑↓ buttons to reorder issues
 - Click 🗑️ to archive completed issues
 - Click "Sort by Priority" to auto-organize
+- Click "Refresh" to update progress counts
 - Add tasks in issue notes using \`- [ ] Task name\``;
     }
 }

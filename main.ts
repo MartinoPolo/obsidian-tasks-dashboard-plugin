@@ -1,11 +1,12 @@
-import { Plugin, MarkdownPostProcessorContext } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, Notice } from 'obsidian';
 import { TasksDashboardSettings, DEFAULT_SETTINGS, DashboardConfig } from './src/types';
 import { TasksDashboardSettingTab } from './src/settings';
-import { IssueModal } from './src/modals/IssueModal';
+import { NamePromptModal } from './src/modals/IssueModal';
 import { IssueManager } from './src/issues/IssueManager';
 import { ProgressTracker } from './src/issues/ProgressTracker';
 import { DashboardWriter } from './src/dashboard/DashboardWriter';
 import { DashboardRenderer } from './src/dashboard/DashboardRenderer';
+import { DashboardParser } from './src/dashboard/DashboardParser';
 export default class TasksDashboardPlugin extends Plugin {
     settings: TasksDashboardSettings;
     issueManager: IssueManager;
@@ -56,7 +57,7 @@ export default class TasksDashboardPlugin extends Plugin {
                 id: `create-issue-${dashboard.id}`,
                 name: `Create Issue: ${dashboard.name}`,
                 callback: () => {
-                    new IssueModal(this.app, this, dashboard).open();
+                    new NamePromptModal(this.app, this, dashboard).open();
                 }
             });
             this.registeredCommands.push(commandId);
@@ -80,7 +81,7 @@ export default class TasksDashboardPlugin extends Plugin {
             return;
         }
         if (this.settings.dashboards.length === 1) {
-            new IssueModal(this.app, this, this.settings.dashboards[0]).open();
+            new NamePromptModal(this.app, this, this.settings.dashboards[0]).open();
             return;
         }
         const { FuzzySuggestModal } = require('obsidian');
@@ -97,7 +98,7 @@ export default class TasksDashboardPlugin extends Plugin {
                 return item.name;
             }
             onChooseItem(item: DashboardConfig): void {
-                new IssueModal(this.plugin.app, this.plugin, item).open();
+                new NamePromptModal(this.plugin.app, this.plugin, item).open();
             }
         }
         new DashboardSelectorModal(this).open();
@@ -107,5 +108,24 @@ export default class TasksDashboardPlugin extends Plugin {
     }
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+    async createDashboardFiles(dashboard: DashboardConfig): Promise<void> {
+        const rootPath = dashboard.rootPath;
+        if (!rootPath) throw new Error('Root path is required');
+        await this.ensureFolder(rootPath);
+        await this.ensureFolder(`${rootPath}/issues`);
+        await this.ensureFolder(`${rootPath}/issues/active`);
+        await this.ensureFolder(`${rootPath}/issues/archive`);
+        const dashboardPath = `${rootPath}/dashboard.md`;
+        if (!this.app.vault.getAbstractFileByPath(dashboardPath)) {
+            const parser = new DashboardParser();
+            const content = parser.initializeStructure(dashboard.id);
+            await this.app.vault.create(dashboardPath, content);
+        }
+    }
+    private async ensureFolder(path: string): Promise<void> {
+        if (!this.app.vault.getAbstractFileByPath(path)) {
+            await this.app.vault.createFolder(path);
+        }
     }
 }

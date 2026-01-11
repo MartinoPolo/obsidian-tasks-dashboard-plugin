@@ -1,68 +1,159 @@
-import { App, Modal, Notice, Setting } from 'obsidian';
+import { App, Modal, Notice, SuggestModal, TFile, MarkdownView } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, Priority } from '../types';
-export class IssueModal extends Modal {
-    private name: string = '';
-    private priority: Priority = 'medium';
-    private githubLink: string = '';
-    private dashboard: DashboardConfig;
+// Step 1: Name Prompt - Simple text input modal positioned at top
+export class NamePromptModal extends Modal {
     private plugin: TasksDashboardPlugin;
+    private dashboard: DashboardConfig;
+    private input: HTMLInputElement;
     constructor(app: App, plugin: TasksDashboardPlugin, dashboard: DashboardConfig) {
         super(app);
         this.plugin = plugin;
         this.dashboard = dashboard;
     }
     onOpen() {
-        const { contentEl } = this;
+        const { contentEl, modalEl, containerEl } = this;
+        containerEl.addClass('tdc-top-modal');
+        modalEl.addClass('tdc-prompt-modal');
         contentEl.empty();
-        contentEl.addClass('tdc-issue-modal');
-        contentEl.createEl('h2', { text: `New Issue: ${this.dashboard.name}` });
-        new Setting(contentEl)
-            .setName('Issue Name')
-            .addText(text => text
-                .setPlaceholder('e.g., Implement user authentication')
-                .onChange(value => this.name = value));
-        new Setting(contentEl)
-            .setName('Priority');
-        const priorityContainer = contentEl.createDiv({ cls: 'tdc-priority-selector' });
-        const priorities: Priority[] = ['low', 'medium', 'high', 'top'];
-        priorities.forEach(p => {
-            const btn = priorityContainer.createEl('button', {
-                text: p.charAt(0).toUpperCase() + p.slice(1),
-                cls: `tdc-priority-btn tdc-priority-${p} ${p === this.priority ? 'selected' : ''}`
-            });
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                priorityContainer.querySelectorAll('.tdc-priority-btn').forEach(el => el.removeClass('selected'));
-                btn.addClass('selected');
-                this.priority = p;
-            });
+        const title = contentEl.createEl('div', { cls: 'tdc-prompt-title', text: 'Issue Name' });
+        this.input = contentEl.createEl('input', {
+            type: 'text',
+            cls: 'tdc-prompt-input',
+            attr: { placeholder: 'Enter issue name...' }
         });
-        new Setting(contentEl)
-            .setName('GitHub Link (optional)')
-            .addText(text => text
-                .setPlaceholder('https://github.com/org/repo/issues/123')
-                .onChange(value => this.githubLink = value));
-        new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('Create Issue')
-                .setCta()
-                .onClick(() => this.createIssue()));
+        this.input.focus();
+        const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+        const confirmBtn = btnContainer.createEl('button', { cls: 'tdc-prompt-btn tdc-prompt-btn-confirm' });
+        confirmBtn.innerHTML = 'Confirm <kbd>↵</kbd>';
+        confirmBtn.addEventListener('click', () => this.confirm());
+        const cancelBtn = btnContainer.createEl('button', { cls: 'tdc-prompt-btn tdc-prompt-btn-cancel' });
+        cancelBtn.innerHTML = 'Cancel <kbd>Esc</kbd>';
+        cancelBtn.addEventListener('click', () => this.close());
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.confirm();
+            }
+        });
     }
-    private async createIssue() {
-        if (!this.name.trim()) {
-            new Notice('Please enter an issue name');
-            return;
+    private confirm() {
+        const value = this.input.value.trim();
+        if (value) {
+            this.close();
+            new PriorityPromptModal(this.app, this.plugin, this.dashboard, value).open();
+        } else {
+            this.input.addClass('tdc-input-error');
+            this.input.focus();
         }
+    }
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+// Step 2: Priority Prompt - SuggestModal (already positions at top)
+class PriorityPromptModal extends SuggestModal<Priority> {
+    private plugin: TasksDashboardPlugin;
+    private dashboard: DashboardConfig;
+    private issueName: string;
+    constructor(app: App, plugin: TasksDashboardPlugin, dashboard: DashboardConfig, issueName: string) {
+        super(app);
+        this.plugin = plugin;
+        this.dashboard = dashboard;
+        this.issueName = issueName;
+        this.setPlaceholder('Select priority');
+    }
+    onOpen() {
+        super.onOpen();
+        setTimeout(() => {
+            const items = this.resultContainerEl.querySelectorAll('.suggestion-item');
+            if (items.length > 1) {
+                items[0]?.removeClass('is-selected');
+                items[1]?.addClass('is-selected');
+            }
+        }, 0);
+    }
+    getSuggestions(): Priority[] {
+        return ['low', 'medium', 'high', 'top'];
+    }
+    renderSuggestion(priority: Priority, el: HTMLElement) {
+        const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
+        container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
+        container.createSpan({ text: priority.charAt(0).toUpperCase() + priority.slice(1) });
+    }
+    onChooseSuggestion(priority: Priority) {
+        new GithubPromptModal(this.app, this.plugin, this.dashboard, this.issueName, priority).open();
+    }
+}
+// Step 3: GitHub Link Prompt - Simple text input modal positioned at top
+class GithubPromptModal extends Modal {
+    private plugin: TasksDashboardPlugin;
+    private dashboard: DashboardConfig;
+    private issueName: string;
+    private priority: Priority;
+    private input: HTMLInputElement;
+    constructor(app: App, plugin: TasksDashboardPlugin, dashboard: DashboardConfig, issueName: string, priority: Priority) {
+        super(app);
+        this.plugin = plugin;
+        this.dashboard = dashboard;
+        this.issueName = issueName;
+        this.priority = priority;
+    }
+    onOpen() {
+        const { contentEl, modalEl, containerEl } = this;
+        containerEl.addClass('tdc-top-modal');
+        modalEl.addClass('tdc-prompt-modal');
+        contentEl.empty();
+        const title = contentEl.createEl('div', { cls: 'tdc-prompt-title', text: 'GitHub Link (optional)' });
+        this.input = contentEl.createEl('input', {
+            type: 'text',
+            cls: 'tdc-prompt-input',
+            attr: { placeholder: 'https://github.com/... (or leave empty)' }
+        });
+        this.input.focus();
+        const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+        const confirmBtn = btnContainer.createEl('button', { cls: 'tdc-prompt-btn tdc-prompt-btn-confirm' });
+        confirmBtn.innerHTML = 'Create Issue <kbd>↵</kbd>';
+        confirmBtn.addEventListener('click', () => this.confirm());
+        const cancelBtn = btnContainer.createEl('button', { cls: 'tdc-prompt-btn tdc-prompt-btn-cancel' });
+        cancelBtn.innerHTML = 'Cancel <kbd>Esc</kbd>';
+        cancelBtn.addEventListener('click', () => this.close());
+        this.input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.confirm();
+            }
+        });
+    }
+    private async confirm() {
+        const value = this.input.value.trim();
+        this.close();
+        await this.createIssue(value || undefined);
+    }
+    private async createIssue(githubLink?: string) {
         try {
-            await this.plugin.issueManager.createIssue({
-                name: this.name.trim(),
+            const issue = await this.plugin.issueManager.createIssue({
+                name: this.issueName,
                 priority: this.priority,
-                githubLink: this.githubLink.trim() || undefined,
+                githubLink,
                 dashboard: this.dashboard
             });
-            new Notice(`Created issue: ${this.name}`);
-            this.close();
+            new Notice(`Created issue: ${this.issueName}`);
+            const file = this.app.vault.getAbstractFileByPath(issue.filePath);
+            if (file instanceof TFile) {
+                const leaf = this.app.workspace.getLeaf();
+                await leaf.openFile(file);
+                setTimeout(() => {
+                    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                    if (view?.editor) {
+                        const editor = view.editor;
+                        const lastLine = editor.lastLine();
+                        const lastLineLength = editor.getLine(lastLine).length;
+                        editor.setCursor({ line: lastLine, ch: lastLineLength });
+                        editor.focus();
+                    }
+                }, 100);
+            }
         } catch (error) {
             new Notice(`Error creating issue: ${(error as Error).message}`);
         }

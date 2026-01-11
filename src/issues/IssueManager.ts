@@ -72,7 +72,7 @@ priority: ${issue.priority}
         content += `
 ---
 ## Tasks
-- [ ] First task`;
+- [ ] `;
         return content;
     }
     private async ensureFolderExists(path: string): Promise<void> {

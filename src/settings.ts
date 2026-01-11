@@ -1,6 +1,6 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import TasksDashboardPlugin from '../main';
-import { DashboardConfig } from './types';
+import { DashboardConfig, ProgressDisplayMode } from './types';
 import { generateId } from './utils/slugify';
 export class TasksDashboardSettingTab extends PluginSettingTab {
     plugin: TasksDashboardPlugin;
@@ -16,6 +16,20 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
             text: 'Configure your task dashboards. Each dashboard manages issues in its own folder.',
             cls: 'setting-item-description'
         });
+        new Setting(containerEl)
+            .setName('Progress Display')
+            .setDesc('How to show task progress for each issue')
+            .addDropdown(dropdown => dropdown
+                .addOption('number', 'Number only (1/5)')
+                .addOption('percentage', 'Percentage only (20%)')
+                .addOption('bar', 'Progress bar only')
+                .addOption('number-percentage', 'Number & percentage (1/5 (20%))')
+                .addOption('all', 'All (bar + percentage + number)')
+                .setValue(this.plugin.settings.progressDisplayMode)
+                .onChange(async (value) => {
+                    this.plugin.settings.progressDisplayMode = value as ProgressDisplayMode;
+                    await this.plugin.saveSettings();
+                }));
         new Setting(containerEl)
             .setName('Add Dashboard')
             .setDesc('Create a new dashboard configuration')
@@ -66,6 +80,24 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     dashboard.rootPath = value;
                     await this.plugin.saveSettings();
+                }));
+        new Setting(dashboardContainer)
+            .setName('Create Dashboard Files')
+            .setDesc('Create dashboard.md and issue folders at the specified path')
+            .addButton(btn => btn
+                .setButtonText('Create Files')
+                .setCta()
+                .onClick(async () => {
+                    if (!dashboard.rootPath) {
+                        new Notice('Please set a root path first');
+                        return;
+                    }
+                    try {
+                        await this.plugin.createDashboardFiles(dashboard);
+                        new Notice(`Dashboard created at ${dashboard.rootPath}/dashboard.md`);
+                    } catch (error) {
+                        new Notice(`Error: ${(error as Error).message}`);
+                    }
                 }));
         new Setting(dashboardContainer)
             .setName('Hotkey')
