@@ -7,10 +7,13 @@
 - [x] New issue creates a note in `{dashboard-path}/issues/active/`
 ## Issue Creation Flow (Keyboard-Driven)
 - [x] All prompts appear at top of screen (same position as Quick Switcher)
-- [x] Step 1: Prompt for name (text input, Enter to confirm)
-- [x] Step 2: Prompt for priority (list with ↑↓ navigation, Medium preselected, sorted: low/medium/high/top)
+- [x] Step 1: Prompt for name (text input, Enter to confirm, Confirm/Cancel buttons with key hints)
+- [x] Step 2: Prompt for priority (list with ↑↓ navigation, Medium properly preselected, sorted: low/medium/high/top)
 - [x] Step 3: Prompt for GitHub link (optional, Enter to create issue)
 - [x] After creation: Open issue file with cursor at end (ready to type tasks)
+## Active Issue File Behavior
+- [x] Auto-position cursor at end of file when opening any active issue file
+- [x] Enables quick task addition without manual navigation
 ## Issue Note Format
 - [x] YAML frontmatter with: created datetime, status (active/archived), priority
 - [x] Back link to dashboard (`← Back to [dashboard]`)

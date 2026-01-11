@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext, Notice } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, Notice, MarkdownView, TFile } from 'obsidian';
 import { TasksDashboardSettings, DEFAULT_SETTINGS, DashboardConfig } from './src/types';
 import { TasksDashboardSettingTab } from './src/settings';
 import { NamePromptModal } from './src/modals/IssueModal';
@@ -39,6 +39,27 @@ export default class TasksDashboardPlugin extends Plugin {
                     this.progressTracker.invalidateCache(file.path);
                 }
             })
+        );
+        // Auto-position cursor at end when opening active issue files
+        this.registerEvent(
+            this.app.workspace.on('file-open', (file) => {
+                if (file && this.isActiveIssueFile(file)) {
+                    setTimeout(() => {
+                        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                        if (view?.editor) {
+                            const editor = view.editor;
+                            const lastLine = editor.lastLine();
+                            const lastLineLength = editor.getLine(lastLine).length;
+                            editor.setCursor({ line: lastLine, ch: lastLineLength });
+                        }
+                    }, 50);
+                }
+            })
+        );
+    }
+    private isActiveIssueFile(file: TFile): boolean {
+        return this.settings.dashboards.some(dashboard =>
+            file.path.startsWith(`${dashboard.rootPath}/issues/active/`)
         );
     }
     onunload() {

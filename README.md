@@ -8,6 +8,7 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 - **Tasks Integration**: Automatically generates Obsidian Tasks queries for each issue
 - **Quick Actions**: Add Issue, Sort, Refresh, Archive, and reorder directly from the dashboard
 - **Keyboard-Driven**: Sequential prompts at top of screen for fast issue creation
+- **Auto-Cursor Positioning**: Opening active issue files automatically places cursor at end for quick task entry
 ## Installation
 ### From Source
 1. Clone this repository into your vault's `.obsidian/plugins/` folder:
@@ -79,6 +80,8 @@ Created issues contain:
 - Issue title
 - GitHub link (if provided)
 - Blank task ready for input
+
+**Auto-cursor**: When you open any active issue file, the cursor automatically jumps to the end of the file, so you can immediately start adding tasks.
 ### Managing Issues
 - **Archive**: Click the trash icon to archive an issue
 - **Reorder**: Use ↑ and ↓ buttons to change issue order

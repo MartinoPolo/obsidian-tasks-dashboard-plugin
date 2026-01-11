@@ -65,12 +65,14 @@ class PriorityPromptModal extends SuggestModal<Priority> {
     }
     onOpen() {
         super.onOpen();
+        // Simulate ArrowDown to properly select medium (index 1)
         setTimeout(() => {
-            const items = this.resultContainerEl.querySelectorAll('.suggestion-item');
-            if (items.length > 1) {
-                items[0]?.removeClass('is-selected');
-                items[1]?.addClass('is-selected');
-            }
+            const event = new KeyboardEvent('keydown', {
+                key: 'ArrowDown',
+                code: 'ArrowDown',
+                bubbles: true
+            });
+            this.inputEl.dispatchEvent(event);
         }, 0);
     }
     getSuggestions(): Priority[] {
