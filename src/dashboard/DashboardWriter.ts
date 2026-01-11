@@ -111,7 +111,9 @@ export class DashboardWriter {
         const beforeActive = content.slice(0, activeStart);
         const afterActive = content.slice(activeEnd);
         const sortBlock = '```tasks-dashboard-sort\ndashboard: ' + dashboard.id + '\n```\n';
-        const newActiveSection = '\n' + sortBlock + sortedBlocks.join('\n---\n') + '\n';
+        // Clean up blocks - ensure consistent formatting
+        const cleanedBlocks = sortedBlocks.map(block => block.trim());
+        const newActiveSection = '\n' + sortBlock + cleanedBlocks.join('\n\n') + '\n';
         content = beforeActive + newActiveSection + afterActive;
         await this.app.vault.modify(file, content);
         new Notice('Issues sorted by priority');
