@@ -10,8 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Code Style
 
-- Prefer functional programming over OOP; remove classes if possible
-- Prefer functions/closures over classes
+- Prefer functional programming over OOP; use factory functions with closures instead of classes (except for Obsidian-required base classes)
+- Obsidian API classes (Plugin, Modal, PluginSettingTab, SuggestModal) MUST remain classes
+- All service layer code (not extending Obsidian classes) should use functional programming patterns
+- Use factory functions (createXxx) that return interface instances with closures
+- Avoid `this` keyword outside Obsidian-required classes
 - Naming: camelCase (variables/functions), PascalCase (types/interfaces), UPPER_SNAKE_CASE (constants), kebab-case (files/folders)
 - Comments only for "why", not "what"
 - Follow DRY principle; extract common logic
@@ -58,15 +61,15 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 ### Core Services (src/)
 
 **Dashboard** (`src/dashboard/`):
-- `DashboardParser.ts` - Parses Dashboard.md using `%% ISSUE:id:START/END %%` markers
-- `DashboardWriter.ts` - Modifies Dashboard.md (add/archive/reorder issues)
-- `DashboardRenderer.ts` - Renders interactive HTML for code blocks
+- `DashboardParser.ts` - Pure functions to parse Dashboard.md using `%% ISSUE:id:START/END %%` markers
+- `DashboardWriter.ts` - Factory function creates writer instance to modify Dashboard.md (add/archive/reorder issues)
+- `DashboardRenderer.ts` - Factory function creates renderer instance for interactive HTML code blocks
 
 **Issues** (`src/issues/`):
-- `IssueManager.ts` - Creates/archives issue files with YAML frontmatter
-- `ProgressTracker.ts` - Counts tasks with 5s caching
+- `IssueManager.ts` - Factory function creates manager instance to create/archive issue files with YAML frontmatter
+- `ProgressTracker.ts` - Factory function creates tracker instance with 5s cache closure
 
-**Modals** (`src/modals/IssueModal.ts`): Three-step flow: Name → Priority → GitHub link
+**Modals** (`src/modals/IssueModal.ts`): Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
 
 **Types** (`src/types.ts`): Priority levels (low/medium/high/top), settings interface
 

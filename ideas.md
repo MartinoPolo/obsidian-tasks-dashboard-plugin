@@ -1,7 +1,15 @@
 # High priority features
 
+## Remove all progress auto refreshing logic or the button to refresh progress
 
 ## Prefer functions/closures over classes.
+
+## Custom dashboard note name
+
+## Cancel button's hover state doesn't have enough contrast to the normal state
+
+## Dashboard autofix
+- Button to fix the format of dashboard using notes in Active/Archive folders
 
 ## Ignoring .claude?
 

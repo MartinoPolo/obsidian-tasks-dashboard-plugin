@@ -20,35 +20,17 @@ const ICONS = {
 	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`
 };
 
-export class DashboardRenderer {
-	private plugin: TasksDashboardPlugin;
+export interface DashboardRendererInstance {
+	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
+	renderSortButton: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
+	refreshDashboard: () => Promise<void>;
+}
 
-	constructor(plugin: TasksDashboardPlugin) {
-		this.plugin = plugin;
-	}
-
-	async render(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
-		const params = this.parseParams(source);
-		if (params === null) {
-			el.createEl('span', { text: 'Invalid control block', cls: 'tdc-error' });
-			return;
-		}
-		const dashboard = this.plugin.settings.dashboards.find((d) => d.id === params.dashboard);
-		if (dashboard === undefined) {
-			return;
-		}
-		const container = el.createDiv({ cls: 'tdc-issue-container' });
-		this.renderHeader(container, params);
-		const controls = container.createDiv({ cls: 'tdc-controls' });
-		const progress = await this.plugin.progressTracker.getProgress(params.path);
-		this.renderProgressBar(controls, progress, params.priority);
-		this.renderButtons(controls, params, dashboard);
-		ctx.addChild(new MarkdownRenderChild(container));
-	}
-
-	private parseParams(source: string): ControlParams | null {
+export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
+	const parseParams = (source: string): ControlParams | null => {
 		const lines = source.trim().split('\n');
 		const params: Partial<ControlParams> = {};
+
 		for (const line of lines) {
 			const [key, ...valueParts] = line.split(':');
 			const value = valueParts.join(':').trim();
@@ -61,19 +43,22 @@ export class DashboardRenderer {
 				}
 			}
 		}
+
 		const hasAllParams =
 			params.issue !== undefined &&
 			params.name !== undefined &&
 			params.path !== undefined &&
 			params.dashboard !== undefined &&
 			params.priority !== undefined;
+
 		if (hasAllParams) {
 			return params as ControlParams;
 		}
-		return null;
-	}
 
-	private renderHeader(container: HTMLElement, params: ControlParams): void {
+		return null;
+	};
+
+	const renderHeader = (container: HTMLElement, params: ControlParams): void => {
 		const header = container.createDiv({
 			cls: `tdc-issue-header priority-${params.priority}`
 		});
@@ -85,23 +70,25 @@ export class DashboardRenderer {
 		link.setAttribute('data-href', params.path);
 		link.addEventListener('click', (e) => {
 			e.preventDefault();
-			void this.plugin.app.workspace.openLinkText(params.path, '', false);
+			void plugin.app.workspace.openLinkText(params.path, '', false);
 		});
-	}
+	};
 
-	private renderProgressBar(
+	const renderProgressBar = (
 		container: HTMLElement,
 		progress: IssueProgress,
 		priority: Priority
-	): void {
-		const mode = this.plugin.settings.progressDisplayMode;
+	): void => {
+		const mode = plugin.settings.progressDisplayMode;
 		const progressContainer = container.createDiv({ cls: 'tdc-progress' });
+
 		if (mode === 'bar' || mode === 'all') {
 			const bar = progressContainer.createDiv({ cls: 'tdc-progress-bar' });
 			const fill = bar.createDiv({ cls: 'tdc-progress-fill' });
 			fill.style.width = `${progress.percentage}%`;
 			fill.style.backgroundColor = PRIORITY_COLORS[priority];
 		}
+
 		let text = '';
 		if (mode === 'number') {
 			text = `${progress.done}/${progress.total}`;
@@ -112,17 +99,19 @@ export class DashboardRenderer {
 		} else if (mode === 'all') {
 			text = `${progress.percentage}% (${progress.done}/${progress.total})`;
 		}
+
 		if (text !== '') {
 			progressContainer.createSpan({ cls: 'tdc-progress-text', text });
 		}
-	}
+	};
 
-	private renderButtons(
+	const renderButtons = (
 		container: HTMLElement,
 		params: ControlParams,
 		dashboard: DashboardConfig
-	): void {
+	): void => {
 		const btnContainer = container.createDiv({ cls: 'tdc-btn-group' });
+
 		const upBtn = btnContainer.createEl('button', {
 			cls: 'tdc-btn tdc-btn-move',
 			attr: { 'aria-label': 'Move up' }
@@ -131,8 +120,9 @@ export class DashboardRenderer {
 		upBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			void this.plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
+			void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
 		});
+
 		const downBtn = btnContainer.createEl('button', {
 			cls: 'tdc-btn tdc-btn-move',
 			attr: { 'aria-label': 'Move down' }
@@ -141,8 +131,9 @@ export class DashboardRenderer {
 		downBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			void this.plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
+			void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
 		});
+
 		const archiveBtn = btnContainer.createEl('button', {
 			cls: 'tdc-btn tdc-btn-archive',
 			attr: { 'aria-label': 'Archive' }
@@ -151,56 +142,99 @@ export class DashboardRenderer {
 		archiveBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			void this.plugin.issueManager.archiveIssue(dashboard, params.issue);
+			void plugin.issueManager.archiveIssue(dashboard, params.issue);
 		});
-	}
+	};
 
-	renderSortButton(source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+	const render = async (
+		source: string,
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext
+	): Promise<void> => {
+		const params = parseParams(source);
+		if (params === null) {
+			el.createEl('span', { text: 'Invalid control block', cls: 'tdc-error' });
+			return;
+		}
+
+		const dashboard = plugin.settings.dashboards.find((d) => d.id === params.dashboard);
+		if (dashboard === undefined) {
+			return;
+		}
+
+		const container = el.createDiv({ cls: 'tdc-issue-container' });
+		renderHeader(container, params);
+
+		const controls = container.createDiv({ cls: 'tdc-controls' });
+		const progress = await plugin.progressTracker.getProgress(params.path);
+		renderProgressBar(controls, progress, params.priority);
+		renderButtons(controls, params, dashboard);
+
+		ctx.addChild(new MarkdownRenderChild(container));
+	};
+
+	const renderSortButton = (
+		source: string,
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext
+	): void => {
 		const dashboardIdMatch = source.match(/dashboard:\s*([\w-]+)/);
 		if (dashboardIdMatch === null) {
 			return;
 		}
-		const dashboard = this.plugin.settings.dashboards.find((d) => d.id === dashboardIdMatch[1]);
+
+		const dashboard = plugin.settings.dashboards.find((d) => d.id === dashboardIdMatch[1]);
 		if (dashboard === undefined) {
 			return;
 		}
+
 		el.empty();
 		const container = el.createDiv({ cls: 'tdc-sort-container' });
+
 		const addBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-add' });
 		addBtn.innerHTML = ICONS.plus + ' Add Issue';
 		addBtn.addEventListener('click', (e) => {
 			e.preventDefault();
-			new NamePromptModal(this.plugin.app, this.plugin, dashboard).open();
+			new NamePromptModal(plugin.app, plugin, dashboard).open();
 		});
+
 		const sortBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-sort' });
 		sortBtn.innerHTML = ICONS.sort + ' Sort';
 		sortBtn.addEventListener('click', (e) => {
 			e.preventDefault();
-			void this.plugin.dashboardWriter.sortByPriority(dashboard);
+			void plugin.dashboardWriter.sortByPriority(dashboard);
 		});
+
 		const refreshBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-refresh' });
 		refreshBtn.innerHTML = ICONS.refresh + ' Refresh';
 		refreshBtn.addEventListener('click', (e) => {
 			e.preventDefault();
-			void this.refreshDashboard();
+			void refreshDashboard();
 		});
-		ctx.addChild(new MarkdownRenderChild(container));
-	}
 
-	async refreshDashboard(): Promise<void> {
-		this.plugin.progressTracker.invalidateCache();
-		const view = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		ctx.addChild(new MarkdownRenderChild(container));
+	};
+
+	const refreshDashboard = async (): Promise<void> => {
+		plugin.progressTracker.invalidateCache();
+		const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+
 		if (view === null || view.file === null) {
 			new Notice('No active view to refresh');
 			return;
 		}
+
 		const file = view.file;
 		const leaf = view.leaf;
 		const currentMode = view.getMode();
+
 		await leaf.setViewState({
 			type: 'markdown',
 			state: { file: file.path, mode: currentMode }
 		});
+
 		new Notice('Progress refreshed');
-	}
+	};
+
+	return { render, renderSortButton, refreshDashboard };
 }

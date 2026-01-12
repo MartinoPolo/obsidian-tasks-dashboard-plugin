@@ -2,27 +2,32 @@ import { Plugin, MarkdownView, TFile, Notice, FuzzySuggestModal } from 'obsidian
 import { TasksDashboardSettings, DEFAULT_SETTINGS, DashboardConfig } from './src/types';
 import { TasksDashboardSettingTab } from './src/settings';
 import { NamePromptModal } from './src/modals/IssueModal';
-import { IssueManager } from './src/issues/IssueManager';
-import { ProgressTracker } from './src/issues/ProgressTracker';
-import { DashboardWriter } from './src/dashboard/DashboardWriter';
-import { DashboardRenderer } from './src/dashboard/DashboardRenderer';
-import { DashboardParser } from './src/dashboard/DashboardParser';
-
+import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
+import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
+import {
+	createDashboardWriter,
+	type DashboardWriterInstance
+} from './src/dashboard/DashboardWriter';
+import {
+	createDashboardRenderer,
+	type DashboardRendererInstance
+} from './src/dashboard/DashboardRenderer';
+import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
 
 export default class TasksDashboardPlugin extends Plugin {
-    // The ! approach is idiomatic for Obsidian plugins where initialization happens in onload() rather than the constructor.
+	// The ! approach is idiomatic for Obsidian plugins where initialization happens in onload() rather than the constructor.
 	settings!: TasksDashboardSettings;
-	issueManager!: IssueManager;
-	progressTracker!: ProgressTracker;
-	dashboardWriter!: DashboardWriter;
-	dashboardRenderer!: DashboardRenderer;
+	issueManager!: IssueManagerInstance;
+	progressTracker!: ProgressTrackerInstance;
+	dashboardWriter!: DashboardWriterInstance;
+	dashboardRenderer!: DashboardRendererInstance;
 	private registeredCommands: string[] = [];
 	async onload() {
 		await this.loadSettings();
-		this.issueManager = new IssueManager(this.app, this);
-		this.progressTracker = new ProgressTracker(this.app);
-		this.dashboardWriter = new DashboardWriter(this.app, this);
-		this.dashboardRenderer = new DashboardRenderer(this);
+		this.issueManager = createIssueManager(this.app, this);
+		this.progressTracker = createProgressTracker(this.app);
+		this.dashboardWriter = createDashboardWriter(this.app, this);
+		this.dashboardRenderer = createDashboardRenderer(this);
 		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) =>
 			this.dashboardRenderer.render(source, el, ctx)
 		);
@@ -181,8 +186,7 @@ export default class TasksDashboardPlugin extends Plugin {
 		await this.ensureFolder(`${rootPath}/Issues/Archive`);
 		const dashboardPath = `${rootPath}/Dashboard.md`;
 		if (this.app.vault.getAbstractFileByPath(dashboardPath) === null) {
-			const parser = new DashboardParser();
-			const content = parser.initializeStructure(dashboard.id);
+			const content = initializeDashboardStructure(dashboard.id);
 			await this.app.vault.create(dashboardPath, content);
 		}
 	}
