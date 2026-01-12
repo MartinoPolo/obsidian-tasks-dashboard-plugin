@@ -3,7 +3,7 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 ## Features
 - **Multiple Dashboards**: Configure separate dashboards for different projects
 - **Issue Management**: Create, archive, and organize issues with priorities
-- **Progress Tracking**: Visual progress bars with configurable display modes
+- **Progress Tracking**: Visual progress bars with configurable display modes and auto-refresh
 - **Priority Colors**: Low (green), Medium (yellow), High (red), Top (purple)
 - **Tasks Integration**: Automatically generates Obsidian Tasks queries for each issue
 - **Quick Actions**: Add Issue, Sort, Refresh, Archive, and reorder directly from the dashboard
@@ -65,7 +65,11 @@ The dashboard has four sections:
 ### Dashboard Buttons
 - **Add Issue**: Opens the issue creation flow
 - **Sort**: Organizes all issues by priority level
-- **Refresh**: Manually updates progress counts
+- **Refresh**: Manually updates progress counts (also auto-refreshes when tasks are modified)
+
+### Auto-Refresh Progress
+Progress indicators automatically update when you modify issue files (check/uncheck tasks, add new tasks, etc.). The dashboard detects changes to files in the active issues folder and refreshes all open dashboards after a short debounce delay (500ms). This means you can check off tasks and see the progress bar update without manually clicking Refresh.
+
 ### Issue Controls
 Each issue entry includes:
 - Link to the issue note with priority-colored left border
