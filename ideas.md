@@ -3,10 +3,6 @@
 
 ## Prefer functions/closures over classes.
 
-## Use pnpm instead of npm
-
-##
-
 ## Ignoring .claude?
 
 - should we ignore it?

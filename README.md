@@ -19,8 +19,8 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 2. Install dependencies and build:
    ```bash
    cd obsidian-tasks-dashboard-plugin
-   npm install
-   npm run build
+   pnpm install
+   pnpm build
    ```
 3. Reload Obsidian (Ctrl+R or Cmd+R)
 4. Go to Settings → Community Plugins → Enable "Tasks Dashboard"

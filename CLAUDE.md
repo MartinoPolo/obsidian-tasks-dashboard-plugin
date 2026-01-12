@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Use latest TypeScript 5 features
 - Prefer interfaces over types for object shapes
-- Run `npm run lint` and `npm run format` before committing
+- Run `pnpm lint` and `pnpm format` before committing
 
 ## Agent Behavior
 
@@ -39,12 +39,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build Commands
 
 ```bash
-npm install        # Install dependencies
-npm run build      # Type-check and build (outputs main.js)
-npm run dev        # Development build (watch mode)
-npm run lint       # Check for lint errors
-npm run lint:fix   # Auto-fix lint errors
-npm run format     # Format code with Prettier
+pnpm install       # Install dependencies
+pnpm build         # Type-check and build (outputs main.js)
+pnpm dev           # Development build (watch mode)
+pnpm lint          # Check for lint errors
+pnpm lint:fix      # Auto-fix lint errors
+pnpm format        # Format code with Prettier
 ```
 
 ## Architecture
