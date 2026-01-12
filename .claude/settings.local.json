@@ -1,10 +1,13 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(powershell -Command:*)",
-      "Bash(npm install)",
-      "Bash(npm run build:*)",
-      "Bash(cd:*)"
-    ]
-  }
+	"permissions": {
+		"allow": [
+			"Bash(powershell -Command:*)",
+			"Bash(npm install)",
+			"Bash(npm run build:*)",
+			"Bash(cd:*)",
+			"Bash(npm run format:*)",
+			"Bash(npm run lint)",
+			"Bash(npm run lint:fix:*)"
+		]
+	}
 }
