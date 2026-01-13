@@ -12,8 +12,13 @@ export interface Issue {
 }
 export interface DashboardConfig {
 	id: string;
-	name: string;
 	rootPath: string;
+	dashboardFilename: string;
+}
+
+export function getDashboardDisplayName(dashboard: DashboardConfig): string {
+	const filename = dashboard.dashboardFilename || 'Dashboard.md';
+	return filename.replace(/\.md$/, '');
 }
 export interface TasksDashboardSettings {
 	dashboards: DashboardConfig[];

@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, MarkdownView } from 'obsidian';
+import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, PRIORITY_COLORS, IssueProgress, DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/IssueModal';
@@ -16,14 +16,12 @@ const ICONS = {
 	up: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>`,
 	down: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>`,
 	sort: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>`,
-	refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>`,
 	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`
 };
 
 export interface DashboardRendererInstance {
 	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
 	renderSortButton: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
-	refreshDashboard: () => Promise<void>;
 }
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
@@ -205,36 +203,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			void plugin.dashboardWriter.sortByPriority(dashboard);
 		});
 
-		const refreshBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-refresh' });
-		refreshBtn.innerHTML = ICONS.refresh + ' Refresh';
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			void refreshDashboard();
-		});
-
 		ctx.addChild(new MarkdownRenderChild(container));
 	};
 
-	const refreshDashboard = async (): Promise<void> => {
-		plugin.progressTracker.invalidateCache();
-		const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-
-		if (view === null || view.file === null) {
-			new Notice('No active view to refresh');
-			return;
-		}
-
-		const file = view.file;
-		const leaf = view.leaf;
-		const currentMode = view.getMode();
-
-		await leaf.setViewState({
-			type: 'markdown',
-			state: { file: file.path, mode: currentMode }
-		});
-
-		new Notice('Progress refreshed');
-	};
-
-	return { render, renderSortButton, refreshDashboard };
+	return { render, renderSortButton };
 }

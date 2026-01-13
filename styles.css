@@ -166,28 +166,6 @@
     width: 16px;
     height: 16px;
 }
-/* Refresh Button */
-.tdc-btn-refresh {
-    width: auto;
-    height: auto;
-    padding: 8px 16px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-    font-size: 0.9em;
-    font-weight: 500;
-    margin-left: 8px;
-}
-.tdc-btn-refresh:hover {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-.tdc-btn-refresh svg {
-    width: 16px;
-    height: 16px;
-}
 /* Add Issue Button */
 .tdc-btn-add {
     width: auto;

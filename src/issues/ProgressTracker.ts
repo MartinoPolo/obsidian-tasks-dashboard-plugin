@@ -3,7 +3,6 @@ import { IssueProgress } from '../types';
 
 export interface ProgressTrackerInstance {
 	getProgress: (filePath: string) => Promise<IssueProgress>;
-	invalidateCache: (filePath?: string) => void;
 }
 
 export function createProgressTracker(app: App): ProgressTrackerInstance {
@@ -40,13 +39,5 @@ export function createProgressTracker(app: App): ProgressTrackerInstance {
 		return progress;
 	};
 
-	const invalidateCache = (filePath?: string): void => {
-		if (filePath !== undefined) {
-			cache.delete(filePath);
-		} else {
-			cache.clear();
-		}
-	};
-
-	return { getProgress, invalidateCache };
+	return { getProgress };
 }

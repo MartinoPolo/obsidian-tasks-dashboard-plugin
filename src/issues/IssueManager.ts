@@ -33,8 +33,9 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		return candidate;
 	};
 
-	const generateIssueContent = (issue: Issue): string => {
-		const relativePath = '../'.repeat(2) + 'Dashboard.md';
+	const generateIssueContent = (issue: Issue, dashboard: DashboardConfig): string => {
+		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const relativePath = '../'.repeat(2) + filename;
 		let content = `---
 created: ${issue.created}
 status: ${issue.status}
@@ -76,7 +77,7 @@ priority: ${issue.priority}
 			filePath
 		};
 
-		const content = generateIssueContent(issue);
+		const content = generateIssueContent(issue, dashboard);
 		await app.vault.create(filePath, content);
 		await plugin.dashboardWriter.addIssueToDashboard(dashboard, issue);
 

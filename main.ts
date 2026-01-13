@@ -1,5 +1,10 @@
 import { Plugin, MarkdownView, TFile, Notice, FuzzySuggestModal } from 'obsidian';
-import { TasksDashboardSettings, DEFAULT_SETTINGS, DashboardConfig } from './src/types';
+import {
+	TasksDashboardSettings,
+	DEFAULT_SETTINGS,
+	DashboardConfig,
+	getDashboardDisplayName
+} from './src/types';
 import { TasksDashboardSettingTab } from './src/settings';
 import { NamePromptModal } from './src/modals/IssueModal';
 import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
@@ -40,14 +45,6 @@ export default class TasksDashboardPlugin extends Plugin {
 			this.showDashboardSelector();
 		});
 		this.registerEvent(
-			this.app.vault.on('modify', (file) => {
-				if (file.path.includes('/Issues/')) {
-					this.progressTracker.invalidateCache(file.path);
-					this.autoRefreshDashboards();
-				}
-			})
-		);
-		this.registerEvent(
 			this.app.workspace.on('file-open', (file) => {
 				if (file !== null && this.isActiveIssueFile(file)) {
 					setTimeout(() => {
@@ -70,33 +67,11 @@ export default class TasksDashboardPlugin extends Plugin {
 		);
 	}
 
-	private refreshTimeout: number | undefined = undefined;
-
-	private autoRefreshDashboards(): void {
-		if (this.refreshTimeout !== undefined) {
-			window.clearTimeout(this.refreshTimeout);
-		}
-		this.refreshTimeout = window.setTimeout(() => {
-			this.app.workspace.iterateAllLeaves((leaf) => {
-				if (leaf.view instanceof MarkdownView) {
-					const file = leaf.view.file;
-					if (file !== null && this.isDashboardFile(file)) {
-						const view = leaf.view;
-						const currentMode = view.getMode();
-						void leaf.setViewState({
-							type: 'markdown',
-							state: { file: file.path, mode: currentMode }
-						});
-					}
-				}
-			});
-		}, 500);
-	}
-
 	private isDashboardFile(file: TFile): boolean {
-		return this.settings.dashboards.some(
-			(dashboard) => file.path === `${dashboard.rootPath}/Dashboard.md`
-		);
+		return this.settings.dashboards.some((dashboard) => {
+			const filename = dashboard.dashboardFilename || 'Dashboard.md';
+			return file.path === `${dashboard.rootPath}/${filename}`;
+		});
 	}
 
 	onunload() {
@@ -114,9 +89,10 @@ export default class TasksDashboardPlugin extends Plugin {
 		this.registeredCommands = [];
 		for (const dashboard of this.settings.dashboards) {
 			const commandId = `tasks-dashboard:create-issue-${dashboard.id}`;
+			const displayName = getDashboardDisplayName(dashboard);
 			this.addCommand({
 				id: `create-issue-${dashboard.id}`,
-				name: `Create Issue: ${dashboard.name}`,
+				name: `Create Issue: ${displayName}`,
 				callback: () => {
 					new NamePromptModal(this.app, this, dashboard).open();
 				}
@@ -154,7 +130,7 @@ export default class TasksDashboardPlugin extends Plugin {
 				return dashboards;
 			}
 			getItemText(item: DashboardConfig): string {
-				return item.name;
+				return getDashboardDisplayName(item);
 			}
 			onChooseItem(item: DashboardConfig): void {
 				new NamePromptModal(app, pluginRef, item).open();
@@ -184,7 +160,8 @@ export default class TasksDashboardPlugin extends Plugin {
 		await this.ensureFolder(`${rootPath}/Issues`);
 		await this.ensureFolder(`${rootPath}/Issues/Active`);
 		await this.ensureFolder(`${rootPath}/Issues/Archive`);
-		const dashboardPath = `${rootPath}/Dashboard.md`;
+		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${rootPath}/${filename}`;
 		if (this.app.vault.getAbstractFileByPath(dashboardPath) === null) {
 			const content = initializeDashboardStructure(dashboard.id);
 			await this.app.vault.create(dashboardPath, content);
