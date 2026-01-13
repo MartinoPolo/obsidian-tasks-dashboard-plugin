@@ -1,8 +1,8 @@
 # High priority features
 
-## Cancel button's hover state (in prompt dialogs) doesn't have enough contrast to the normal state
-- also check that all other buttons have enough contrast in hover state
-- confirm button should have a green background hover state, cancel red.
+## Consolidate styles
+- styles of similar components should be consolidated to reduce redundancy and improve maintainability.
+- Example: buttons styles like `.tdc-btn-sort` and `.tdc-btn-add` share similar properties and can be combined.
 
 # Research & questions
 
