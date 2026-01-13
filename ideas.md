@@ -1,9 +1,5 @@
 # High priority features
 
-## Consolidate styles
-- styles of similar components should be consolidated to reduce redundancy and improve maintainability.
-- Example: buttons styles like `.tdc-btn-sort` and `.tdc-btn-add` share similar properties and can be combined.
-
 # Research & questions
 
 ## Embedding github

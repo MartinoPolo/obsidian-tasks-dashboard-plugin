@@ -1,6 +1,6 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { Priority, PRIORITY_COLORS, IssueProgress, DashboardConfig } from '../types';
+import { Priority, IssueProgress, DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/IssueModal';
 
 interface ControlParams {
@@ -82,9 +82,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		if (mode === 'bar' || mode === 'all') {
 			const bar = progressContainer.createDiv({ cls: 'tdc-progress-bar' });
-			const fill = bar.createDiv({ cls: 'tdc-progress-fill' });
+			const fill = bar.createDiv({ cls: `tdc-progress-fill tdc-progress-fill-${priority}` });
 			fill.style.width = `${progress.percentage}%`;
-			fill.style.backgroundColor = PRIORITY_COLORS[priority];
 		}
 
 		let text = '';
@@ -189,14 +188,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		el.empty();
 		const container = el.createDiv({ cls: 'tdc-sort-container' });
 
-		const addBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-add' });
+		const addBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
 		addBtn.innerHTML = ICONS.plus + ' Add Issue';
 		addBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			new NamePromptModal(plugin.app, plugin, dashboard).open();
 		});
 
-		const sortBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-sort' });
+		const sortBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
 		sortBtn.innerHTML = ICONS.sort + ' Sort';
 		sortBtn.addEventListener('click', (e) => {
 			e.preventDefault();

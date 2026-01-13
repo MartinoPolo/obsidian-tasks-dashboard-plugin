@@ -33,12 +33,7 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	dashboards: [],
 	progressDisplayMode: 'all'
 };
-export const PRIORITY_COLORS: Record<Priority, string> = {
-	low: '#4caf50',
-	medium: '#ff9800',
-	high: '#f44336',
-	top: '#9c27b0'
-};
+
 export const PRIORITY_ORDER: Record<Priority, number> = {
 	top: 0,
 	high: 1,
