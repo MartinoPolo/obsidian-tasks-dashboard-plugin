@@ -18,6 +18,7 @@ import {
 	type DashboardRendererInstance
 } from './src/dashboard/DashboardRenderer';
 import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
+import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 
 export default class TasksDashboardPlugin extends Plugin {
 	// The ! approach is idiomatic for Obsidian plugins where initialization happens in onload() rather than the constructor.
@@ -26,9 +27,12 @@ export default class TasksDashboardPlugin extends Plugin {
 	progressTracker!: ProgressTrackerInstance;
 	dashboardWriter!: DashboardWriterInstance;
 	dashboardRenderer!: DashboardRendererInstance;
+	githubService!: GitHubServiceInstance;
 	private registeredCommands: string[] = [];
 	async onload() {
 		await this.loadSettings();
+		this.githubService = createGitHubService();
+		this.githubService.setAuth(this.settings.githubAuth);
 		this.issueManager = createIssueManager(this.app, this);
 		this.progressTracker = createProgressTracker(this.app);
 		this.dashboardWriter = createDashboardWriter(this.app, this);

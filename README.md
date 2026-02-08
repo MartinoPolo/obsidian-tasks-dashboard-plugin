@@ -3,12 +3,13 @@ Manage high-level project issues with task tracking, progress indicators, and pr
 ## Features
 - **Multiple Dashboards**: Configure separate dashboards for different projects
 - **Issue Management**: Create, archive, and organize issues with priorities
-- **Progress Tracking**: Visual progress bars with configurable display modes and auto-refresh
+- **Progress Tracking**: Visual progress bars with configurable display modes
 - **Priority Colors**: Low (green), Medium (yellow), High (red), Top (purple)
 - **Tasks Integration**: Automatically generates Obsidian Tasks queries for each issue
-- **Quick Actions**: Add Issue, Sort, Refresh, Archive, and reorder directly from the dashboard
+- **Quick Actions**: Add Issue, Sort, Archive, and reorder directly from the dashboard
 - **Keyboard-Driven**: Sequential prompts at top of screen for fast issue creation
 - **Auto-Cursor Positioning**: Opening active issue files automatically places cursor at end for quick task entry
+- **GitHub Integration**: Link issues to GitHub issues/PRs with embedded metadata cards
 ## Installation
 ### From Source
 1. Clone this repository into your vault's `.obsidian/plugins/` folder:
@@ -65,10 +66,6 @@ The dashboard has four sections:
 ### Dashboard Buttons
 - **Add Issue**: Opens the issue creation flow
 - **Sort**: Organizes all issues by priority level
-- **Refresh**: Manually updates progress counts (also auto-refreshes when tasks are modified)
-
-### Auto-Refresh Progress
-Progress indicators automatically update when you modify issue files (check/uncheck tasks, add new tasks, etc.). The dashboard detects changes to files in the active issues folder and refreshes all open dashboards after a short debounce delay (500ms). This means you can check off tasks and see the progress bar update without manually clicking Refresh.
 
 ### Issue Controls
 Each issue entry includes:
@@ -90,7 +87,37 @@ Created issues contain:
 - **Archive**: Click the trash icon to archive an issue
 - **Reorder**: Use ↑ and ↓ buttons to change issue order
 - **Sort**: Use "Sort" button to organize all issues by priority
-- **Refresh**: Click "Refresh" to manually update progress counts
+
+## GitHub Integration
+Link your issues to GitHub issues and pull requests for enhanced tracking.
+
+### Setup
+1. Go to Settings → Tasks Dashboard
+2. Under **GitHub Authentication**, select "Personal Access Token"
+3. Create a token at [GitHub Settings](https://github.com/settings/tokens/new?scopes=repo)
+4. Paste the token and click **Test** to verify
+5. Choose your preferred **GitHub Display Mode** (Minimal/Compact/Full)
+
+### Per-Dashboard Repository
+Optionally link each dashboard to a specific GitHub repository:
+1. In the dashboard settings, enter the **GitHub Repository** (e.g., `owner/repo`)
+2. When creating issues, suggestions will be filtered to that repository
+3. Toggle "Search all repositories" in the search modal to expand scope
+
+### Creating Issues with GitHub Links
+When GitHub is configured, step 3 of issue creation shows a rich search modal:
+- Recent issues from your linked repo (or all repos)
+- Real-time search as you type
+- See issue number, title, status, and labels
+- Or paste a GitHub URL directly
+
+### Embedded GitHub Cards
+Issues linked to GitHub display metadata cards on the dashboard:
+- **Minimal**: Issue number and status badge
+- **Compact**: Number, title, status, labels, and description preview
+- **Full**: All metadata including assignees and timestamps
+- Click the refresh icon to update GitHub data
+
 ## Hotkeys
 Configure custom hotkeys in Settings → Hotkeys:
 - Search for "Create Issue" to find per-dashboard commands

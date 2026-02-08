@@ -2,6 +2,7 @@ import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/IssueModal';
+import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 
 interface ControlParams {
 	issue: string;
@@ -9,6 +10,7 @@ interface ControlParams {
 	path: string;
 	dashboard: string;
 	priority: Priority;
+	github?: string;
 }
 
 const ICONS = {
@@ -25,6 +27,8 @@ export interface DashboardRendererInstance {
 }
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
+	const githubCardRenderer = createGitHubCardRenderer();
+
 	const parseParams = (source: string): ControlParams | null => {
 		const lines = source.trim().split('\n');
 		const params: Partial<ControlParams> = {};
@@ -36,6 +40,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				const k = key.trim() as keyof ControlParams;
 				if (k === 'priority') {
 					params[k] = value as Priority;
+				} else if (k === 'github') {
+					params[k] = value;
 				} else {
 					params[k] = value;
 				}
@@ -143,6 +149,50 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 	};
 
+	const renderGitHubCard = async (
+		container: HTMLElement,
+		githubUrl: string
+	): Promise<void> => {
+		const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
+
+		if (!plugin.githubService.isAuthenticated()) {
+			githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
+			return;
+		}
+
+		githubCardRenderer.renderLoading(githubContainer);
+
+		const metadata = await plugin.githubService.getMetadataFromUrl(githubUrl);
+		if (metadata === undefined) {
+			githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
+			return;
+		}
+
+		const onRefresh = (): void => {
+			plugin.githubService.clearCache();
+			githubCardRenderer.renderLoading(githubContainer);
+			void plugin.githubService.getMetadataFromUrl(githubUrl).then((freshMetadata) => {
+				if (freshMetadata !== undefined) {
+					githubCardRenderer.render(
+						githubContainer,
+						freshMetadata,
+						plugin.settings.githubDisplayMode,
+						onRefresh
+					);
+				} else {
+					githubCardRenderer.renderError(githubContainer, 'Failed to refresh');
+				}
+			});
+		};
+
+		githubCardRenderer.render(
+			githubContainer,
+			metadata,
+			plugin.settings.githubDisplayMode,
+			onRefresh
+		);
+	};
+
 	const render = async (
 		source: string,
 		el: HTMLElement,
@@ -166,6 +216,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const progress = await plugin.progressTracker.getProgress(params.path);
 		renderProgressBar(controls, progress, params.priority);
 		renderButtons(controls, params, dashboard);
+
+		if (params.github !== undefined && params.github !== '') {
+			await renderGitHubCard(container, params.github);
+		}
 
 		ctx.addChild(new MarkdownRenderChild(container));
 	};

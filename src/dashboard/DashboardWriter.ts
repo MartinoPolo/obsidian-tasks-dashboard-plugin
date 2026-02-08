@@ -31,6 +31,10 @@ export function createDashboardWriter(
 ): DashboardWriterInstance {
 	const buildIssueEntry = (issue: Issue, dashboard: DashboardConfig): string => {
 		const relativePath = `Issues/Active/${issue.id}`;
+		const githubLine =
+			issue.githubLink !== undefined && issue.githubLink !== ''
+				? `github: ${issue.githubLink}\n`
+				: '';
 		return `%% ISSUE:${issue.id}:START %%
 \`\`\`tasks-dashboard-controls
 issue: ${issue.id}
@@ -38,7 +42,7 @@ name: ${issue.name}
 path: ${issue.filePath}
 dashboard: ${dashboard.id}
 priority: ${issue.priority}
-\`\`\`
+${githubLine}\`\`\`
 \`\`\`tasks
 path includes ${relativePath}
 not done

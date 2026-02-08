@@ -1,6 +1,43 @@
 export type Priority = 'low' | 'medium' | 'high' | 'top';
 export type IssueStatus = 'active' | 'archived';
 export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-percentage' | 'all';
+export type GitHubAuthMethod = 'none' | 'pat';
+export type GitHubDisplayMode = 'minimal' | 'compact' | 'full';
+
+export interface GitHubAuth {
+	method: GitHubAuthMethod;
+	token?: string;
+	username?: string;
+}
+
+export interface GitHubLabel {
+	name: string;
+	color: string;
+}
+
+export interface GitHubIssueMetadata {
+	number: number;
+	title: string;
+	state: 'open' | 'closed';
+	labels: GitHubLabel[];
+	assignees: string[];
+	body?: string;
+	createdAt: string;
+	updatedAt: string;
+	repository: string;
+	url: string;
+	isPR: boolean;
+	prStatus?: 'merged' | 'draft' | 'open' | 'closed';
+}
+
+export interface GitHubStoredMetadata {
+	url: string;
+	number: number;
+	state: 'open' | 'closed';
+	title: string;
+	labels: string[];
+	lastFetched: string;
+}
 export interface Issue {
 	id: string;
 	name: string;
@@ -8,12 +45,14 @@ export interface Issue {
 	status: IssueStatus;
 	created: string;
 	githubLink?: string;
+	githubMetadata?: GitHubStoredMetadata;
 	filePath: string;
 }
 export interface DashboardConfig {
 	id: string;
 	rootPath: string;
 	dashboardFilename: string;
+	githubRepo?: string;
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {
@@ -23,6 +62,8 @@ export function getDashboardDisplayName(dashboard: DashboardConfig): string {
 export interface TasksDashboardSettings {
 	dashboards: DashboardConfig[];
 	progressDisplayMode: ProgressDisplayMode;
+	githubAuth: GitHubAuth;
+	githubDisplayMode: GitHubDisplayMode;
 }
 export interface IssueProgress {
 	done: number;
@@ -31,7 +72,9 @@ export interface IssueProgress {
 }
 export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	dashboards: [],
-	progressDisplayMode: 'all'
+	progressDisplayMode: 'all',
+	githubAuth: { method: 'none' },
+	githubDisplayMode: 'compact'
 };
 
 export const PRIORITY_ORDER: Record<Priority, number> = {

@@ -51,7 +51,6 @@
 
 - [x] Add Issue button (opens issue creation flow)
 - [x] Sort by Priority button
-- [x] Refresh Progress button
 
 ### Per-Issue Controls
 
@@ -78,9 +77,19 @@
 ## Progress Tracking
 
 - [x] Automatic cache invalidation on file modify (5s cache)
-- [x] Auto-refresh dashboard progress when issue files are modified (debounced 500ms)
-- [x] Manual refresh button to force progress recalculation and view re-render
-- [x] Progress updates automatically when tasks are checked in issue files
+- [x] Progress indicator displays done/total tasks for each issue
+
+## GitHub Integration
+
+- [x] Per-vault GitHub authentication using Personal Access Tokens
+- [x] GitHub Display Mode setting (Minimal/Compact/Full)
+- [x] Per-dashboard GitHub repository linking for filtered suggestions
+- [x] GitHub search modal with recent issues and real-time search
+- [x] Toggle between linked repo and all accessible repos
+- [x] Embedded GitHub info cards on dashboard showing issue/PR metadata
+- [x] Manual refresh button to update GitHub data
+- [x] Support for both issues and pull requests
+- [x] Display issue number, status, labels, assignees, and description
 
 ## Code Quality
 
@@ -92,4 +101,4 @@
 
 - [x] requirements.md with checklist
 - [x] README.md with installation and usage instructions
-- [ ] ideas.md with future tasks and improvements
+- [x] ideas.md with future tasks and improvements

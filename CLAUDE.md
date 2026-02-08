@@ -63,15 +63,21 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 **Dashboard** (`src/dashboard/`):
 - `DashboardParser.ts` - Pure functions to parse Dashboard.md using `%% ISSUE:id:START/END %%` markers
 - `DashboardWriter.ts` - Factory function creates writer instance to modify Dashboard.md (add/archive/reorder issues)
-- `DashboardRenderer.ts` - Factory function creates renderer instance for interactive HTML code blocks
+- `DashboardRenderer.ts` - Factory function creates renderer instance for interactive HTML code blocks, includes GitHub card rendering
 
 **Issues** (`src/issues/`):
 - `IssueManager.ts` - Factory function creates manager instance to create/archive issue files with YAML frontmatter
 - `ProgressTracker.ts` - Factory function creates tracker instance with 5s cache closure
 
-**Modals** (`src/modals/IssueModal.ts`): Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
+**GitHub** (`src/github/`):
+- `GitHubService.ts` - Factory function creates GitHub API client with caching, handles auth validation, issue/PR fetching, and search
+- `GitHubCardRenderer.ts` - Factory function creates renderer for GitHub metadata cards (minimal/compact/full modes)
 
-**Types** (`src/types.ts`): Priority levels (low/medium/high/top), settings interface
+**Modals** (`src/modals/`):
+- `IssueModal.ts` - Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
+- `GitHubSearchModal.ts` - Rich search modal for finding GitHub issues/PRs when authenticated
+
+**Types** (`src/types.ts`): Priority levels, GitHub types, settings interfaces
 
 ### File Structure
 

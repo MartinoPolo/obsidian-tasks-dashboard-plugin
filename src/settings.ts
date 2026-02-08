@@ -1,6 +1,11 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import TasksDashboardPlugin from '../main';
-import { DashboardConfig, ProgressDisplayMode, getDashboardDisplayName } from './types';
+import {
+	DashboardConfig,
+	ProgressDisplayMode,
+	GitHubDisplayMode,
+	getDashboardDisplayName
+} from './types';
 import { generateId } from './utils/slugify';
 
 export class TasksDashboardSettingTab extends PluginSettingTab {
@@ -35,6 +40,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						void this.plugin.saveSettings();
 					})
 			);
+
+		this.renderGitHubSettings(containerEl);
+
 		new Setting(containerEl)
 			.setName('Add Dashboard')
 			.setDesc('Create a new dashboard configuration')
@@ -63,6 +71,112 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		for (const [index, dashboard] of this.plugin.settings.dashboards.entries()) {
 			this.renderDashboardSettings(containerEl, dashboard, index);
 		}
+	}
+
+	private renderGitHubSettings(containerEl: HTMLElement): void {
+		containerEl.createEl('h3', { text: 'GitHub Integration' });
+
+		const authSetting = new Setting(containerEl)
+			.setName('GitHub Authentication')
+			.setDesc('Connect to GitHub to enable issue search and metadata display');
+
+		const authStatus = containerEl.createDiv({ cls: 'tdc-github-auth-status' });
+
+		const updateAuthStatus = async (): Promise<void> => {
+			authStatus.empty();
+			if (this.plugin.settings.githubAuth.method === 'pat' && this.plugin.settings.githubAuth.token) {
+				authStatus.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
+				const result = await this.plugin.githubService.validateToken();
+				authStatus.empty();
+				if (result.valid) {
+					authStatus.createSpan({
+						cls: 'tdc-auth-connected',
+						text: `Connected as @${result.username}`
+					});
+				} else {
+					authStatus.createSpan({
+						cls: 'tdc-auth-error',
+						text: result.error || 'Authentication failed'
+					});
+				}
+			} else {
+				authStatus.createSpan({ cls: 'tdc-auth-none', text: 'Not connected' });
+			}
+		};
+
+		let tokenInput: HTMLInputElement | undefined;
+
+		authSetting.addDropdown((dropdown) =>
+			dropdown
+				.addOption('none', 'Not configured')
+				.addOption('pat', 'Personal Access Token')
+				.setValue(this.plugin.settings.githubAuth.method)
+				.onChange((value) => {
+					this.plugin.settings.githubAuth.method = value as 'none' | 'pat';
+					if (value === 'none') {
+						this.plugin.settings.githubAuth.token = undefined;
+						this.plugin.githubService.setAuth({ method: 'none' });
+					}
+					void this.plugin.saveSettings();
+					this.display();
+				})
+		);
+
+		if (this.plugin.settings.githubAuth.method === 'pat') {
+			const tokenSetting = new Setting(containerEl)
+				.setName('Personal Access Token')
+				.setDesc('Create a token at GitHub → Settings → Developer settings → Personal access tokens');
+
+			tokenSetting.addText((text) => {
+				tokenInput = text.inputEl;
+				text.inputEl.type = 'password';
+				text.inputEl.addClass('tdc-token-input');
+				text.setPlaceholder('ghp_xxxxxxxxxxxx')
+					.setValue(this.plugin.settings.githubAuth.token || '')
+					.onChange((value) => {
+						this.plugin.settings.githubAuth.token = value;
+						this.plugin.githubService.setAuth(this.plugin.settings.githubAuth);
+						void this.plugin.saveSettings();
+					});
+			});
+
+			tokenSetting.addButton((btn) =>
+				btn
+					.setButtonText('Test')
+					.onClick(() => {
+						void updateAuthStatus();
+					})
+			);
+
+			tokenSetting.addExtraButton((btn) =>
+				btn
+					.setIcon('external-link')
+					.setTooltip('Create new token on GitHub')
+					.onClick(() => {
+						window.open(
+							'https://github.com/settings/tokens/new?scopes=repo&description=Obsidian%20Tasks%20Dashboard',
+							'_blank'
+						);
+					})
+			);
+		}
+
+		void updateAuthStatus();
+
+		new Setting(containerEl)
+			.setName('GitHub Display Mode')
+			.setDesc('How much GitHub issue detail to show on the dashboard')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('minimal', 'Minimal (number and status only)')
+					.addOption('compact', 'Compact (number, title, status, labels)')
+					.addOption('full', 'Full (includes description and assignees)')
+					.setValue(this.plugin.settings.githubDisplayMode)
+					.onChange((value) => {
+						this.plugin.settings.githubDisplayMode = value as GitHubDisplayMode;
+						void this.plugin.saveSettings();
+					})
+			);
 	}
 
 	private renderDashboardSettings(
@@ -101,6 +215,18 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						dashboard.dashboardFilename = filename;
 						void this.plugin.saveSettings();
 						this.plugin.registerDashboardCommands();
+					})
+			);
+		new Setting(dashboardContainer)
+			.setName('GitHub Repository')
+			.setDesc('Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)')
+			.addText((text) =>
+				text
+					.setPlaceholder('owner/repo')
+					.setValue(dashboard.githubRepo || '')
+					.onChange((value) => {
+						dashboard.githubRepo = value !== '' ? value : undefined;
+						void this.plugin.saveSettings();
 					})
 			);
 

@@ -1,6 +1,7 @@
 import { App, Modal, Notice, SuggestModal, TFile, MarkdownView } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, Priority } from '../types';
+import { DashboardConfig, Priority, GitHubIssueMetadata } from '../types';
+import { GitHubSearchModal } from './GitHubSearchModal';
 
 export class NamePromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
@@ -106,7 +107,70 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	}
 
 	onChooseSuggestion(priority: Priority) {
-		new GithubPromptModal(this.app, this.plugin, this.dashboard, this.issueName, priority).open();
+		if (this.plugin.githubService.isAuthenticated()) {
+			new GitHubSearchModal(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				(url, metadata) => {
+					void createIssueWithGitHub(
+						this.app,
+						this.plugin,
+						this.dashboard,
+						this.issueName,
+						priority,
+						url,
+						metadata
+					);
+				}
+			).open();
+		} else {
+			new GithubPromptModal(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				priority
+			).open();
+		}
+	}
+}
+
+async function createIssueWithGitHub(
+	app: App,
+	plugin: TasksDashboardPlugin,
+	dashboard: DashboardConfig,
+	issueName: string,
+	priority: Priority,
+	githubUrl?: string,
+	githubMetadata?: GitHubIssueMetadata
+): Promise<void> {
+	try {
+		const issue = await plugin.issueManager.createIssue({
+			name: issueName,
+			priority,
+			githubLink: githubUrl,
+			githubMetadata,
+			dashboard
+		});
+		new Notice(`Created issue: ${issueName}`);
+		const file = app.vault.getAbstractFileByPath(issue.filePath);
+		if (file instanceof TFile) {
+			const leaf = app.workspace.getLeaf();
+			await leaf.openFile(file);
+			setTimeout(() => {
+				const view = app.workspace.getActiveViewOfType(MarkdownView);
+				if (view?.editor) {
+					const editor = view.editor;
+					const lastLine = editor.lastLine();
+					const lastLineLength = editor.getLine(lastLine).length;
+					editor.setCursor({ line: lastLine, ch: lastLineLength });
+					editor.focus();
+				}
+			}, 100);
+		}
+	} catch (error) {
+		new Notice(`Error creating issue: ${(error as Error).message}`);
 	}
 }
 

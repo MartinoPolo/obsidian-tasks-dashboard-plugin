@@ -1,12 +1,19 @@
 import { App, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, Priority, Issue } from '../types';
+import {
+	DashboardConfig,
+	Priority,
+	Issue,
+	GitHubIssueMetadata,
+	GitHubStoredMetadata
+} from '../types';
 import { slugify } from '../utils/slugify';
 
 export interface CreateIssueParams {
 	name: string;
 	priority: Priority;
 	githubLink?: string;
+	githubMetadata?: GitHubIssueMetadata;
 	dashboard: DashboardConfig;
 }
 
@@ -36,11 +43,27 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 	const generateIssueContent = (issue: Issue, dashboard: DashboardConfig): string => {
 		const filename = dashboard.dashboardFilename || 'Dashboard.md';
 		const relativePath = '../'.repeat(2) + filename;
-		let content = `---
+
+		let frontmatter = `---
 created: ${issue.created}
 status: ${issue.status}
-priority: ${issue.priority}
----
+priority: ${issue.priority}`;
+
+		if (issue.githubMetadata !== undefined) {
+			frontmatter += `
+github:
+  url: "${issue.githubMetadata.url}"
+  number: ${issue.githubMetadata.number}
+  state: "${issue.githubMetadata.state}"
+  title: "${issue.githubMetadata.title.replace(/"/g, '\\"')}"
+  labels: [${issue.githubMetadata.labels.map((l) => `"${l}"`).join(', ')}]
+  lastFetched: "${new Date().toISOString()}"`;
+		}
+
+		frontmatter += `
+---`;
+
+		let content = `${frontmatter}
 [← Back to Dashboard](${relativePath})
 # ${issue.name}`;
 
@@ -58,7 +81,7 @@ priority: ${issue.priority}
 	};
 
 	const createIssue = async (params: CreateIssueParams): Promise<Issue> => {
-		const { name, priority, githubLink, dashboard } = params;
+		const { name, priority, githubLink, githubMetadata, dashboard } = params;
 		const issueId = slugify(name);
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
 
@@ -67,6 +90,18 @@ priority: ${issue.priority}
 		const filePath = generateUniqueFilePath(activePath, issueId);
 		const created = new Date().toISOString();
 
+		let storedMetadata: GitHubStoredMetadata | undefined;
+		if (githubMetadata !== undefined) {
+			storedMetadata = {
+				url: githubMetadata.url,
+				number: githubMetadata.number,
+				state: githubMetadata.state,
+				title: githubMetadata.title,
+				labels: githubMetadata.labels.map((l) => l.name),
+				lastFetched: new Date().toISOString()
+			};
+		}
+
 		const issue: Issue = {
 			id: issueId,
 			name,
@@ -74,6 +109,7 @@ priority: ${issue.priority}
 			status: 'active',
 			created,
 			githubLink,
+			githubMetadata: storedMetadata,
 			filePath
 		};
 
