@@ -6,9 +6,9 @@
 - [x] Hide GitHub-related UI elements when disabled for that dashboard
 
 ## Repository Picker (Req 6c)
-- [ ] Fetch user's repos via GitHub API (with caching)
-- [ ] Replace text input with searchable dropdown/suggest modal
-- [ ] Show repo name, description, and visibility in suggestions
+- [x] Fetch user's repos via GitHub API (with caching)
+- [x] Replace text input with searchable dropdown/suggest modal
+- [x] Show repo name, description, and visibility in suggestions
 
 ## Enter Key Fix (Req 6g)
 - [ ] Change enter key in GitHub search to confirm without auto-selecting first result
@@ -53,4 +53,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 3/14 tasks complete
+Progress: 6/14 tasks complete

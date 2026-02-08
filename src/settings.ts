@@ -7,6 +7,7 @@ import {
 	getDashboardDisplayName
 } from './types';
 import { generateId } from './utils/slugify';
+import { RepositoryPickerModal } from './modals/RepositoryPickerModal';
 
 export class TasksDashboardSettingTab extends PluginSettingTab {
 	plugin: TasksDashboardPlugin;
@@ -185,6 +186,67 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 	}
 
+	private renderRepositoryPicker(container: HTMLElement, dashboard: DashboardConfig): void {
+		const repoSetting = new Setting(container)
+			.setName('GitHub Repository')
+			.setDesc(
+				'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
+			);
+
+		const currentRepo = dashboard.githubRepo ?? '';
+		const isAuthenticated = this.plugin.githubService.isAuthenticated();
+
+		if (isAuthenticated) {
+			if (currentRepo !== '') {
+				repoSetting.setDesc(`Currently linked: ${currentRepo}`);
+			}
+
+			repoSetting.addButton((button) =>
+				button
+					.setButtonText(currentRepo !== '' ? 'Change' : 'Select Repository')
+					.setCta()
+					.onClick(() => {
+						void this.openRepositoryPicker(dashboard);
+					})
+			);
+
+			if (currentRepo !== '') {
+				repoSetting.addButton((button) =>
+					button.setButtonText('Clear').onClick(() => {
+						dashboard.githubRepo = undefined;
+						void this.plugin.saveSettings();
+						this.display();
+					})
+				);
+			}
+		} else {
+			repoSetting.addText((text) =>
+				text
+					.setPlaceholder('owner/repo')
+					.setValue(currentRepo)
+					.onChange((value) => {
+						dashboard.githubRepo = value !== '' ? value : undefined;
+						void this.plugin.saveSettings();
+					})
+			);
+		}
+	}
+
+	private async openRepositoryPicker(dashboard: DashboardConfig): Promise<void> {
+		const repositories = await this.plugin.githubService.getUserRepositories();
+
+		if (repositories.length === 0) {
+			new Notice('No repositories found. Check your GitHub token permissions.');
+			return;
+		}
+
+		new RepositoryPickerModal(this.app, repositories, (repository) => {
+			dashboard.githubRepo = repository.fullName;
+			void this.plugin.saveSettings();
+			this.display();
+		}).open();
+	}
+
 	private renderDashboardSettings(
 		containerEl: HTMLElement,
 		dashboard: DashboardConfig,
@@ -237,20 +299,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 
 		if (dashboard.githubEnabled) {
-			new Setting(dashboardContainer)
-				.setName('GitHub Repository')
-				.setDesc(
-					'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
-				)
-				.addText((text) =>
-					text
-						.setPlaceholder('owner/repo')
-						.setValue(dashboard.githubRepo ?? '')
-						.onChange((value) => {
-							dashboard.githubRepo = value !== '' ? value : undefined;
-							void this.plugin.saveSettings();
-						})
-				);
+			this.renderRepositoryPicker(dashboardContainer, dashboard);
 		}
 
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');

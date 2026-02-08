@@ -1,5 +1,5 @@
 import { requestUrl, RequestUrlResponse } from 'obsidian';
-import { GitHubAuth, GitHubIssueMetadata, GitHubLabel } from '../types';
+import { GitHubAuth, GitHubIssueMetadata, GitHubLabel, GitHubRepository } from '../types';
 
 interface CacheEntry<T> {
 	data: T;
@@ -36,6 +36,7 @@ export interface GitHubServiceInstance {
 	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
+	getUserRepositories: () => Promise<GitHubRepository[]>;
 	clearCache: () => void;
 	isAuthenticated: () => boolean;
 }
@@ -385,6 +386,34 @@ export function createGitHubService(): GitHubServiceInstance {
 		return result.items.slice(0, limit);
 	};
 
+	const getUserRepositories = async (): Promise<GitHubRepository[]> => {
+		if (!isAuthenticated()) {
+			return [];
+		}
+
+		const cacheKey = 'user:repos';
+		const cached = getCached<GitHubRepository[]>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const data = await apiRequest<GitHubRepoApiResponse[]>(
+			'/user/repos?sort=pushed&per_page=100&type=all'
+		);
+		if (data === undefined) {
+			return [];
+		}
+
+		const repositories: GitHubRepository[] = data.map((repo) => ({
+			fullName: repo.full_name,
+			description: repo.description ?? '',
+			isPrivate: repo.private
+		}));
+
+		setCache(cacheKey, repositories);
+		return repositories;
+	};
+
 	return {
 		setAuth,
 		validateToken,
@@ -395,6 +424,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		getRecentIssues,
 		parseGitHubUrl,
 		getMetadataFromUrl,
+		getUserRepositories,
 		clearCache,
 		isAuthenticated
 	};
@@ -432,4 +462,10 @@ interface GitHubPullRequestApiResponse {
 interface GitHubSearchApiResponse {
 	total_count: number;
 	items: GitHubIssueApiResponse[];
+}
+
+interface GitHubRepoApiResponse {
+	full_name: string;
+	description: string | null;
+	private: boolean;
 }

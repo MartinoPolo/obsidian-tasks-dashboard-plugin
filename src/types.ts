@@ -15,6 +15,12 @@ export interface GitHubLabel {
 	color: string;
 }
 
+export interface GitHubRepository {
+	fullName: string;
+	description: string;
+	isPrivate: boolean;
+}
+
 export interface GitHubIssueMetadata {
 	number: number;
 	title: string;
