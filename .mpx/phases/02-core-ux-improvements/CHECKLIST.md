@@ -7,9 +7,9 @@
 - [x] Style collapsed state (hide task query + progress, show only header)
 
 ## Smart Cursor Positioning (Req 4)
-- [ ] Modify file-open handler to find `## Tasks` section end
-- [ ] Position cursor at end of Tasks section instead of end of file
-- [ ] Fall back to end of file if section not found
+- [x] Modify file-open handler to find `## Tasks` section end
+- [x] Position cursor at end of Tasks section instead of end of file
+- [x] Fall back to end of file if section not found
 
 ## Separate Archive and Delete (Req 9)
 - [ ] Change archive icon from trash to archive/box icon
@@ -30,4 +30,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 4/10 tasks complete
+Progress: 7/10 tasks complete

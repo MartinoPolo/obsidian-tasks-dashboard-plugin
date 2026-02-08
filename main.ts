@@ -1,4 +1,4 @@
-import { Plugin, MarkdownView, TFile, Notice, FuzzySuggestModal } from 'obsidian';
+import { Plugin, MarkdownView, TFile, Notice, FuzzySuggestModal, type Editor, type EditorPosition } from 'obsidian';
 import {
 	TasksDashboardSettings,
 	DEFAULT_SETTINGS,
@@ -55,9 +55,8 @@ export default class TasksDashboardPlugin extends Plugin {
 						const view = this.app.workspace.getActiveViewOfType(MarkdownView);
 						if (view?.editor) {
 							const editor = view.editor;
-							const lastLine = editor.lastLine();
-							const lastLineLength = editor.getLine(lastLine).length;
-							editor.setCursor({ line: lastLine, ch: lastLineLength });
+							const cursorPosition = this.findTasksSectionEnd(editor);
+							editor.setCursor(cursorPosition);
 						}
 					}, 50);
 				}
@@ -104,6 +103,42 @@ export default class TasksDashboardPlugin extends Plugin {
 			const filename = dashboard.dashboardFilename || 'Dashboard.md';
 			return file.path === `${dashboard.rootPath}/${filename}`;
 		});
+	}
+
+	private findTasksSectionEnd(editor: Editor): EditorPosition {
+		const TASK_LINE_PATTERN = /^[\s]*[-*]\s*\[([ xX])\]/;
+		const HEADING_PATTERN = /^#{1,6}\s/;
+		const totalLines = editor.lastLine();
+
+		let tasksSectionStartLine: number | undefined = undefined;
+		for (let lineIndex = 0; lineIndex <= totalLines; lineIndex++) {
+			if (editor.getLine(lineIndex).trim() === '## Tasks') {
+				tasksSectionStartLine = lineIndex;
+				break;
+			}
+		}
+
+		if (tasksSectionStartLine === undefined) {
+			const lastLineContent = editor.getLine(totalLines);
+			return { line: totalLines, ch: lastLineContent.length };
+		}
+
+		let lastTaskLineIndex = tasksSectionStartLine;
+		for (let lineIndex = tasksSectionStartLine + 1; lineIndex <= totalLines; lineIndex++) {
+			const lineContent = editor.getLine(lineIndex);
+
+			// Stop at the next heading — we've left the Tasks section
+			if (HEADING_PATTERN.test(lineContent)) {
+				break;
+			}
+
+			if (TASK_LINE_PATTERN.test(lineContent)) {
+				lastTaskLineIndex = lineIndex;
+			}
+		}
+
+		const targetLineContent = editor.getLine(lastTaskLineIndex);
+		return { line: lastTaskLineIndex, ch: targetLineContent.length };
 	}
 
 	onunload() {
