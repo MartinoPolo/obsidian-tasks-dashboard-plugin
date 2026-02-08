@@ -3,9 +3,9 @@
 Last Updated: 2026-02-08
 
 ## Current Status
-- **Active Phase:** Phase 3 / Phase 4 (Phase 4 unblocked by Phase 2 completion)
-- **Phase Status:** Not Started
-- **Overall Progress:** 40% (2/5 phases)
+- **Active Phase:** Phase 3 / Phase 4
+- **Phase Status:** Phase 3 In Progress, Phase 4 In Progress
+- **Overall Progress:** 50% (2/5 phases complete, 2 in progress)
 
 ## Completed Phases
 - Phase 1: Bug Fixes (2026-02-08)
@@ -16,8 +16,8 @@ Last Updated: 2026-02-08
 |-------|--------|----------|
 | 1 | Completed | 11/11 tasks |
 | 2 | Completed | 16/16 tasks |
-| 3 | Not Started | 0/14 tasks |
-| 4 | Not Started | 0/10 tasks |
+| 3 | In Progress | 6/14 tasks |
+| 4 | In Progress | 10/18 tasks |
 | 5 | Blocked | - |
 
 ## Decisions Made
@@ -49,8 +49,8 @@ None
 - How we handled it: N/A
 
 **Next Steps:**
-1. Start Phase 3: GitHub Enhancements
-2. Start Phase 4: New Features (unblocked)
+1. Continue Phase 3: GitHub Enhancements (6g, 6e, 6f, etc.)
+2. Continue Phase 4: Link Project Folder (Req 7), Add Existing Notes (Req 8)
 
 **Critical Files:**
 - `.mpx/SPEC.md` — master spec

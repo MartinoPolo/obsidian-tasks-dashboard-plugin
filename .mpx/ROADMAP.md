@@ -13,8 +13,8 @@ Phased approach starting with critical bug fixes, then UX improvements, GitHub e
 |-------|------|--------|-------|--------------|
 | 1 | Bug Fixes | Completed | 8 | None |
 | 2 | Core UX Improvements | Completed | 16 | Phase 1 |
-| 3 | GitHub Enhancements | Not Started | 14 | Phase 1 |
-| 4 | New Features | Not Started | 10 | Phase 2 |
+| 3 | GitHub Enhancements | In Progress | 14 | Phase 1 |
+| 4 | New Features | In Progress | 18 | Phase 2 |
 | 5 | Polish & Customization | Not Started | 7 | Phase 3, 4 |
 
 ## Dependency Graph
@@ -51,9 +51,9 @@ Phase 5 (Polish & Customization)
 **Reqs:** 6a-6j
 
 ### Phase 4: New Features
-**Goal:** Add major new capabilities — project folder linking, existing note import
-**Deliverables:** Project folder buttons (explorer/terminal), vault note import with autocomplete
-**Reqs:** 7, 8
+**Goal:** Add major new capabilities — project folder linking, existing note import, move to top/bottom, rename, header color
+**Deliverables:** Project folder buttons (explorer/terminal), vault note import with autocomplete, quick-move buttons, rename modal, per-issue color picker
+**Reqs:** 7, 8, 15, 16, 17
 
 ### Phase 5: Polish & Customization
 **Goal:** Final polish — customizable colors, delete dashboard, rebuild improvements

@@ -3,16 +3,16 @@
 Last Updated: 2026-02-08
 
 ## Status
-Not Started
+In Progress
 
 ## Progress
-0/14 tasks complete (0%)
+3/14 tasks complete (21%)
 
 ## Decisions Made
 None yet
 
 ## Blockers
-Phase 1 must complete first
+None (Phase 1 completed)
 
 ---
 
@@ -20,21 +20,17 @@ Phase 1 must complete first
 
 ### 2026-02-08
 **Progress This Session:**
-- Phase created
+- Completed No-GitHub Mode (Req 6d) — 3 tasks
+- Added `githubEnabled` per-dashboard toggle with backward-compatible migration
 
 **Key Decisions:**
-- None yet
-
-**Issues Encountered:**
-- What went wrong: N/A
-- What NOT to do: N/A
-- What we tried: N/A
-- How we handled it: N/A
+- `githubEnabled` defaults to `true` for backward compat
+- Toggle hides both repo setting and GitHub cards
+- Skipping GitHub creates issue directly (no prompt at all)
 
 **Next Steps:**
-1. Start after Phase 1 complete
-2. Begin with no-GitHub mode (simplest, unblocks other work)
-3. Then enter key fix (quick UX win)
+1. Repository Picker (Req 6c) — fetch user repos, searchable dropdown
+2. Enter Key Fix (Req 6g) — quick UX win
 
 **Critical Files:**
 - `src/github/GitHubService.ts` — API client, repo fetching, rate limits

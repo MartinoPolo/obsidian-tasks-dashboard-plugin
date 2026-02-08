@@ -241,6 +241,36 @@ Allow users to customize background colors of dashboard sections.
 - Setting to customize priority colors and/or background colors
 - Changes reflect immediately in dashboard rendering
 
+### 15. Move to Top/Bottom
+Quick-move buttons to send an issue to the first or last position in the active section.
+
+#### Acceptance Criteria
+- "Move to top" button moves issue to first position
+- "Move to bottom" button moves issue to last position
+- Early return if already at target position
+- Reuses existing rebuild infrastructure
+
+### 16. Rename Issue
+Full rename: dashboard markers, file path, H1, and state migration.
+
+#### Acceptance Criteria
+- Rename modal with pre-filled input, auto-selected text
+- Validates empty name, same name (closes silently), and existing slug collision
+- Updates all dashboard markers and metadata within the issue block
+- Renames issue file
+- Updates H1 in issue file
+- Migrates collapsedIssues and issueColors state
+
+### 17. Per-Issue Header Color
+Custom background color per issue header via native color picker.
+
+#### Acceptance Criteria
+- Color picker button in issue controls
+- Uses native browser `<input type="color">`
+- Live preview while picking
+- Persists to `issueColors` in settings
+- Color migrated on rename, cleaned up on delete
+
 ## Technical Constraints
 - Must integrate with existing factory function patterns
 - Preserve existing Obsidian API class inheritance (Plugin, Modal, etc.)
