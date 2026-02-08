@@ -1,9 +1,10 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import {
 	DashboardConfig,
 	Priority,
 	Issue,
+	IssueStatus,
 	GitHubIssueMetadata,
 	GitHubStoredMetadata
 } from '../types';
@@ -20,6 +21,7 @@ export interface CreateIssueParams {
 export interface IssueManagerInstance {
 	createIssue: (params: CreateIssueParams) => Promise<Issue>;
 	archiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	unarchiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 }
 
@@ -121,6 +123,32 @@ github:
 		return issue;
 	};
 
+	const findIssueFile = (
+		dashboard: DashboardConfig,
+		issueId: string
+	): { file: TFile; status: IssueStatus } | null => {
+		const activePath = `${dashboard.rootPath}/Issues/Active`;
+		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
+
+		const activeFiles = app.vault
+			.getFiles()
+			.filter((f) => f.path.startsWith(activePath) && f.basename.startsWith(issueId));
+
+		if (activeFiles.length > 0) {
+			return { file: activeFiles[0], status: 'active' };
+		}
+
+		const archiveFiles = app.vault
+			.getFiles()
+			.filter((f) => f.path.startsWith(archivePath) && f.basename.startsWith(issueId));
+
+		if (archiveFiles.length > 0) {
+			return { file: archiveFiles[0], status: 'archived' };
+		}
+
+		return null;
+	};
+
 	const archiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
 		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
@@ -148,18 +176,39 @@ github:
 		new Notice(`Archived: ${issueId}`);
 	};
 
-	const deleteIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
+	const unarchiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
+		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
-		const activeFiles = app.vault
+		await ensureFolderExists(activePath);
+
+		const archiveFiles = app.vault
 			.getFiles()
-			.filter((f) => f.path.startsWith(activePath) && f.basename.startsWith(issueId));
+			.filter((f) => f.path.startsWith(archivePath) && f.basename.startsWith(issueId));
 
-		if (activeFiles.length === 0) {
+		if (archiveFiles.length === 0) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
 
-		const file = activeFiles[0];
+		const file = archiveFiles[0];
+		let content = await app.vault.read(file);
+
+		content = content.replace(/^status:\s*archived/m, 'status: active');
+		await app.vault.modify(file, content);
+
+		const newPath = `${activePath}/${file.name}`;
+		await app.vault.rename(file, newPath);
+		await plugin.dashboardWriter.moveIssueToActive(dashboard, issueId);
+
+		new Notice(`Unarchived: ${issueId}`);
+	};
+
+	const deleteIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
+		const issueFile = findIssueFile(dashboard, issueId);
+		if (issueFile === null) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+		const { file } = issueFile;
 
 		await plugin.dashboardWriter.removeIssueFromDashboard(dashboard, issueId);
 
@@ -174,5 +223,5 @@ github:
 		new Notice(`Deleted: ${issueId}`);
 	};
 
-	return { createIssue, archiveIssue, deleteIssue };
+	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue };
 }

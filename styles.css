@@ -129,6 +129,10 @@
 	display: none;
 }
 
+.tdc-issue-content-collapsed {
+	display: none !important;
+}
+
 /* ===== Issue Header ===== */
 .tdc-issue-header {
 	display: flex;
@@ -277,10 +281,6 @@
 	height: var(--tdc-btn-icon-size);
 }
 
-.tdc-btn-action + .tdc-btn-action {
-	margin-left: 8px;
-}
-
 /* ===== Secondary Action Buttons (Collapse/Expand All) ===== */
 .tdc-btn-action-secondary {
 	background: var(--background-modifier-hover);
@@ -315,8 +315,18 @@
 	color: white;
 }
 
+/* ===== Sort Code Block Overflow ===== */
+.block-language-tasks-dashboard-sort,
+.block-language-tasks-dashboard-sort pre {
+	overflow: visible;
+}
+
 /* ===== Sort Container ===== */
 .tdc-sort-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
 	margin: 8px 0 16px 0;
 }
 
@@ -338,6 +348,11 @@
 	border-radius: var(--tdc-border-radius);
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	overflow: hidden;
+}
+
+.tdc-sort-dropdown.tdc-sort-dropdown-portal {
+	position: fixed;
+	z-index: 10000;
 }
 
 .tdc-sort-dropdown-item {

@@ -13,6 +13,7 @@ export type SortDirection = 'newest' | 'oldest';
 export interface DashboardWriterInstance {
 	addIssueToDashboard: (dashboard: DashboardConfig, issue: Issue) => Promise<void>;
 	moveIssueToArchive: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	moveIssueToActive: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	removeIssueFromDashboard: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	moveIssue: (
 		dashboard: DashboardConfig,
@@ -126,6 +127,47 @@ show tree
 				updatedBlock +
 				'\n---\n' +
 				content.slice(archiveInsertIndex);
+		}
+
+		await app.vault.modify(file, content);
+	};
+
+	const moveIssueToActive = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		let content = await app.vault.read(file);
+		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
+		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
+		const startIndex = content.indexOf(issueStartMarker);
+		const endIndex = content.indexOf(issueEndMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return;
+		}
+
+		const issueBlock = content.substring(startIndex, endIndex + issueEndMarker.length);
+		content = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
+
+		const separatorAfter = content.indexOf('---\n', startIndex);
+		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
+			content = content.slice(0, startIndex) + content.slice(separatorAfter + 4);
+		}
+
+		const activeEnd = MARKERS.ACTIVE_END;
+		const activeInsertIndex = content.indexOf(activeEnd);
+
+		if (activeInsertIndex !== -1) {
+			const updatedBlock = issueBlock.replace(/Issues\/Archive/g, 'Issues/Active');
+			content =
+				content.slice(0, activeInsertIndex) +
+				updatedBlock +
+				'\n---\n' +
+				content.slice(activeInsertIndex);
 		}
 
 		await app.vault.modify(file, content);
@@ -624,6 +666,7 @@ ${MARKERS.ARCHIVE_START}
 	return {
 		addIssueToDashboard,
 		moveIssueToArchive,
+		moveIssueToActive,
 		removeIssueFromDashboard,
 		moveIssue,
 		sortByPriority,

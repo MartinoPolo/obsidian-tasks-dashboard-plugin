@@ -24,6 +24,8 @@ const ICONS = {
 	chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
 	foldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/></svg>`,
 	unfoldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 16-3 3-3-3"/><path d="m15 8-3-3-3 3"/></svg>`
+	,
+	unarchive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M3 5h18"/><path d="M10 12l2-2 2 2"/><path d="M12 10v6"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -67,37 +69,52 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		return null;
 	};
 
-	// Hide/show sibling elements after our code block (tasks query + hr separator)
-	const setIssueSiblingsVisibility = (codeBlockEl: HTMLElement, collapsed: boolean): void => {
-		// Our container is inside `el` which is the code block's rendered div.
-		// Walk up to find the code block wrapper, then hide subsequent siblings
-		// until we hit another issue container or the section end marker.
-		const codeBlockWrapper = codeBlockEl.closest('.block-language-tasks-dashboard-controls');
-		if (codeBlockWrapper === null) {
-			return;
+	const collectIssueContentBlocks = (controlBlock: HTMLElement): HTMLElement[] => {
+		const content: HTMLElement[] = [];
+		const referenceBlock =
+			controlBlock.closest('.cm-embed-block') ??
+			controlBlock.closest('.block-language-tasks-dashboard-controls') ??
+			controlBlock;
+
+		let cursor = referenceBlock.nextElementSibling as HTMLElement | null;
+		while (cursor !== null) {
+			if (cursor.classList.contains('block-language-tasks-dashboard-controls')) {
+				break;
+			}
+			if (cursor.querySelector('.block-language-tasks-dashboard-controls') !== null) {
+				break;
+			}
+			content.push(cursor);
+			if (cursor.tagName === 'HR' || cursor.querySelector('hr') !== null) {
+				break;
+			}
+			cursor = cursor.nextElementSibling as HTMLElement | null;
 		}
 
-		let sibling = codeBlockWrapper.nextElementSibling;
-		while (sibling !== null) {
-			// Stop at the next tasks-dashboard-controls block (next issue)
-			if (sibling.classList.contains('block-language-tasks-dashboard-controls')) {
-				break;
-			}
-			// Stop at tasks-dashboard-sort block (toolbar)
-			if (sibling.classList.contains('block-language-tasks-dashboard-sort')) {
-				break;
-			}
+		return content;
+	};
 
-			if (collapsed) {
-				(sibling as HTMLElement).style.display = 'none';
-			} else {
-				(sibling as HTMLElement).style.display = '';
+	const setIssueCollapsed = (element: HTMLElement, collapsed: boolean): void => {
+		const maybeControlBlock = element.closest('.block-language-tasks-dashboard-controls');
+		const controlBlock =
+			maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
+
+		const issueContainer = controlBlock.querySelector('.tdc-issue-container');
+		if (issueContainer !== null) {
+			issueContainer.classList.toggle('tdc-collapsed', collapsed);
+			const chevron = issueContainer.querySelector('.tdc-btn-collapse');
+			if (chevron !== null) {
+				chevron.classList.toggle('tdc-chevron-collapsed', collapsed);
 			}
-			sibling = sibling.nextElementSibling;
+		}
+
+		const contentBlocks = collectIssueContentBlocks(controlBlock);
+		for (const block of contentBlocks) {
+			block.classList.toggle('tdc-issue-content-collapsed', collapsed);
 		}
 	};
 
-	const renderHeader = (container: HTMLElement, params: ControlParams, codeBlockEl: HTMLElement): void => {
+	const renderHeader = (container: HTMLElement, params: ControlParams): void => {
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
 
 		const header = container.createDiv({
@@ -122,17 +139,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				delete plugin.settings.collapsedIssues[params.issue];
 			}
 			void plugin.saveSettings();
-
-			if (newCollapsed) {
-				container.classList.add('tdc-collapsed');
-				collapseToggle.classList.add('tdc-chevron-collapsed');
-				collapseToggle.setAttribute('aria-label', 'Expand');
-			} else {
-				container.classList.remove('tdc-collapsed');
-				collapseToggle.classList.remove('tdc-chevron-collapsed');
-				collapseToggle.setAttribute('aria-label', 'Collapse');
-			}
-			setIssueSiblingsVisibility(codeBlockEl, newCollapsed);
+			collapseToggle.setAttribute('aria-label', newCollapsed ? 'Expand' : 'Collapse');
+			setIssueCollapsed(container, newCollapsed);
 		});
 
 		const link = header.createEl('a', {
@@ -182,6 +190,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		params: ControlParams,
 		dashboard: DashboardConfig
 	): void => {
+		const isArchived = /\/Issues\/Archive(\/|$)/i.test(params.path);
+		const archiveLabel = isArchived ? 'Unarchive' : 'Archive';
 		const btnContainer = container.createDiv({ cls: 'tdc-btn-group' });
 
 		const upBtn = btnContainer.createEl('button', {
@@ -208,13 +218,17 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const archiveBtn = btnContainer.createEl('button', {
 			cls: 'tdc-btn tdc-btn-archive',
-			attr: { 'aria-label': 'Archive' }
+			attr: { 'aria-label': archiveLabel, title: archiveLabel }
 		});
-		archiveBtn.innerHTML = ICONS.archive;
+		archiveBtn.innerHTML = isArchived ? ICONS.unarchive : ICONS.archive;
 		archiveBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			void plugin.issueManager.archiveIssue(dashboard, params.issue);
+			if (isArchived) {
+				void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
+			} else {
+				void plugin.issueManager.archiveIssue(dashboard, params.issue);
+			}
 		});
 
 		const deleteBtn = btnContainer.createEl('button', {
@@ -293,7 +307,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const container = el.createDiv({
 			cls: `tdc-issue-container${isCollapsed ? ' tdc-collapsed' : ''}`
 		});
-		renderHeader(container, params, el);
+		el.setAttribute('data-tdc-issue', params.issue);
+
+		renderHeader(container, params);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
 		const progress = await plugin.progressTracker.getProgress(params.path);
@@ -304,12 +320,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			await renderGitHubCard(container, params.github);
 		}
 
-		// Apply initial collapsed state to sibling elements (tasks query block + separator)
-		// Use setTimeout so the DOM siblings are rendered first by Obsidian
 		if (isCollapsed) {
-			setTimeout(() => {
-				setIssueSiblingsVisibility(el, true);
-			}, 0);
+			setIssueCollapsed(el, true);
 		}
 
 		ctx.addChild(new MarkdownRenderChild(container));
@@ -358,6 +370,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const sortDropdown = sortWrapper.createDiv({ cls: 'tdc-sort-dropdown' });
 		sortDropdown.style.display = 'none';
+		let dropdownOpen = false;
+		let dropdownMounted = false;
 
 		const sortOptions: Array<{ label: string; action: () => void }> = [
 			{
@@ -387,25 +401,64 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			item.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				sortDropdown.style.display = 'none';
+				closeSortDropdown();
 				option.action();
 			});
 		}
 
+		const positionSortDropdown = (): void => {
+			if (!dropdownOpen) {
+				return;
+			}
+			const rect = sortBtn.getBoundingClientRect();
+			const viewportPadding = 8;
+			const dropdownWidth = Math.max(sortDropdown.offsetWidth, rect.width);
+			const maxLeft = window.innerWidth - dropdownWidth - viewportPadding;
+			const left = Math.max(viewportPadding, Math.min(rect.left, maxLeft));
+			sortDropdown.style.minWidth = `${rect.width}px`;
+			sortDropdown.style.left = `${left}px`;
+			sortDropdown.style.top = `${rect.bottom + 4}px`;
+		};
+
+		const openSortDropdown = (): void => {
+			dropdownOpen = true;
+			if (!dropdownMounted) {
+				document.body.appendChild(sortDropdown);
+				sortDropdown.classList.add('tdc-sort-dropdown-portal');
+				dropdownMounted = true;
+			}
+			sortDropdown.style.display = 'block';
+			requestAnimationFrame(positionSortDropdown);
+			window.addEventListener('scroll', positionSortDropdown, true);
+			window.addEventListener('resize', positionSortDropdown);
+		};
+
+		const closeSortDropdown = (): void => {
+			dropdownOpen = false;
+			sortDropdown.style.display = 'none';
+			window.removeEventListener('scroll', positionSortDropdown, true);
+			window.removeEventListener('resize', positionSortDropdown);
+		};
+
 		sortBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			const isVisible = sortDropdown.style.display !== 'none';
-			sortDropdown.style.display = isVisible ? 'none' : 'block';
+			if (dropdownOpen) {
+				closeSortDropdown();
+			} else {
+				openSortDropdown();
+			}
 		});
 
-		const closeSortDropdown = (e: MouseEvent): void => {
-			if (!sortWrapper.contains(e.target as Node)) {
-				sortDropdown.style.display = 'none';
+		const closeSortDropdownOnClick = (e: MouseEvent): void => {
+			const target = e.target as Node;
+			if (sortWrapper.contains(target) || sortDropdown.contains(target)) {
+				return;
 			}
+			closeSortDropdown();
 		};
 
-		document.addEventListener('click', closeSortDropdown);
+		document.addEventListener('click', closeSortDropdownOnClick);
 
 		const collapseAllButton = container.createEl('button', {
 			cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary'
@@ -419,20 +472,17 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				}
 				void plugin.saveSettings();
 				const dashboardEl =
-					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+					el.closest('.markdown-preview-view') ??
+					el.closest('.markdown-reading-view') ??
+					el.closest('.cm-editor') ??
+					el.closest('.markdown-source-view');
 				if (dashboardEl !== null) {
 					for (const controlBlock of Array.from(
 						dashboardEl.querySelectorAll('.block-language-tasks-dashboard-controls')
 					)) {
-						const issueContainer = controlBlock.querySelector('.tdc-issue-container');
-						if (issueContainer !== null) {
-							issueContainer.classList.add('tdc-collapsed');
-							const chevron = issueContainer.querySelector('.tdc-btn-collapse');
-							if (chevron !== null) {
-								chevron.classList.add('tdc-chevron-collapsed');
-							}
+						if (controlBlock instanceof HTMLElement) {
+							setIssueCollapsed(controlBlock, true);
 						}
-						setIssueSiblingsVisibility(controlBlock as HTMLElement, true);
 					}
 				}
 			});
@@ -450,20 +500,17 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				}
 				void plugin.saveSettings();
 				const dashboardEl =
-					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+					el.closest('.markdown-preview-view') ??
+					el.closest('.markdown-reading-view') ??
+					el.closest('.cm-editor') ??
+					el.closest('.markdown-source-view');
 				if (dashboardEl !== null) {
 					for (const controlBlock of Array.from(
 						dashboardEl.querySelectorAll('.block-language-tasks-dashboard-controls')
 					)) {
-						const issueContainer = controlBlock.querySelector('.tdc-issue-container');
-						if (issueContainer !== null) {
-							issueContainer.classList.remove('tdc-collapsed');
-							const chevron = issueContainer.querySelector('.tdc-btn-collapse');
-							if (chevron !== null) {
-								chevron.classList.remove('tdc-chevron-collapsed');
-							}
+						if (controlBlock instanceof HTMLElement) {
+							setIssueCollapsed(controlBlock, false);
 						}
-						setIssueSiblingsVisibility(controlBlock as HTMLElement, false);
 					}
 				}
 			});
@@ -471,7 +518,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const containerRenderChild = new MarkdownRenderChild(container);
 		containerRenderChild.onunload = () => {
-			document.removeEventListener('click', closeSortDropdown);
+			document.removeEventListener('click', closeSortDropdownOnClick);
+			closeSortDropdown();
+			if (dropdownMounted && sortDropdown.parentElement !== null) {
+				sortDropdown.parentElement.removeChild(sortDropdown);
+			}
 		};
 		ctx.addChild(containerRenderChild);
 	};

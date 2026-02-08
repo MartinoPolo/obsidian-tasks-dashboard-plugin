@@ -3,20 +3,21 @@
 Last Updated: 2026-02-08
 
 ## Current Status
-- **Active Phase:** Phase 2 / Phase 3 (can run in parallel)
+- **Active Phase:** Phase 3 / Phase 4 (Phase 4 unblocked by Phase 2 completion)
 - **Phase Status:** Not Started
-- **Overall Progress:** 20% (1/5 phases)
+- **Overall Progress:** 40% (2/5 phases)
 
 ## Completed Phases
 - Phase 1: Bug Fixes (2026-02-08)
+- Phase 2: Core UX Improvements (2026-02-08)
 
 ## Phase Progress
 | Phase | Status | Progress |
 |-------|--------|----------|
 | 1 | Completed | 11/11 tasks |
-| 2 | Not Started | 0/10 tasks |
+| 2 | Completed | 16/16 tasks |
 | 3 | Not Started | 0/14 tasks |
-| 4 | Blocked | - |
+| 4 | Not Started | 0/10 tasks |
 | 5 | Blocked | - |
 
 ## Decisions Made
@@ -48,8 +49,8 @@ None
 - How we handled it: N/A
 
 **Next Steps:**
-1. Start Phase 1: Bug Fixes
-2. Fix progress refresh (highest impact bug)
+1. Start Phase 3: GitHub Enhancements
+2. Start Phase 4: New Features (unblocked)
 
 **Critical Files:**
 - `.mpx/SPEC.md` — master spec
