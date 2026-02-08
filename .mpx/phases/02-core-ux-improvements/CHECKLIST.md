@@ -12,11 +12,11 @@
 - [x] Fall back to end of file if section not found
 
 ## Separate Archive and Delete (Req 9)
-- [ ] Change archive icon from trash to archive/box icon
-- [ ] Add delete button with trash icon per issue
-- [ ] Add confirmation modal for delete action
-- [ ] Implement delete: remove from dashboard + move file to Obsidian trash
-- [ ] Add delete method to DashboardWriter and IssueManager
+- [x] Change archive icon from trash to archive/box icon
+- [x] Add delete button with trash icon per issue
+- [x] Add confirmation modal for delete action
+- [x] Implement delete: remove from dashboard + move file to Obsidian trash
+- [x] Add delete method to DashboardWriter and IssueManager
 
 ## Sort by Date (Req 10)
 - [ ] Add sort-by-created-date option (newest/oldest first)

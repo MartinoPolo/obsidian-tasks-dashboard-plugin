@@ -295,11 +295,22 @@
 
 /* ===== Archive Button ===== */
 .tdc-btn-archive {
+	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+	color: var(--interactive-accent);
+}
+
+.tdc-btn-archive:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* ===== Delete Button ===== */
+.tdc-btn-delete {
 	background: color-mix(in srgb, var(--tdc-priority-high) 15%, transparent);
 	color: var(--tdc-priority-high);
 }
 
-.tdc-btn-archive:hover {
+.tdc-btn-delete:hover {
 	background: var(--tdc-priority-high);
 	color: white;
 }
@@ -422,6 +433,23 @@
 .tdc-prompt-btn-cancel:hover {
 	background: var(--tdc-priority-high);
 	color: white;
+}
+
+/* ===== Delete Confirmation Modal ===== */
+.tdc-prompt-btn-delete {
+	background: var(--tdc-priority-high);
+	color: white;
+}
+
+.tdc-prompt-btn-delete:hover {
+	background: color-mix(in srgb, var(--tdc-priority-high) 80%, black);
+	color: white;
+}
+
+.tdc-delete-message {
+	color: var(--text-muted);
+	margin: 8px 0 12px 0;
+	line-height: 1.5;
 }
 
 /* ===== Priority Suggestion ===== */

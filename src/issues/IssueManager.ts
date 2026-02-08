@@ -20,6 +20,7 @@ export interface CreateIssueParams {
 export interface IssueManagerInstance {
 	createIssue: (params: CreateIssueParams) => Promise<Issue>;
 	archiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 }
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
@@ -147,5 +148,31 @@ github:
 		new Notice(`Archived: ${issueId}`);
 	};
 
-	return { createIssue, archiveIssue };
+	const deleteIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
+		const activePath = `${dashboard.rootPath}/Issues/Active`;
+
+		const activeFiles = app.vault
+			.getFiles()
+			.filter((f) => f.path.startsWith(activePath) && f.basename.startsWith(issueId));
+
+		if (activeFiles.length === 0) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+
+		const file = activeFiles[0];
+
+		await plugin.dashboardWriter.removeIssueFromDashboard(dashboard, issueId);
+
+		// Use system trash for recoverability
+		await app.vault.trash(file, true);
+
+		if (issueId in plugin.settings.collapsedIssues) {
+			delete plugin.settings.collapsedIssues[issueId];
+			void plugin.saveSettings();
+		}
+
+		new Notice(`Deleted: ${issueId}`);
+	};
+
+	return { createIssue, archiveIssue, deleteIssue };
 }

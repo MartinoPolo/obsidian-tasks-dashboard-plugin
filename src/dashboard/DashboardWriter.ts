@@ -11,6 +11,7 @@ import {
 export interface DashboardWriterInstance {
 	addIssueToDashboard: (dashboard: DashboardConfig, issue: Issue) => Promise<void>;
 	moveIssueToArchive: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	removeIssueFromDashboard: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	moveIssue: (
 		dashboard: DashboardConfig,
 		issueId: string,
@@ -121,6 +122,38 @@ show tree
 				updatedBlock +
 				'\n---\n' +
 				content.slice(archiveInsertIndex);
+		}
+
+		await app.vault.modify(file, content);
+	};
+
+	const removeIssueFromDashboard = async (
+		dashboard: DashboardConfig,
+		issueId: string
+	): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		let content = await app.vault.read(file);
+		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
+		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
+		const startIndex = content.indexOf(issueStartMarker);
+		const endIndex = content.indexOf(issueEndMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return;
+		}
+
+		content = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
+
+		// Remove trailing separator if present right after where the block was
+		const separatorAfter = content.indexOf('---\n', startIndex);
+		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
+			content = content.slice(0, startIndex) + content.slice(separatorAfter + 4);
 		}
 
 		await app.vault.modify(file, content);
@@ -442,6 +475,7 @@ ${MARKERS.ARCHIVE_START}
 	return {
 		addIssueToDashboard,
 		moveIssueToArchive,
+		removeIssueFromDashboard,
 		moveIssue,
 		sortByPriority,
 		rebuildDashboardFromFiles

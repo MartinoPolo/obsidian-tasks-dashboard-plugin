@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
-import { NamePromptModal } from '../modals/IssueModal';
+import { NamePromptModal, DeleteConfirmationModal } from '../modals/IssueModal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { parseDashboard } from './DashboardParser';
 
@@ -16,6 +16,7 @@ interface ControlParams {
 
 const ICONS = {
 	trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
+	archive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg>`,
 	up: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>`,
 	down: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>`,
 	sort: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>`,
@@ -178,11 +179,25 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			cls: 'tdc-btn tdc-btn-archive',
 			attr: { 'aria-label': 'Archive' }
 		});
-		archiveBtn.innerHTML = ICONS.trash;
+		archiveBtn.innerHTML = ICONS.archive;
 		archiveBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			void plugin.issueManager.archiveIssue(dashboard, params.issue);
+		});
+
+		const deleteBtn = btnContainer.createEl('button', {
+			cls: 'tdc-btn tdc-btn-delete',
+			attr: { 'aria-label': 'Delete' }
+		});
+		deleteBtn.innerHTML = ICONS.trash;
+		deleteBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
+				void plugin.issueManager.deleteIssue(dashboard, params.issue);
+			});
+			modal.open();
 		});
 	};
 
