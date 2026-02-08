@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
-import { NamePromptModal, DeleteConfirmationModal } from '../modals/IssueModal';
+import { NamePromptModal, DeleteConfirmationModal, RenameIssueModal } from '../modals/IssueModal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { parseDashboard } from './DashboardParser';
 
@@ -25,7 +25,11 @@ const ICONS = {
 	foldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/></svg>`,
 	unfoldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 16-3 3-3-3"/><path d="m15 8-3-3-3 3"/></svg>`
 	,
-	unarchive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M3 5h18"/><path d="M10 12l2-2 2 2"/><path d="M12 10v6"/></svg>`
+	unarchive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M3 5h18"/><path d="M10 12l2-2 2 2"/><path d="M12 10v6"/></svg>`,
+	toTop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V7"/><path d="M5 12l7-7 7 7"/><line x1="5" y1="3" x2="19" y2="3"/></svg>`,
+	toBottom: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12"/><path d="M19 12l-7 7-7-7"/><line x1="5" y1="21" x2="19" y2="21"/></svg>`,
+	rename: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>`,
+	palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -121,6 +125,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			cls: `tdc-issue-header priority-${params.priority}`
 		});
 
+		const headerColor = plugin.settings.issueColors[params.issue];
+		if (headerColor !== undefined) {
+			header.style.background = headerColor;
+		}
+
 		const collapseToggle = header.createEl('button', {
 			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
 			attr: { 'aria-label': isCollapsed ? 'Expand' : 'Collapse' }
@@ -214,6 +223,74 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			e.preventDefault();
 			e.stopPropagation();
 			void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
+		});
+
+		const toTopBtn = btnContainer.createEl('button', {
+			cls: 'tdc-btn tdc-btn-move',
+			attr: { 'aria-label': 'Move to top' }
+		});
+		toTopBtn.innerHTML = ICONS.toTop;
+		toTopBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'top');
+		});
+
+		const toBottomBtn = btnContainer.createEl('button', {
+			cls: 'tdc-btn tdc-btn-move',
+			attr: { 'aria-label': 'Move to bottom' }
+		});
+		toBottomBtn.innerHTML = ICONS.toBottom;
+		toBottomBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'bottom');
+		});
+
+		const renameBtn = btnContainer.createEl('button', {
+			cls: 'tdc-btn tdc-btn-rename',
+			attr: { 'aria-label': 'Rename' }
+		});
+		renameBtn.innerHTML = ICONS.rename;
+		renameBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			new RenameIssueModal(
+				plugin.app,
+				plugin,
+				dashboard,
+				params.issue,
+				params.name
+			).open();
+		});
+
+		const colorBtn = btnContainer.createEl('button', {
+			cls: 'tdc-btn tdc-btn-color',
+			attr: { 'aria-label': 'Header color' }
+		});
+		colorBtn.innerHTML = ICONS.palette;
+		colorBtn.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const colorInput = document.createElement('input');
+			colorInput.type = 'color';
+			colorInput.style.position = 'absolute';
+			colorInput.style.opacity = '0';
+			colorInput.style.pointerEvents = 'none';
+			colorInput.value = plugin.settings.issueColors[params.issue] ?? '#4a8cc7';
+			document.body.appendChild(colorInput);
+			colorInput.addEventListener('input', () => {
+				const headerElement = container.closest('.tdc-issue-container')?.querySelector('.tdc-issue-header');
+				if (headerElement instanceof HTMLElement) {
+					headerElement.style.background = colorInput.value;
+				}
+			});
+			colorInput.addEventListener('change', () => {
+				plugin.settings.issueColors[params.issue] = colorInput.value;
+				void plugin.saveSettings();
+				colorInput.remove();
+			});
+			colorInput.click();
 		});
 
 		const archiveBtn = btnContainer.createEl('button', {

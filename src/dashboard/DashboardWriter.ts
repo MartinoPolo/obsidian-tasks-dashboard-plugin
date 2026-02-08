@@ -20,6 +20,11 @@ export interface DashboardWriterInstance {
 		issueId: string,
 		direction: 'up' | 'down'
 	) => Promise<void>;
+	moveIssueToPosition: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		position: 'top' | 'bottom'
+	) => Promise<void>;
 	sortByPriority: (dashboard: DashboardConfig) => Promise<void>;
 	sortByCreatedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	sortByEditedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
@@ -253,6 +258,58 @@ show tree
 		}
 
 		await app.vault.modify(file, content);
+	};
+
+	const moveIssueToPosition = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		position: 'top' | 'bottom'
+	): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		const content = await app.vault.read(file);
+		const parsed = parseDashboard(content);
+		const issueIndex = parsed.activeIssues.findIndex((i) => i.id === issueId);
+
+		if (issueIndex === -1) {
+			return;
+		}
+
+		if (parsed.activeIssues.length < 2) {
+			return;
+		}
+
+		const isAlreadyAtPosition =
+			(position === 'top' && issueIndex === 0) ||
+			(position === 'bottom' && issueIndex === parsed.activeIssues.length - 1);
+
+		if (isAlreadyAtPosition) {
+			return;
+		}
+
+		const blocks: string[] = [];
+		for (const issue of parsed.activeIssues) {
+			blocks.push(content.substring(issue.startIndex, issue.endIndex));
+		}
+
+		const targetBlock = blocks[issueIndex];
+		const remainingBlocks = [...blocks.slice(0, issueIndex), ...blocks.slice(issueIndex + 1)];
+
+		const sortedBlocks =
+			position === 'top'
+				? [targetBlock, ...remainingBlocks]
+				: [...remainingBlocks, targetBlock];
+
+		await rebuildActiveSectionWithSortedBlocks(
+			dashboard,
+			sortedBlocks,
+			`Issue moved to ${position}`
+		);
 	};
 
 	const sortByPriority = async (dashboard: DashboardConfig): Promise<void> => {
@@ -669,6 +726,7 @@ ${MARKERS.ARCHIVE_START}
 		moveIssueToActive,
 		removeIssueFromDashboard,
 		moveIssue,
+		moveIssueToPosition,
 		sortByPriority,
 		sortByCreatedDate,
 		sortByEditedDate,

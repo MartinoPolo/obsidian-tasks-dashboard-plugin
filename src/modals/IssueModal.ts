@@ -332,3 +332,86 @@ class GithubPromptModal extends Modal {
 		this.contentEl.empty();
 	}
 }
+
+export class RenameIssueModal extends Modal {
+	private plugin: TasksDashboardPlugin;
+	private dashboard: DashboardConfig;
+	private issueId: string;
+	private currentName: string;
+	private input!: HTMLInputElement;
+
+	constructor(
+		app: App,
+		plugin: TasksDashboardPlugin,
+		dashboard: DashboardConfig,
+		issueId: string,
+		currentName: string
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.dashboard = dashboard;
+		this.issueId = issueId;
+		this.currentName = currentName;
+	}
+
+	onOpen() {
+		const { contentEl, modalEl, containerEl } = this;
+		containerEl.addClass('tdc-top-modal');
+		modalEl.addClass('tdc-prompt-modal');
+		contentEl.empty();
+		contentEl.createEl('div', { cls: 'tdc-prompt-title', text: 'Rename Issue' });
+		this.input = contentEl.createEl('input', {
+			type: 'text',
+			cls: 'tdc-prompt-input',
+			attr: { placeholder: 'Enter new name...' },
+			value: this.currentName
+		});
+		this.input.focus();
+		this.input.select();
+
+		const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+		const confirmBtn = btnContainer.createEl('button', {
+			cls: 'tdc-prompt-btn tdc-prompt-btn-confirm'
+		});
+		confirmBtn.innerHTML = 'Rename <kbd>↵</kbd>';
+		confirmBtn.addEventListener('click', () => {
+			void this.confirm();
+		});
+		const cancelBtn = btnContainer.createEl('button', {
+			cls: 'tdc-prompt-btn tdc-prompt-btn-cancel'
+		});
+		cancelBtn.innerHTML = 'Cancel <kbd>Esc</kbd>';
+		cancelBtn.addEventListener('click', () => {
+			this.close();
+		});
+		this.input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				void this.confirm();
+			}
+		});
+	}
+
+	private async confirm() {
+		const value = this.input.value.trim();
+		if (value === '') {
+			this.input.addClass('tdc-input-error');
+			this.input.focus();
+			return;
+		}
+		if (value === this.currentName) {
+			this.close();
+			return;
+		}
+		this.close();
+		try {
+			await this.plugin.issueManager.renameIssue(this.dashboard, this.issueId, value);
+		} catch (error) {
+			new Notice(`Error renaming issue: ${(error as Error).message}`);
+		}
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}

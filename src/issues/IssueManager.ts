@@ -23,6 +23,7 @@ export interface IssueManagerInstance {
 	archiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	unarchiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	renameIssue: (dashboard: DashboardConfig, oldIssueId: string, newName: string) => Promise<void>;
 }
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
@@ -215,13 +216,109 @@ github:
 		// Use system trash for recoverability
 		await app.vault.trash(file, true);
 
+		let settingsChanged = false;
 		if (issueId in plugin.settings.collapsedIssues) {
 			delete plugin.settings.collapsedIssues[issueId];
+			settingsChanged = true;
+		}
+		if (issueId in plugin.settings.issueColors) {
+			delete plugin.settings.issueColors[issueId];
+			settingsChanged = true;
+		}
+		if (settingsChanged) {
 			void plugin.saveSettings();
 		}
 
 		new Notice(`Deleted: ${issueId}`);
 	};
 
-	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue };
+	const renameIssue = async (
+		dashboard: DashboardConfig,
+		oldIssueId: string,
+		newName: string
+	): Promise<void> => {
+		const newIssueId = slugify(newName);
+
+		if (newIssueId === oldIssueId) {
+			return;
+		}
+
+		const issueResult = findIssueFile(dashboard, oldIssueId);
+		if (issueResult === null) {
+			throw new Error(`Issue not found: ${oldIssueId}`);
+		}
+
+		const { file, status } = issueResult;
+		const folder = status === 'active' ? 'Active' : 'Archive';
+		const newPath = `${dashboard.rootPath}/Issues/${folder}/${newIssueId}.md`;
+
+		if (app.vault.getAbstractFileByPath(newPath) !== null) {
+			throw new Error(`An issue with name "${newName}" already exists`);
+		}
+
+		// Update dashboard file — replace within the issue's block only
+		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (dashboardFile !== null) {
+			let content = await app.vault.read(dashboardFile);
+			const startMarker = `%% ISSUE:${oldIssueId}:START %%`;
+			const endMarker = `%% ISSUE:${oldIssueId}:END %%`;
+			const startIndex = content.indexOf(startMarker);
+			const endIndex = content.indexOf(endMarker);
+
+			if (startIndex !== -1 && endIndex !== -1) {
+				const blockEnd = endIndex + endMarker.length;
+				let block = content.substring(startIndex, blockEnd);
+
+				block = block.replace(
+					`%% ISSUE:${oldIssueId}:START %%`,
+					`%% ISSUE:${newIssueId}:START %%`
+				);
+				block = block.replace(
+					`%% ISSUE:${oldIssueId}:END %%`,
+					`%% ISSUE:${newIssueId}:END %%`
+				);
+				block = block.replace(`issue: ${oldIssueId}`, `issue: ${newIssueId}`);
+				block = block.replace(/name: .+/, `name: ${newName}`);
+				block = block.replace(
+					`path: ${file.path}`,
+					`path: ${newPath}`
+				);
+				block = block.replace(
+					`path includes Issues/${folder}/${oldIssueId}`,
+					`path includes Issues/${folder}/${newIssueId}`
+				);
+
+				content = content.slice(0, startIndex) + block + content.slice(blockEnd);
+				await app.vault.modify(dashboardFile, content);
+			}
+		}
+
+		// Update issue file H1
+		let issueContent = await app.vault.read(file);
+		issueContent = issueContent.replace(/^(# ).+$/m, `$1${newName}`);
+		await app.vault.modify(file, issueContent);
+
+		// Rename file
+		await app.vault.rename(file, newPath);
+
+		// Migrate collapsed state
+		if (oldIssueId in plugin.settings.collapsedIssues) {
+			plugin.settings.collapsedIssues[newIssueId] = plugin.settings.collapsedIssues[oldIssueId];
+			delete plugin.settings.collapsedIssues[oldIssueId];
+		}
+
+		// Migrate header color
+		if (oldIssueId in plugin.settings.issueColors) {
+			plugin.settings.issueColors[newIssueId] = plugin.settings.issueColors[oldIssueId];
+			delete plugin.settings.issueColors[oldIssueId];
+		}
+
+		void plugin.saveSettings();
+		new Notice(`Renamed: ${oldIssueId} → ${newIssueId}`);
+	};
+
+	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue };
 }
