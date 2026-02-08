@@ -201,10 +201,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 	};
 
-	const renderGitHubCard = async (
-		container: HTMLElement,
-		githubUrl: string
-	): Promise<void> => {
+	const renderGitHubCard = async (container: HTMLElement, githubUrl: string): Promise<void> => {
 		const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
 
 		if (!plugin.githubService.isAuthenticated()) {
@@ -316,14 +313,64 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			new NamePromptModal(plugin.app, plugin, dashboard).open();
 		});
 
-		const sortBtn = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
+		const sortWrapper = container.createDiv({ cls: 'tdc-sort-wrapper' });
+		const sortBtn = sortWrapper.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
 		sortBtn.innerHTML = ICONS.sort + ' Sort';
+
+		const sortDropdown = sortWrapper.createDiv({ cls: 'tdc-sort-dropdown' });
+		sortDropdown.style.display = 'none';
+
+		const sortOptions: Array<{ label: string; action: () => void }> = [
+			{
+				label: 'Priority',
+				action: () => void plugin.dashboardWriter.sortByPriority(dashboard)
+			},
+			{
+				label: 'Newest Created',
+				action: () => void plugin.dashboardWriter.sortByCreatedDate(dashboard, 'newest')
+			},
+			{
+				label: 'Oldest Created',
+				action: () => void plugin.dashboardWriter.sortByCreatedDate(dashboard, 'oldest')
+			},
+			{
+				label: 'Recently Edited',
+				action: () => void plugin.dashboardWriter.sortByEditedDate(dashboard, 'newest')
+			},
+			{
+				label: 'Least Recently Edited',
+				action: () => void plugin.dashboardWriter.sortByEditedDate(dashboard, 'oldest')
+			}
+		];
+
+		for (const option of sortOptions) {
+			const item = sortDropdown.createDiv({ cls: 'tdc-sort-dropdown-item', text: option.label });
+			item.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				sortDropdown.style.display = 'none';
+				option.action();
+			});
+		}
+
 		sortBtn.addEventListener('click', (e) => {
 			e.preventDefault();
-			void plugin.dashboardWriter.sortByPriority(dashboard);
+			e.stopPropagation();
+			const isVisible = sortDropdown.style.display !== 'none';
+			sortDropdown.style.display = isVisible ? 'none' : 'block';
 		});
 
-		const collapseAllButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary' });
+		const closeSortDropdown = (e: MouseEvent): void => {
+			if (!sortWrapper.contains(e.target as Node)) {
+				sortDropdown.style.display = 'none';
+			}
+		};
+
+		document.addEventListener('click', closeSortDropdown);
+
+		const collapseAllButton = container.createEl('button', {
+			cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary'
+		});
 		collapseAllButton.innerHTML = ICONS.foldAll + ' Collapse All';
 		collapseAllButton.addEventListener('click', (e) => {
 			e.preventDefault();
@@ -333,9 +380,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				}
 				void plugin.saveSettings();
 				// Re-render by toggling DOM classes on all visible issue containers
-				const dashboardEl = el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+				const dashboardEl =
+					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
 				if (dashboardEl !== null) {
-					for (const issueContainer of Array.from(dashboardEl.querySelectorAll('.tdc-issue-container'))) {
+					for (const issueContainer of Array.from(
+						dashboardEl.querySelectorAll('.tdc-issue-container')
+					)) {
 						issueContainer.classList.add('tdc-collapsed');
 						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
 						if (chevron !== null) {
@@ -346,7 +396,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			});
 		});
 
-		const expandAllButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary' });
+		const expandAllButton = container.createEl('button', {
+			cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary'
+		});
 		expandAllButton.innerHTML = ICONS.unfoldAll + ' Expand All';
 		expandAllButton.addEventListener('click', (e) => {
 			e.preventDefault();
@@ -355,9 +407,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					delete plugin.settings.collapsedIssues[issueId];
 				}
 				void plugin.saveSettings();
-				const dashboardEl = el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+				const dashboardEl =
+					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
 				if (dashboardEl !== null) {
-					for (const issueContainer of Array.from(dashboardEl.querySelectorAll('.tdc-issue-container'))) {
+					for (const issueContainer of Array.from(
+						dashboardEl.querySelectorAll('.tdc-issue-container')
+					)) {
 						issueContainer.classList.remove('tdc-collapsed');
 						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
 						if (chevron !== null) {
@@ -368,7 +423,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			});
 		});
 
-		ctx.addChild(new MarkdownRenderChild(container));
+		const containerRenderChild = new MarkdownRenderChild(container);
+		containerRenderChild.onunload = () => {
+			document.removeEventListener('click', closeSortDropdown);
+		};
+		ctx.addChild(containerRenderChild);
 	};
 
 	return { render, renderSortButton };

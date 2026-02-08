@@ -167,30 +167,19 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 
 	onChooseSuggestion(priority: Priority) {
 		if (this.plugin.githubService.isAuthenticated()) {
-			new GitHubSearchModal(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				(url, metadata) => {
-					void createIssueWithGitHub(
-						this.app,
-						this.plugin,
-						this.dashboard,
-						this.issueName,
-						priority,
-						url,
-						metadata
-					);
-				}
-			).open();
+			new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
+				void createIssueWithGitHub(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					this.issueName,
+					priority,
+					url,
+					metadata
+				);
+			}).open();
 		} else {
-			new GithubPromptModal(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				priority
-			).open();
+			new GithubPromptModal(this.app, this.plugin, this.dashboard, this.issueName, priority).open();
 		}
 	}
 }

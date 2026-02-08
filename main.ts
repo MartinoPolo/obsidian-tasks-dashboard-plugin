@@ -1,4 +1,12 @@
-import { Plugin, MarkdownView, TFile, Notice, FuzzySuggestModal, type Editor, type EditorPosition } from 'obsidian';
+import {
+	Plugin,
+	MarkdownView,
+	TFile,
+	Notice,
+	FuzzySuggestModal,
+	type Editor,
+	type EditorPosition
+} from 'obsidian';
 import {
 	TasksDashboardSettings,
 	DEFAULT_SETTINGS,

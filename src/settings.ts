@@ -84,7 +84,11 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 
 		const updateAuthStatus = async (): Promise<void> => {
 			authStatus.empty();
-			if (this.plugin.settings.githubAuth.method === 'pat' && this.plugin.settings.githubAuth.token !== undefined && this.plugin.settings.githubAuth.token !== '') {
+			if (
+				this.plugin.settings.githubAuth.method === 'pat' &&
+				this.plugin.settings.githubAuth.token !== undefined &&
+				this.plugin.settings.githubAuth.token !== ''
+			) {
 				authStatus.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
 				const result = await this.plugin.githubService.validateToken();
 				authStatus.empty();
@@ -96,7 +100,10 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				} else {
 					authStatus.createSpan({
 						cls: 'tdc-auth-error',
-						text: (result.error !== undefined && result.error !== '') ? result.error : 'Authentication failed'
+						text:
+							result.error !== undefined && result.error !== ''
+								? result.error
+								: 'Authentication failed'
 					});
 				}
 			} else {
@@ -123,12 +130,15 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		if (this.plugin.settings.githubAuth.method === 'pat') {
 			const tokenSetting = new Setting(containerEl)
 				.setName('Personal Access Token')
-				.setDesc('Create a token at GitHub → Settings → Developer settings → Personal access tokens');
+				.setDesc(
+					'Create a token at GitHub → Settings → Developer settings → Personal access tokens'
+				);
 
 			tokenSetting.addText((text) => {
 				text.inputEl.type = 'password';
 				text.inputEl.addClass('tdc-token-input');
-				text.setPlaceholder('ghp_xxxxxxxxxxxx')
+				text
+					.setPlaceholder('ghp_xxxxxxxxxxxx')
 					.setValue(this.plugin.settings.githubAuth.token ?? '')
 					.onChange((value) => {
 						this.plugin.settings.githubAuth.token = value;
@@ -138,11 +148,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			});
 
 			tokenSetting.addButton((btn) =>
-				btn
-					.setButtonText('Test')
-					.onClick(() => {
-						void updateAuthStatus();
-					})
+				btn.setButtonText('Test').onClick(() => {
+					void updateAuthStatus();
+				})
 			);
 
 			tokenSetting.addExtraButton((btn) =>
@@ -216,7 +224,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 		new Setting(dashboardContainer)
 			.setName('GitHub Repository')
-			.setDesc('Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)')
+			.setDesc(
+				'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
+			)
 			.addText((text) =>
 				text
 					.setPlaceholder('owner/repo')

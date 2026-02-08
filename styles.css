@@ -320,6 +320,38 @@
 	margin: 8px 0 16px 0;
 }
 
+/* ===== Sort Dropdown ===== */
+.tdc-sort-wrapper {
+	display: inline-block;
+	position: relative;
+}
+
+.tdc-sort-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 100;
+	min-width: 200px;
+	margin-top: 4px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	overflow: hidden;
+}
+
+.tdc-sort-dropdown-item {
+	padding: 8px 14px;
+	cursor: pointer;
+	font-size: 0.9em;
+	color: var(--text-normal);
+	transition: var(--tdc-transition-fast);
+}
+
+.tdc-sort-dropdown-item:hover {
+	background: var(--background-modifier-hover);
+}
+
 /* ===== Issue Modal ===== */
 .tdc-issue-modal {
 	padding: 0;

@@ -8,6 +8,8 @@ import {
 	MARKERS
 } from './DashboardParser';
 
+export type SortDirection = 'newest' | 'oldest';
+
 export interface DashboardWriterInstance {
 	addIssueToDashboard: (dashboard: DashboardConfig, issue: Issue) => Promise<void>;
 	moveIssueToArchive: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
@@ -18,6 +20,8 @@ export interface DashboardWriterInstance {
 		direction: 'up' | 'down'
 	) => Promise<void>;
 	sortByPriority: (dashboard: DashboardConfig) => Promise<void>;
+	sortByCreatedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
+	sortByEditedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	rebuildDashboardFromFiles: (dashboard: DashboardConfig) => Promise<number>;
 }
 
@@ -255,6 +259,151 @@ show tree
 		new Notice('Issues sorted by priority');
 	};
 
+	const rebuildActiveSectionWithSortedBlocks = async (
+		dashboard: DashboardConfig,
+		sortedIssueBlocks: string[],
+		noticeMessage: string
+	): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		let content = await app.vault.read(file);
+		const activeStartMarker = MARKERS.ACTIVE_START;
+		const activeEndMarker = MARKERS.ACTIVE_END;
+		const activeStart = content.indexOf(activeStartMarker) + activeStartMarker.length;
+		const activeEnd = content.indexOf(activeEndMarker);
+
+		const beforeActive = content.slice(0, activeStart);
+		const afterActive = content.slice(activeEnd);
+		const sortBlock = '```tasks-dashboard-sort\ndashboard: ' + dashboard.id + '\n```\n';
+		const cleanedBlocks = sortedIssueBlocks.map((block) => block.trim());
+		const newActiveSection = '\n' + sortBlock + cleanedBlocks.join('\n\n') + '\n';
+
+		content = beforeActive + newActiveSection + afterActive;
+		await app.vault.modify(file, content);
+		new Notice(noticeMessage);
+	};
+
+	const readCreatedDateForIssue = async (filePath: string): Promise<number> => {
+		const file = app.vault.getAbstractFileByPath(filePath);
+
+		if (!(file instanceof TFile)) {
+			return 0;
+		}
+
+		const content = await app.vault.read(file);
+		const frontmatter = parseYamlFrontmatter(content);
+		const createdValue = frontmatter['created'];
+
+		if (!createdValue) {
+			return 0;
+		}
+
+		const timestamp = new Date(createdValue).getTime();
+		return isNaN(timestamp) ? 0 : timestamp;
+	};
+
+	const sortByCreatedDate = async (
+		dashboard: DashboardConfig,
+		direction: SortDirection
+	): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		const content = await app.vault.read(file);
+		const parsed = parseDashboard(content);
+
+		if (parsed.activeIssues.length < 2) {
+			return;
+		}
+
+		const issueTimestamps = new Map<string, number>();
+		for (const issue of parsed.activeIssues) {
+			const createdTimestamp = await readCreatedDateForIssue(issue.filePath);
+			issueTimestamps.set(issue.id, createdTimestamp);
+		}
+
+		const sortedIssues = [...parsed.activeIssues].sort((a, b) => {
+			const timeA = issueTimestamps.get(a.id) ?? 0;
+			const timeB = issueTimestamps.get(b.id) ?? 0;
+			return direction === 'newest' ? timeB - timeA : timeA - timeB;
+		});
+
+		const blocks: string[] = [];
+		for (const issue of parsed.activeIssues) {
+			blocks.push(content.substring(issue.startIndex, issue.endIndex));
+		}
+
+		const sortedBlocks = sortedIssues.map((issue) => {
+			const originalIndex = parsed.activeIssues.findIndex((i) => i.id === issue.id);
+			return blocks[originalIndex];
+		});
+
+		const label = direction === 'newest' ? 'newest first' : 'oldest first';
+		await rebuildActiveSectionWithSortedBlocks(
+			dashboard,
+			sortedBlocks,
+			`Issues sorted by created date (${label})`
+		);
+	};
+
+	const sortByEditedDate = async (
+		dashboard: DashboardConfig,
+		direction: SortDirection
+	): Promise<void> => {
+		const dashboardPath = getDashboardPath(dashboard);
+		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (file === null) {
+			return;
+		}
+
+		const content = await app.vault.read(file);
+		const parsed = parseDashboard(content);
+
+		if (parsed.activeIssues.length < 2) {
+			return;
+		}
+
+		const issueModifiedTimes = new Map<string, number>();
+		for (const issue of parsed.activeIssues) {
+			const issueFile = app.vault.getAbstractFileByPath(issue.filePath);
+			const modifiedTime = issueFile instanceof TFile ? issueFile.stat.mtime : 0;
+			issueModifiedTimes.set(issue.id, modifiedTime);
+		}
+
+		const sortedIssues = [...parsed.activeIssues].sort((a, b) => {
+			const timeA = issueModifiedTimes.get(a.id) ?? 0;
+			const timeB = issueModifiedTimes.get(b.id) ?? 0;
+			return direction === 'newest' ? timeB - timeA : timeA - timeB;
+		});
+
+		const blocks: string[] = [];
+		for (const issue of parsed.activeIssues) {
+			blocks.push(content.substring(issue.startIndex, issue.endIndex));
+		}
+
+		const sortedBlocks = sortedIssues.map((issue) => {
+			const originalIndex = parsed.activeIssues.findIndex((i) => i.id === issue.id);
+			return blocks[originalIndex];
+		});
+
+		const label = direction === 'newest' ? 'recently edited' : 'least recently edited';
+		await rebuildActiveSectionWithSortedBlocks(
+			dashboard,
+			sortedBlocks,
+			`Issues sorted by ${label}`
+		);
+	};
+
 	interface ParsedIssueFile {
 		id: string;
 		name: string;
@@ -478,6 +627,8 @@ ${MARKERS.ARCHIVE_START}
 		removeIssueFromDashboard,
 		moveIssue,
 		sortByPriority,
+		sortByCreatedDate,
+		sortByEditedDate,
 		rebuildDashboardFromFiles
 	};
 }

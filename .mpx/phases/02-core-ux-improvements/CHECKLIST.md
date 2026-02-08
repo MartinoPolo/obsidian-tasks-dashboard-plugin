@@ -19,15 +19,15 @@
 - [x] Add delete method to DashboardWriter and IssueManager
 
 ## Sort by Date (Req 10)
-- [ ] Add sort-by-created-date option (newest/oldest first)
-- [ ] Add sort-by-last-edited-date option (newest/oldest first)
-- [ ] Read frontmatter `created` and file mtime for sorting
-- [ ] Update sort UI (dropdown or multiple buttons)
+- [x] Add sort-by-created-date option (newest/oldest first)
+- [x] Add sort-by-last-edited-date option (newest/oldest first)
+- [x] Read frontmatter `created` and file mtime for sorting
+- [x] Update sort UI (dropdown or multiple buttons)
 
 ## Completion Criteria
-- [ ] All features work correctly
-- [ ] `pnpm build` passes
-- [ ] `pnpm lint` passes
+- [x] All features work correctly
+- [x] `pnpm build` passes
+- [x] `pnpm lint` passes
 
 ---
-Progress: 7/10 tasks complete
+Progress: 16/16 tasks complete

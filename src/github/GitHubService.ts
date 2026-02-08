@@ -21,8 +21,16 @@ interface ParsedGitHubUrl {
 export interface GitHubServiceInstance {
 	setAuth: (auth: GitHubAuth) => void;
 	validateToken: () => Promise<{ valid: boolean; username?: string; error?: string }>;
-	getIssue: (owner: string, repo: string, number: number) => Promise<GitHubIssueMetadata | undefined>;
-	getPullRequest: (owner: string, repo: string, number: number) => Promise<GitHubIssueMetadata | undefined>;
+	getIssue: (
+		owner: string,
+		repo: string,
+		number: number
+	) => Promise<GitHubIssueMetadata | undefined>;
+	getPullRequest: (
+		owner: string,
+		repo: string,
+		number: number
+	) => Promise<GitHubIssueMetadata | undefined>;
 	searchIssues: (query: string, repo?: string) => Promise<GitHubSearchResult>;
 	searchPullRequests: (query: string, repo?: string) => Promise<GitHubSearchResult>;
 	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
@@ -92,7 +100,11 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 	};
 
-	const validateToken = async (): Promise<{ valid: boolean; username?: string; error?: string }> => {
+	const validateToken = async (): Promise<{
+		valid: boolean;
+		username?: string;
+		error?: string;
+	}> => {
 		if (!isAuthenticated()) {
 			return { valid: false, error: 'No token configured' };
 		}
@@ -196,7 +208,9 @@ export function createGitHubService(): GitHubServiceInstance {
 			return cached;
 		}
 
-		const data = await apiRequest<GitHubIssueApiResponse>(`/repos/${owner}/${repo}/issues/${number}`);
+		const data = await apiRequest<GitHubIssueApiResponse>(
+			`/repos/${owner}/${repo}/issues/${number}`
+		);
 		if (data === undefined) {
 			return undefined;
 		}
@@ -217,7 +231,9 @@ export function createGitHubService(): GitHubServiceInstance {
 			return cached;
 		}
 
-		const data = await apiRequest<GitHubPullRequestApiResponse>(`/repos/${owner}/${repo}/pulls/${number}`);
+		const data = await apiRequest<GitHubPullRequestApiResponse>(
+			`/repos/${owner}/${repo}/pulls/${number}`
+		);
 		if (data === undefined) {
 			return undefined;
 		}
@@ -242,7 +258,13 @@ export function createGitHubService(): GitHubServiceInstance {
 			repository: `${owner}/${repo}`,
 			url: data.html_url,
 			isPR: true,
-			prStatus: data.merged ? 'merged' : data.draft ? 'draft' : data.state === 'closed' ? 'closed' : 'open'
+			prStatus: data.merged
+				? 'merged'
+				: data.draft
+					? 'draft'
+					: data.state === 'closed'
+						? 'closed'
+						: 'open'
 		};
 
 		setCache(cacheKey, metadata);
