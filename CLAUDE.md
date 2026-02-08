@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Guidelines
 
-- Always follow requirements.md
-- After every task, update readme.md, claude.md, requirements.md, ideas.md as needed
+- Always follow requirements.md and `.mpx/SPEC.md`
+- After every task, update readme.md, claude.md, requirements.md, CHECKLIST.md as needed
 - Keep docs concise and imperative
 
 ## Code Style
@@ -95,3 +95,9 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 - Issue blocks: `%% ISSUE:{id}:START/END %%`
 - Progress regex: `/^[\s]*[-*]\s*\[([ xX])\]/gm`
 - Issue IDs: slugified names (`src/utils/slugify.ts`)
+
+## MPX Project
+- Spec: `.mpx/SPEC.md`
+- Roadmap: `.mpx/ROADMAP.md`
+- State: `.mpx/STATE.md`
+- Phases: `.mpx/phases/`

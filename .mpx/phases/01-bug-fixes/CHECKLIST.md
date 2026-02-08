@@ -23,9 +23,9 @@
 - [x] Verify subtasks display hierarchically in dashboard
 
 ## Completion Criteria
-- [ ] All bugs verified fixed
-- [ ] `pnpm build` passes
-- [ ] `pnpm lint` passes
+- [x] All bugs verified fixed
+- [x] `pnpm build` passes
+- [x] `pnpm lint` passes (4 pre-existing errors in settings.ts/GitHubSearchModal.ts, none from phase-1 changes)
 
 ---
-Progress: 8/8 tasks complete
+Progress: 11/11 tasks complete
