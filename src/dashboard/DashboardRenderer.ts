@@ -67,7 +67,37 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		return null;
 	};
 
-	const renderHeader = (container: HTMLElement, params: ControlParams): void => {
+	// Hide/show sibling elements after our code block (tasks query + hr separator)
+	const setIssueSiblingsVisibility = (codeBlockEl: HTMLElement, collapsed: boolean): void => {
+		// Our container is inside `el` which is the code block's rendered div.
+		// Walk up to find the code block wrapper, then hide subsequent siblings
+		// until we hit another issue container or the section end marker.
+		const codeBlockWrapper = codeBlockEl.closest('.block-language-tasks-dashboard-controls');
+		if (codeBlockWrapper === null) {
+			return;
+		}
+
+		let sibling = codeBlockWrapper.nextElementSibling;
+		while (sibling !== null) {
+			// Stop at the next tasks-dashboard-controls block (next issue)
+			if (sibling.classList.contains('block-language-tasks-dashboard-controls')) {
+				break;
+			}
+			// Stop at tasks-dashboard-sort block (toolbar)
+			if (sibling.classList.contains('block-language-tasks-dashboard-sort')) {
+				break;
+			}
+
+			if (collapsed) {
+				(sibling as HTMLElement).style.display = 'none';
+			} else {
+				(sibling as HTMLElement).style.display = '';
+			}
+			sibling = sibling.nextElementSibling;
+		}
+	};
+
+	const renderHeader = (container: HTMLElement, params: ControlParams, codeBlockEl: HTMLElement): void => {
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
 
 		const header = container.createDiv({
@@ -102,6 +132,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				collapseToggle.classList.remove('tdc-chevron-collapsed');
 				collapseToggle.setAttribute('aria-label', 'Collapse');
 			}
+			setIssueSiblingsVisibility(codeBlockEl, newCollapsed);
 		});
 
 		const link = header.createEl('a', {
@@ -262,7 +293,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const container = el.createDiv({
 			cls: `tdc-issue-container${isCollapsed ? ' tdc-collapsed' : ''}`
 		});
-		renderHeader(container, params);
+		renderHeader(container, params, el);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
 		const progress = await plugin.progressTracker.getProgress(params.path);
@@ -271,6 +302,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		if (params.github !== undefined && params.github !== '') {
 			await renderGitHubCard(container, params.github);
+		}
+
+		// Apply initial collapsed state to sibling elements (tasks query block + separator)
+		// Use setTimeout so the DOM siblings are rendered first by Obsidian
+		if (isCollapsed) {
+			setTimeout(() => {
+				setIssueSiblingsVisibility(el, true);
+			}, 0);
 		}
 
 		ctx.addChild(new MarkdownRenderChild(container));
@@ -379,18 +418,21 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					plugin.settings.collapsedIssues[issueId] = true;
 				}
 				void plugin.saveSettings();
-				// Re-render by toggling DOM classes on all visible issue containers
 				const dashboardEl =
 					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
 				if (dashboardEl !== null) {
-					for (const issueContainer of Array.from(
-						dashboardEl.querySelectorAll('.tdc-issue-container')
+					for (const controlBlock of Array.from(
+						dashboardEl.querySelectorAll('.block-language-tasks-dashboard-controls')
 					)) {
-						issueContainer.classList.add('tdc-collapsed');
-						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
-						if (chevron !== null) {
-							chevron.classList.add('tdc-chevron-collapsed');
+						const issueContainer = controlBlock.querySelector('.tdc-issue-container');
+						if (issueContainer !== null) {
+							issueContainer.classList.add('tdc-collapsed');
+							const chevron = issueContainer.querySelector('.tdc-btn-collapse');
+							if (chevron !== null) {
+								chevron.classList.add('tdc-chevron-collapsed');
+							}
 						}
+						setIssueSiblingsVisibility(controlBlock as HTMLElement, true);
 					}
 				}
 			});
@@ -410,14 +452,18 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				const dashboardEl =
 					el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
 				if (dashboardEl !== null) {
-					for (const issueContainer of Array.from(
-						dashboardEl.querySelectorAll('.tdc-issue-container')
+					for (const controlBlock of Array.from(
+						dashboardEl.querySelectorAll('.block-language-tasks-dashboard-controls')
 					)) {
-						issueContainer.classList.remove('tdc-collapsed');
-						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
-						if (chevron !== null) {
-							chevron.classList.remove('tdc-chevron-collapsed');
+						const issueContainer = controlBlock.querySelector('.tdc-issue-container');
+						if (issueContainer !== null) {
+							issueContainer.classList.remove('tdc-collapsed');
+							const chevron = issueContainer.querySelector('.tdc-btn-collapse');
+							if (chevron !== null) {
+								chevron.classList.remove('tdc-chevron-collapsed');
+							}
 						}
+						setIssueSiblingsVisibility(controlBlock as HTMLElement, false);
 					}
 				}
 			});
