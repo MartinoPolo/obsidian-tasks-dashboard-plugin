@@ -42,7 +42,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 
 	const generateIssueContent = (issue: Issue, dashboard: DashboardConfig): string => {
 		const filename = dashboard.dashboardFilename || 'Dashboard.md';
-		const relativePath = '../'.repeat(2) + filename;
+		const relativePath = '../'.repeat(2) + encodeURI(filename);
 
 		let frontmatter = `---
 created: ${issue.created}

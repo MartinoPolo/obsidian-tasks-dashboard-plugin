@@ -51,6 +51,7 @@ sort by priority
 short mode
 hide task count
 hide tags
+show tree
 \`\`\`
 ---
 %% ISSUE:${issue.id}:END %%`;
@@ -312,6 +313,7 @@ sort by priority
 short mode
 hide task count
 hide tags
+show tree
 \`\`\`
 ---
 %% ISSUE:${issueFile.id}:END %%`;

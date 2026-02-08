@@ -135,7 +135,6 @@ export default class TasksDashboardPlugin extends Plugin {
 			this.addCommand({
 				id: 'create-issue-default',
 				name: 'Create Issue (Select Dashboard)',
-				hotkeys: [{ modifiers: ['Ctrl', 'Shift'], key: 'e' }],
 				callback: () => {
 					this.showDashboardSelector();
 				}
