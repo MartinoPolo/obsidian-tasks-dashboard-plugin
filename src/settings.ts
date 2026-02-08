@@ -54,7 +54,8 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						const newDashboard: DashboardConfig = {
 							id: generateId(),
 							rootPath: '',
-							dashboardFilename: 'Dashboard.md'
+							dashboardFilename: 'Dashboard.md',
+							githubEnabled: true
 						};
 						this.plugin.settings.dashboards.push(newDashboard);
 						void this.plugin.saveSettings();
@@ -223,19 +224,34 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(dashboardContainer)
-			.setName('GitHub Repository')
-			.setDesc(
-				'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder('owner/repo')
-					.setValue(dashboard.githubRepo ?? '')
+			.setName('GitHub Integration')
+			.setDesc('Enable GitHub issue linking for this dashboard')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(dashboard.githubEnabled)
 					.onChange((value) => {
-						dashboard.githubRepo = value !== '' ? value : undefined;
+						dashboard.githubEnabled = value;
 						void this.plugin.saveSettings();
+						this.display();
 					})
 			);
+
+		if (dashboard.githubEnabled) {
+			new Setting(dashboardContainer)
+				.setName('GitHub Repository')
+				.setDesc(
+					'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder('owner/repo')
+						.setValue(dashboard.githubRepo ?? '')
+						.onChange((value) => {
+							dashboard.githubRepo = value !== '' ? value : undefined;
+							void this.plugin.saveSettings();
+						})
+				);
+		}
 
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
 

@@ -53,6 +53,7 @@ export interface DashboardConfig {
 	rootPath: string;
 	dashboardFilename: string;
 	githubRepo?: string;
+	githubEnabled: boolean;
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {

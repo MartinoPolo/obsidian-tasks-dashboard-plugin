@@ -1,9 +1,9 @@
 # Phase 3: GitHub Enhancements - Checklist
 
 ## No-GitHub Mode (Req 6d)
-- [ ] Add per-dashboard `githubEnabled` toggle in settings
-- [ ] Skip GitHub link prompt during issue creation when disabled
-- [ ] Hide GitHub-related UI elements when disabled for that dashboard
+- [x] Add per-dashboard `githubEnabled` toggle in settings
+- [x] Skip GitHub link prompt during issue creation when disabled
+- [x] Hide GitHub-related UI elements when disabled for that dashboard
 
 ## Repository Picker (Req 6c)
 - [ ] Fetch user's repos via GitHub API (with caching)
@@ -53,4 +53,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 0/14 tasks complete
+Progress: 3/14 tasks complete

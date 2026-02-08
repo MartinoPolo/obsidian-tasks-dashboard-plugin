@@ -166,6 +166,18 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	}
 
 	onChooseSuggestion(priority: Priority) {
+		if (!this.dashboard.githubEnabled) {
+			void createIssueWithGitHub(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				priority,
+				undefined,
+				undefined
+			);
+			return;
+		}
 		if (this.plugin.githubService.isAuthenticated()) {
 			new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
 				void createIssueWithGitHub(

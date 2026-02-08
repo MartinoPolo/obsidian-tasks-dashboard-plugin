@@ -219,6 +219,11 @@ export default class TasksDashboardPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			(await this.loadData()) as Partial<TasksDashboardSettings>
 		);
+		for (const dashboard of this.settings.dashboards) {
+			if ((dashboard as unknown as Record<string, unknown>).githubEnabled === undefined) {
+				dashboard.githubEnabled = true;
+			}
+		}
 	}
 
 	async saveSettings() {

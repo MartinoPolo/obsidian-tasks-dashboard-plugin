@@ -316,7 +316,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		renderProgressBar(controls, progress, params.priority);
 		renderButtons(controls, params, dashboard);
 
-		if (params.github !== undefined && params.github !== '') {
+		if (dashboard.githubEnabled && params.github !== undefined && params.github !== '') {
 			await renderGitHubCard(container, params.github);
 		}
 
