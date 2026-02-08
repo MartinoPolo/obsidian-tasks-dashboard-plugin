@@ -18,7 +18,8 @@ const ICONS = {
 	up: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>`,
 	down: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>`,
 	sort: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>`,
-	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`
+	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`,
+	chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -63,9 +64,42 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	};
 
 	const renderHeader = (container: HTMLElement, params: ControlParams): void => {
+		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
+
 		const header = container.createDiv({
 			cls: `tdc-issue-header priority-${params.priority}`
 		});
+
+		const collapseToggle = header.createEl('button', {
+			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
+			attr: { 'aria-label': isCollapsed ? 'Expand' : 'Collapse' }
+		});
+		collapseToggle.innerHTML = ICONS.chevron;
+		collapseToggle.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const currentlyCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
+			const newCollapsed = !currentlyCollapsed;
+
+			if (newCollapsed) {
+				plugin.settings.collapsedIssues[params.issue] = true;
+			} else {
+				delete plugin.settings.collapsedIssues[params.issue];
+			}
+			void plugin.saveSettings();
+
+			if (newCollapsed) {
+				container.classList.add('tdc-collapsed');
+				collapseToggle.classList.add('tdc-chevron-collapsed');
+				collapseToggle.setAttribute('aria-label', 'Expand');
+			} else {
+				container.classList.remove('tdc-collapsed');
+				collapseToggle.classList.remove('tdc-chevron-collapsed');
+				collapseToggle.setAttribute('aria-label', 'Collapse');
+			}
+		});
+
 		const link = header.createEl('a', {
 			cls: 'internal-link',
 			text: params.name
@@ -209,7 +243,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			return;
 		}
 
-		const container = el.createDiv({ cls: 'tdc-issue-container' });
+		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
+		const container = el.createDiv({
+			cls: `tdc-issue-container${isCollapsed ? ' tdc-collapsed' : ''}`
+		});
 		renderHeader(container, params);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });

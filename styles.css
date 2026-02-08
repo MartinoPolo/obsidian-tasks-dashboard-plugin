@@ -89,6 +89,46 @@
 	margin: 8px 0;
 }
 
+/* ===== Collapse Toggle ===== */
+.tdc-btn-collapse {
+	width: 24px;
+	height: 24px;
+	min-width: 24px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	background: transparent;
+	color: var(--text-muted);
+	transition: var(--tdc-transition-fast);
+	margin-right: 6px;
+}
+
+.tdc-btn-collapse:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tdc-btn-collapse svg {
+	width: 14px;
+	height: 14px;
+	transition: transform 0.15s ease;
+	transform: rotate(90deg);
+}
+
+.tdc-btn-collapse.tdc-chevron-collapsed svg {
+	transform: rotate(0deg);
+}
+
+/* ===== Collapsed State ===== */
+.tdc-collapsed .tdc-controls,
+.tdc-collapsed .tdc-github-container {
+	display: none;
+}
+
 /* ===== Issue Header ===== */
 .tdc-issue-header {
 	display: flex;

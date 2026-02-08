@@ -1,7 +1,7 @@
 # Phase 2: Core UX Improvements - Checklist
 
 ## Collapsible Issues (Req 3)
-- [ ] Add collapse/expand toggle button per issue in DashboardRenderer
+- [x] Add collapse/expand toggle button per issue in DashboardRenderer
 - [ ] Implement collapsed state persistence in plugin settings (keyed by issue ID)
 - [ ] Add global collapse/expand all button to dashboard controls
 - [ ] Style collapsed state (hide task query + progress, show only header)

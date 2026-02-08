@@ -64,6 +64,7 @@ export interface TasksDashboardSettings {
 	progressDisplayMode: ProgressDisplayMode;
 	githubAuth: GitHubAuth;
 	githubDisplayMode: GitHubDisplayMode;
+	collapsedIssues: Record<string, boolean>;
 }
 export interface IssueProgress {
 	done: number;
@@ -74,7 +75,8 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	dashboards: [],
 	progressDisplayMode: 'all',
 	githubAuth: { method: 'none' },
-	githubDisplayMode: 'compact'
+	githubDisplayMode: 'compact',
+	collapsedIssues: {}
 };
 
 export const PRIORITY_ORDER: Record<Priority, number> = {
