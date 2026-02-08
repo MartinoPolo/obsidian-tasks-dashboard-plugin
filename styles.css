@@ -281,6 +281,18 @@
 	margin-left: 8px;
 }
 
+/* ===== Secondary Action Buttons (Collapse/Expand All) ===== */
+.tdc-btn-action-secondary {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tdc-btn-action-secondary:hover {
+	background: var(--background-modifier-border);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 /* ===== Archive Button ===== */
 .tdc-btn-archive {
 	background: color-mix(in srgb, var(--tdc-priority-high) 15%, transparent);

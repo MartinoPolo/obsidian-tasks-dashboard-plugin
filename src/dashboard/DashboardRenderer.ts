@@ -1,8 +1,9 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
+import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/IssueModal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
+import { parseDashboard } from './DashboardParser';
 
 interface ControlParams {
 	issue: string;
@@ -19,7 +20,9 @@ const ICONS = {
 	down: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>`,
 	sort: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></svg>`,
 	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`,
-	chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`
+	chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
+	foldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/></svg>`,
+	unfoldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 16-3 3-3-3"/><path d="m15 8-3-3-3 3"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -261,6 +264,18 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		ctx.addChild(new MarkdownRenderChild(container));
 	};
 
+	const getActiveIssueIds = async (dashboard: DashboardConfig): Promise<string[]> => {
+		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${dashboard.rootPath}/${filename}`;
+		const file = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+		if (!(file instanceof TFile)) {
+			return [];
+		}
+		const content = await plugin.app.vault.read(file);
+		const parsed = parseDashboard(content);
+		return parsed.activeIssues.map((issue) => issue.id);
+	};
+
 	const renderSortButton = (
 		source: string,
 		el: HTMLElement,
@@ -291,6 +306,51 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		sortBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			void plugin.dashboardWriter.sortByPriority(dashboard);
+		});
+
+		const collapseAllButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary' });
+		collapseAllButton.innerHTML = ICONS.foldAll + ' Collapse All';
+		collapseAllButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			void getActiveIssueIds(dashboard).then((issueIds) => {
+				for (const issueId of issueIds) {
+					plugin.settings.collapsedIssues[issueId] = true;
+				}
+				void plugin.saveSettings();
+				// Re-render by toggling DOM classes on all visible issue containers
+				const dashboardEl = el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+				if (dashboardEl !== null) {
+					for (const issueContainer of Array.from(dashboardEl.querySelectorAll('.tdc-issue-container'))) {
+						issueContainer.classList.add('tdc-collapsed');
+						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
+						if (chevron !== null) {
+							chevron.classList.add('tdc-chevron-collapsed');
+						}
+					}
+				}
+			});
+		});
+
+		const expandAllButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary' });
+		expandAllButton.innerHTML = ICONS.unfoldAll + ' Expand All';
+		expandAllButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			void getActiveIssueIds(dashboard).then((issueIds) => {
+				for (const issueId of issueIds) {
+					delete plugin.settings.collapsedIssues[issueId];
+				}
+				void plugin.saveSettings();
+				const dashboardEl = el.closest('.markdown-preview-view') ?? el.closest('.markdown-reading-view');
+				if (dashboardEl !== null) {
+					for (const issueContainer of Array.from(dashboardEl.querySelectorAll('.tdc-issue-container'))) {
+						issueContainer.classList.remove('tdc-collapsed');
+						const chevron = issueContainer.querySelector('.tdc-btn-collapse');
+						if (chevron !== null) {
+							chevron.classList.remove('tdc-chevron-collapsed');
+						}
+					}
+				}
+			});
 		});
 
 		ctx.addChild(new MarkdownRenderChild(container));

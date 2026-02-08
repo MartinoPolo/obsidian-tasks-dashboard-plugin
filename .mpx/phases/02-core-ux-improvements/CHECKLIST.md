@@ -2,9 +2,9 @@
 
 ## Collapsible Issues (Req 3)
 - [x] Add collapse/expand toggle button per issue in DashboardRenderer
-- [ ] Implement collapsed state persistence in plugin settings (keyed by issue ID)
-- [ ] Add global collapse/expand all button to dashboard controls
-- [ ] Style collapsed state (hide task query + progress, show only header)
+- [x] Implement collapsed state persistence in plugin settings (keyed by issue ID)
+- [x] Add global collapse/expand all button to dashboard controls
+- [x] Style collapsed state (hide task query + progress, show only header)
 
 ## Smart Cursor Positioning (Req 4)
 - [ ] Modify file-open handler to find `## Tasks` section end
@@ -30,4 +30,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 0/10 tasks complete
+Progress: 4/10 tasks complete
