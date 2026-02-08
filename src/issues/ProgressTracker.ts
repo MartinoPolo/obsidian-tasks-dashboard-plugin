@@ -3,6 +3,8 @@ import { IssueProgress } from '../types';
 
 export interface ProgressTrackerInstance {
 	getProgress: (filePath: string) => Promise<IssueProgress>;
+	invalidateCache: (filePath: string) => void;
+	invalidateAllCache: () => void;
 }
 
 export function createProgressTracker(app: App): ProgressTrackerInstance {
@@ -33,11 +35,19 @@ export function createProgressTracker(app: App): ProgressTrackerInstance {
 		if (file === null || !(file instanceof TFile)) {
 			return { done: 0, total: 0, percentage: 0 };
 		}
-		const content = await app.vault.cachedRead(file);
+		const content = await app.vault.read(file);
 		const progress = countTasks(content);
 		cache.set(filePath, { progress, timestamp: Date.now() });
 		return progress;
 	};
 
-	return { getProgress };
+	const invalidateCache = (filePath: string): void => {
+		cache.delete(filePath);
+	};
+
+	const invalidateAllCache = (): void => {
+		cache.clear();
+	};
+
+	return { getProgress, invalidateCache, invalidateAllCache };
 }

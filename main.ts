@@ -63,6 +63,34 @@ export default class TasksDashboardPlugin extends Plugin {
 				}
 			})
 		);
+		this.registerEvent(
+			this.app.vault.on('modify', (file) => {
+				if (!(file instanceof TFile)) {
+					return;
+				}
+				if (!this.isActiveIssueFile(file)) {
+					return;
+				}
+				this.progressTracker.invalidateCache(file.path);
+				this.rerenderDashboardViews();
+			})
+		);
+	}
+
+	private rerenderDashboardViews(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
+			const view = leaf.view;
+			if (!(view instanceof MarkdownView)) {
+				continue;
+			}
+			const viewFile = view.file;
+			if (viewFile === null || !this.isDashboardFile(viewFile)) {
+				continue;
+			}
+			// Force re-render of preview mode code blocks (progress bars)
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			(view as any).previewMode?.rerender(true);
+		}
 	}
 
 	private isActiveIssueFile(file: TFile): boolean {
