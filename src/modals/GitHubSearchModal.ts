@@ -150,10 +150,12 @@ export class GitHubSearchModal extends Modal {
 			return;
 		}
 
-		items[this.selectedIndex]?.removeClass('tdc-gh-selected');
+		const previousItem = items[this.selectedIndex] as HTMLElement | undefined;
+		previousItem?.removeClass('tdc-gh-selected');
 		this.selectedIndex = Math.max(0, Math.min(items.length - 1, this.selectedIndex + delta));
-		items[this.selectedIndex]?.addClass('tdc-gh-selected');
-		items[this.selectedIndex]?.scrollIntoView({ block: 'nearest' });
+		const currentItem = items[this.selectedIndex] as HTMLElement | undefined;
+		currentItem?.addClass('tdc-gh-selected');
+		currentItem?.scrollIntoView({ block: 'nearest' });
 	}
 
 	private selectCurrent(): void {
@@ -296,22 +298,22 @@ export class GitHubSearchModal extends Modal {
 			const icon = row.createSpan({ cls: 'tdc-gh-result-icon' });
 			icon.innerHTML = item.isPR ? this.getPRIcon() : this.getIssueIcon();
 
-			const number = row.createSpan({
+			row.createSpan({
 				cls: 'tdc-gh-result-number',
 				text: `#${item.number}`
 			});
 
-			const titleEl = row.createSpan({
+			row.createSpan({
 				cls: 'tdc-gh-result-title',
 				text: this.truncate(item.title, 50)
 			});
 
-			const state = row.createSpan({
+			row.createSpan({
 				cls: `tdc-gh-result-state tdc-gh-state-${this.getStateClass(item)}`,
 				text: this.getStateText(item)
 			});
 
-			if (item.repository !== undefined) {
+			if (item.repository !== '') {
 				row.createSpan({
 					cls: 'tdc-gh-result-repo',
 					text: item.repository

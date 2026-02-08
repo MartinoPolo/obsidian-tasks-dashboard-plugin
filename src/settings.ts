@@ -84,7 +84,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 
 		const updateAuthStatus = async (): Promise<void> => {
 			authStatus.empty();
-			if (this.plugin.settings.githubAuth.method === 'pat' && this.plugin.settings.githubAuth.token) {
+			if (this.plugin.settings.githubAuth.method === 'pat' && this.plugin.settings.githubAuth.token !== undefined && this.plugin.settings.githubAuth.token !== '') {
 				authStatus.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
 				const result = await this.plugin.githubService.validateToken();
 				authStatus.empty();
@@ -96,15 +96,13 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				} else {
 					authStatus.createSpan({
 						cls: 'tdc-auth-error',
-						text: result.error || 'Authentication failed'
+						text: (result.error !== undefined && result.error !== '') ? result.error : 'Authentication failed'
 					});
 				}
 			} else {
 				authStatus.createSpan({ cls: 'tdc-auth-none', text: 'Not connected' });
 			}
 		};
-
-		let tokenInput: HTMLInputElement | undefined;
 
 		authSetting.addDropdown((dropdown) =>
 			dropdown
@@ -128,11 +126,10 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				.setDesc('Create a token at GitHub → Settings → Developer settings → Personal access tokens');
 
 			tokenSetting.addText((text) => {
-				tokenInput = text.inputEl;
 				text.inputEl.type = 'password';
 				text.inputEl.addClass('tdc-token-input');
 				text.setPlaceholder('ghp_xxxxxxxxxxxx')
-					.setValue(this.plugin.settings.githubAuth.token || '')
+					.setValue(this.plugin.settings.githubAuth.token ?? '')
 					.onChange((value) => {
 						this.plugin.settings.githubAuth.token = value;
 						this.plugin.githubService.setAuth(this.plugin.settings.githubAuth);
@@ -223,7 +220,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setPlaceholder('owner/repo')
-					.setValue(dashboard.githubRepo || '')
+					.setValue(dashboard.githubRepo ?? '')
 					.onChange((value) => {
 						dashboard.githubRepo = value !== '' ? value : undefined;
 						void this.plugin.saveSettings();
