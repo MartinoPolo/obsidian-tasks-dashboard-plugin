@@ -170,6 +170,12 @@ Support linking multiple GitHub issues/PRs to one dashboard issue. Don't re-prom
 #### 6j. Rate Limit Display
 Show GitHub API rate limit somewhere in settings or dashboard.
 
+#### 6k. Link GitHub Repository to Issue
+Allow linking a whole GitHub repo (not just issue/PR) to a dashboard issue. Useful for mini-project dashboards where each issue represents a repo.
+
+#### 6l. GitHub Quick-Open Button
+Button in issue controls row to open linked GitHub URL in browser. When no link exists, button appears faded and opens a prompt to add one (same UX pattern as Req 7 folder button).
+
 #### Acceptance Criteria
 - Each sub-feature works independently
 - Backward compatible with existing GitHub-linked issues
@@ -281,6 +287,8 @@ Custom background color per issue header via native color picker.
 ## Dependencies Between Requirements
 - Req 6b depends on 6c (repo picker useful for adding issues later)
 - Req 6i depends on 6b (multiple issues requires "add later" capability)
+- Req 6k depends on 6c (reuses repo picker infrastructure)
+- Req 6l depends on 6b (shares "add link" prompt concept); soft dependency on 6k (handle all link types)
 - Req 9 is independent but related to Archive (Req existing)
 - Req 10 depends on existing sort infrastructure
 - Req 3 (collapsible) is independent

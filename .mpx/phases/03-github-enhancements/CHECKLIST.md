@@ -45,6 +45,19 @@
 - [ ] Parse rate limit from GitHub API response headers
 - [ ] Display remaining/total in settings page or dashboard footer
 
+## Link GitHub Repository (Req 6k)
+- [ ] Add "Link Repository" option in GitHub link step during issue creation
+- [ ] Reuse repo picker (Req 6c) for repository selection
+- [ ] Store repo link in frontmatter (type: "repo" in github metadata)
+- [ ] Render repo card in dashboard (reuse GitHubCardRenderer)
+
+## GitHub Quick-Open Button (Req 6l)
+- [ ] Add GitHub quick-open button to issue controls in DashboardRenderer
+- [ ] Normal style when GitHub link exists; opens URL in default browser on click
+- [ ] Faded/disabled style when no GitHub link; opens add-link prompt on click
+- [ ] Add-link prompt reuses GitHub search modal (issues/PRs/repos)
+- [ ] Update frontmatter after linking from prompt
+
 ## Completion Criteria
 - [ ] All GitHub features work with PAT auth
 - [ ] Graceful degradation when no PAT configured
@@ -53,4 +66,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 6/14 tasks complete
+Progress: 6/23 tasks complete

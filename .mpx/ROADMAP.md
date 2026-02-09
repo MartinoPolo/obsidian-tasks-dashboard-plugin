@@ -13,7 +13,7 @@ Phased approach starting with critical bug fixes, then UX improvements, GitHub e
 |-------|------|--------|-------|--------------|
 | 1 | Bug Fixes | Completed | 8 | None |
 | 2 | Core UX Improvements | Completed | 16 | Phase 1 |
-| 3 | GitHub Enhancements | In Progress | 14 | Phase 1 |
+| 3 | GitHub Enhancements | In Progress | 23 | Phase 1 |
 | 4 | New Features | In Progress | 18 | Phase 2 |
 | 5 | Polish & Customization | Not Started | 7 | Phase 3, 4 |
 
@@ -46,9 +46,9 @@ Phase 5 (Polish & Customization)
 **Reqs:** 3, 4, 9, 10
 
 ### Phase 3: GitHub Enhancements
-**Goal:** Level up GitHub integration — no-GitHub mode, repo picker, better links, multi-issue support, rate limits
-**Deliverables:** Per-dashboard GitHub toggle, repo autocomplete, enter key fix, multiple GitHub links, rate limit display
-**Reqs:** 6a-6j
+**Goal:** Level up GitHub integration — no-GitHub mode, repo picker, better links, multi-issue support, rate limits, repo linking, quick-open button
+**Deliverables:** Per-dashboard GitHub toggle, repo autocomplete, enter key fix, multiple GitHub links, rate limit display, repo linking in creation flow, GitHub quick-open button in issue controls
+**Reqs:** 6a-6l
 
 ### Phase 4: New Features
 **Goal:** Add major new capabilities — project folder linking, existing note import, move to top/bottom, rename, header color

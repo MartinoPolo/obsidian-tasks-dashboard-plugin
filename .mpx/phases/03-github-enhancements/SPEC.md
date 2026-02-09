@@ -4,7 +4,7 @@
 **Dependencies:** Phase 1
 
 ## Objective
-Level up GitHub integration with per-dashboard toggle, repo picker, better link display, multi-issue support, enter key fix, and rate limit display.
+Level up GitHub integration with per-dashboard toggle, repo picker, better link display, multi-issue support, enter key fix, rate limit display, repo linking, and quick-open button.
 
 ## Scope
 - No-GitHub mode per dashboard (Req 6d)
@@ -17,6 +17,8 @@ Level up GitHub integration with per-dashboard toggle, repo picker, better link 
 - Card type switching updates existing cards (Req 6e)
 - Dashboard rebuild includes GitHub cards (Req 6f)
 - Rate limit display (Req 6j)
+- Link GitHub repository to dashboard issue (Req 6k)
+- GitHub quick-open button in issue controls (Req 6l)
 
 ## Out of Scope
 - OAuth authentication (listed as future/question in checklist)
@@ -33,6 +35,10 @@ Level up GitHub integration with per-dashboard toggle, repo picker, better link 
 - Card mode switch triggers re-render
 - Rebuild refreshes GitHub data
 - Rate limit info in settings or status bar
+- "Link Repository" option during issue creation GitHub step
+- Repo link stored in frontmatter with type: "repo"
+- GitHub quick-open button in issue controls (linked = normal, unlinked = faded)
+- Quick-open prompt reuses GitHub search modal for issues/PRs/repos
 
 ## Notes
 - GitHub features depend on PAT being configured; degrade gracefully
