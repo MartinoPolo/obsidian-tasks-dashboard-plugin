@@ -13,7 +13,7 @@ Support multiple GitHub issues/PRs per dashboard issue, card type switching, and
 - [x] Each card independently refreshable
 
 ## Card Type Switching (Req 6e)
-- [ ] Re-render all dashboard GitHub cards when display mode changes in settings
+- [x] Re-render all dashboard GitHub cards when display mode changes in settings
 
 ## Rebuild Includes GitHub (Req 6f)
 - [ ] Dashboard rebuild button also refreshes GitHub card data
@@ -23,4 +23,4 @@ Support multiple GitHub issues/PRs per dashboard issue, card type switching, and
 - [ ] `pnpm build` passes
 
 ---
-Progress: 4/8 tasks complete
+Progress: 5/8 tasks complete

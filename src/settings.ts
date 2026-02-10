@@ -182,6 +182,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.onChange((value) => {
 						this.plugin.settings.githubDisplayMode = value as GitHubDisplayMode;
 						void this.plugin.saveSettings();
+						this.plugin.rerenderDashboardViews();
 					})
 			);
 	}
@@ -289,13 +290,11 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.setName('GitHub Integration')
 			.setDesc('Enable GitHub issue linking for this dashboard')
 			.addToggle((toggle) =>
-				toggle
-					.setValue(dashboard.githubEnabled)
-					.onChange((value) => {
-						dashboard.githubEnabled = value;
-						void this.plugin.saveSettings();
-						this.display();
-					})
+				toggle.setValue(dashboard.githubEnabled).onChange((value) => {
+					dashboard.githubEnabled = value;
+					void this.plugin.saveSettings();
+					this.display();
+				})
 			);
 
 		if (dashboard.githubEnabled) {

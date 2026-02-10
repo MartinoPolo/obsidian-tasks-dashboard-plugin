@@ -87,7 +87,7 @@ export default class TasksDashboardPlugin extends Plugin {
 		);
 	}
 
-	private rerenderDashboardViews(): void {
+	rerenderDashboardViews(): void {
 		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
 			const view = leaf.view;
 			if (!(view instanceof MarkdownView)) {
