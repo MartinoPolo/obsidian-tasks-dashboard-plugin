@@ -11,7 +11,7 @@
 - [x] Show repo name, description, and visibility in suggestions
 - [x] Replace "Search all repositories" checkbox with dropdown scope selector
 - [x] Implement three search scopes: Linked repository, My repositories, All GitHub
-- [ ] Fetch `/user` (username) and `/user/orgs` (org names), cache alongside repo cache
+- [x] Fetch `/user` (username) and `/user/orgs` (org names), cache alongside repo cache
 - [ ] "My repositories" mode: parallel search queries (`user:{login}` + `org:{orgName}`), combine & dedupe, sort by updated
 - [ ] Cap parallel org queries at 5; if more, fall back to global search + client-side filter
 - [x] Verify disabled checkbox UX bug is resolved (replaced by dropdown)
@@ -72,4 +72,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 20/40 tasks complete
+Progress: 21/40 tasks complete

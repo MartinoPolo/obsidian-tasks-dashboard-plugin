@@ -37,6 +37,8 @@ export interface GitHubServiceInstance {
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
 	getUserRepositories: () => Promise<GitHubRepository[]>;
+	getAuthenticatedUser: () => Promise<string | undefined>;
+	getUserOrganizations: () => Promise<string[]>;
 	clearCache: () => void;
 	isAuthenticated: () => boolean;
 }
@@ -414,6 +416,47 @@ export function createGitHubService(): GitHubServiceInstance {
 		return repositories;
 	};
 
+	const getAuthenticatedUser = async (): Promise<string | undefined> => {
+		if (!isAuthenticated()) {
+			return undefined;
+		}
+
+		const cacheKey = 'user:profile';
+		const cached = getCached<string>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const data = await apiRequest<GitHubUserApiResponse>('/user');
+		if (data === undefined) {
+			return undefined;
+		}
+
+		setCache(cacheKey, data.login);
+		return data.login;
+	};
+
+	const getUserOrganizations = async (): Promise<string[]> => {
+		if (!isAuthenticated()) {
+			return [];
+		}
+
+		const cacheKey = 'user:orgs';
+		const cached = getCached<string[]>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const data = await apiRequest<GitHubOrgApiResponse[]>('/user/orgs');
+		if (data === undefined) {
+			return [];
+		}
+
+		const orgNames = data.map((org) => org.login);
+		setCache(cacheKey, orgNames);
+		return orgNames;
+	};
+
 	return {
 		setAuth,
 		validateToken,
@@ -425,6 +468,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		parseGitHubUrl,
 		getMetadataFromUrl,
 		getUserRepositories,
+		getAuthenticatedUser,
+		getUserOrganizations,
 		clearCache,
 		isAuthenticated
 	};
@@ -468,4 +513,12 @@ interface GitHubRepoApiResponse {
 	full_name: string;
 	description: string | null;
 	private: boolean;
+}
+
+interface GitHubUserApiResponse {
+	login: string;
+}
+
+interface GitHubOrgApiResponse {
+	login: string;
 }
