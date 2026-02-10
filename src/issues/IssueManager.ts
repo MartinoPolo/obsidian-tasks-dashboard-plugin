@@ -25,6 +25,12 @@ export interface IssueManagerInstance {
 	unarchiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	renameIssue: (dashboard: DashboardConfig, oldIssueId: string, newName: string) => Promise<void>;
+	addGitHubLink: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		githubUrl: string,
+		metadata?: GitHubIssueMetadata
+	) => Promise<void>;
 }
 
 function formatGitHubLinkText(
@@ -341,5 +347,104 @@ dashboard: ${dashboard.id}
 		new Notice(`Renamed: ${oldIssueId} → ${newIssueId}`);
 	};
 
-	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue };
+	const addGitHubLink = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		githubUrl: string,
+		metadata?: GitHubIssueMetadata
+	): Promise<void> => {
+		const issueResult = findIssueFile(dashboard, issueId);
+		if (issueResult === null) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+
+		const { file } = issueResult;
+		let content = await app.vault.read(file);
+
+		// Build stored metadata for frontmatter
+		let storedMetadata: GitHubStoredMetadata | undefined;
+		if (metadata !== undefined) {
+			storedMetadata = {
+				url: metadata.url,
+				number: metadata.number,
+				state: metadata.state,
+				title: metadata.title,
+				labels: metadata.labels.map((l) => l.name),
+				lastFetched: new Date().toISOString()
+			};
+		}
+
+		// Add github section to frontmatter (insert before closing ---)
+		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+		if (frontmatterCloseIndex !== -1) {
+			let githubFrontmatter = `\ngithub:\n  url: "${githubUrl}"`;
+			if (storedMetadata !== undefined) {
+				githubFrontmatter += `\n  number: ${storedMetadata.number}`;
+				githubFrontmatter += `\n  state: "${storedMetadata.state}"`;
+				githubFrontmatter += `\n  title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
+				githubFrontmatter += `\n  labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+				githubFrontmatter += `\n  lastFetched: "${storedMetadata.lastFetched}"`;
+			}
+			content =
+				content.slice(0, frontmatterCloseIndex) +
+				githubFrontmatter +
+				'\n' +
+				content.slice(frontmatterCloseIndex);
+		}
+
+		// Add markdown link and github code block before the --- separator (before ## Tasks)
+		const linkText = formatGitHubLinkText(githubUrl, storedMetadata);
+		const githubBlock =
+			`[${linkText}](${githubUrl})\n\n` +
+			'```tasks-dashboard-github\n' +
+			`url: ${githubUrl}\n` +
+			`dashboard: ${dashboard.id}\n` +
+			'```\n';
+
+		const tasksSeparatorIndex = content.indexOf('\n---\n## Tasks');
+		if (tasksSeparatorIndex !== -1) {
+			content =
+				content.slice(0, tasksSeparatorIndex) +
+				'\n' +
+				githubBlock +
+				content.slice(tasksSeparatorIndex);
+		}
+
+		await app.vault.modify(file, content);
+
+		// Update dashboard entry to include github URL
+		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (dashboardFile !== null) {
+			let dashboardContent = await app.vault.read(dashboardFile);
+			const startMarker = `%% ISSUE:${issueId}:START %%`;
+			const endMarker = `%% ISSUE:${issueId}:END %%`;
+			const startIndex = dashboardContent.indexOf(startMarker);
+			const endIndex = dashboardContent.indexOf(endMarker);
+
+			if (startIndex !== -1 && endIndex !== -1) {
+				const blockEnd = endIndex + endMarker.length;
+				let block = dashboardContent.substring(startIndex, blockEnd);
+
+				// Insert github: url before the closing ``` of tasks-dashboard-controls
+				const controlsBlockEnd = block.indexOf('```\n');
+				if (controlsBlockEnd !== -1) {
+					block =
+						block.slice(0, controlsBlockEnd) +
+						`github: ${githubUrl}\n` +
+						block.slice(controlsBlockEnd);
+				}
+
+				dashboardContent =
+					dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
+				await app.vault.modify(dashboardFile, dashboardContent);
+			}
+		}
+
+		new Notice(`GitHub link added to ${issueId}`);
+	};
+
+	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink };
 }

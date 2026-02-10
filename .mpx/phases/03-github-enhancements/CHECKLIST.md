@@ -24,10 +24,10 @@
 - [x] Reuse existing GitHubCardRenderer for consistency
 
 ## Add GitHub After Creation (Req 6b)
-- [ ] Add "Add GitHub Issue" button to each issue's dashboard entry
-- [ ] Add "Add GitHub PR" button similarly
-- [ ] Clicking opens GitHub search modal, links result to existing issue
-- [ ] Update issue note frontmatter with new link
+- [x] Add "Add GitHub Issue" button to each issue's dashboard entry
+- [x] Add "Add GitHub PR" button similarly
+- [x] Clicking opens GitHub search modal, links result to existing issue
+- [x] Update issue note frontmatter with new link
 
 ## Multiple GitHub Links (Req 6i)
 - [ ] Change frontmatter from single `github` to `github_links` array
@@ -66,4 +66,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 13/23 tasks complete
+Progress: 17/23 tasks complete
