@@ -9,6 +9,7 @@ import {
 	GitHubStoredMetadata
 } from '../types';
 import { slugify } from '../utils/slugify';
+import { parseGitHubUrlInfo } from '../utils/github';
 
 export interface CreateIssueParams {
 	name: string;
@@ -24,6 +25,20 @@ export interface IssueManagerInstance {
 	unarchiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	renameIssue: (dashboard: DashboardConfig, oldIssueId: string, newName: string) => Promise<void>;
+}
+
+function formatGitHubLinkText(
+	url: string,
+	metadata?: GitHubStoredMetadata
+): string {
+	if (metadata !== undefined) {
+		return `#${metadata.number} - ${metadata.title}`;
+	}
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed !== undefined) {
+		return `#${parsed.number}`;
+	}
+	return 'GitHub Issue';
 }
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
@@ -72,8 +87,9 @@ github:
 # ${issue.name}`;
 
 		if (issue.githubLink !== undefined && issue.githubLink !== '') {
+			const linkText = formatGitHubLinkText(issue.githubLink, issue.githubMetadata);
 			content += `
-[GitHub Issue](${issue.githubLink})`;
+[${linkText}](${issue.githubLink})`;
 		}
 
 		content += `

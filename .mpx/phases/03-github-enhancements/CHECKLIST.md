@@ -11,13 +11,13 @@
 - [x] Show repo name, description, and visibility in suggestions
 
 ## Enter Key Fix (Req 6g)
-- [ ] Change enter key in GitHub search to confirm without auto-selecting first result
-- [ ] Only link a GitHub issue when user explicitly selects one
-- [ ] Enter with no selection = skip GitHub link (create issue without it)
+- [x] Change enter key in GitHub search to confirm without auto-selecting first result
+- [x] Only link a GitHub issue when user explicitly selects one
+- [x] Enter with no selection = skip GitHub link (create issue without it)
 
 ## Better Link Display (Req 6h)
-- [ ] Format GitHub links as `#123 - Issue Title` instead of generic text
-- [ ] Update both dashboard cards and issue note links
+- [x] Format GitHub links as `#123 - Issue Title` instead of generic text
+- [x] Update both dashboard cards and issue note links
 
 ## Embedded GitHub in Notes (Req 6a)
 - [ ] Render GitHub metadata card inside issue note files
@@ -66,4 +66,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 6/23 tasks complete
+Progress: 11/23 tasks complete

@@ -1,4 +1,5 @@
 import { GitHubIssueMetadata, GitHubDisplayMode } from '../types';
+import { parseGitHubUrlInfo } from '../utils/github';
 
 const ICONS = {
 	refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`,
@@ -17,6 +18,15 @@ export interface GitHubCardRendererInstance {
 	renderLoading: (container: HTMLElement) => void;
 	renderError: (container: HTMLElement, message: string) => void;
 	renderSimpleLink: (container: HTMLElement, url: string) => void;
+}
+
+function formatGitHubSimpleLinkText(url: string): string {
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed === undefined) {
+		return 'GitHub Issue';
+	}
+	const type = parsed.type === 'pr' ? 'PR' : 'Issue';
+	return `GitHub ${type} #${parsed.number}`;
 }
 
 export function createGitHubCardRenderer(): GitHubCardRendererInstance {
@@ -256,10 +266,11 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 
 	const renderSimpleLink = (container: HTMLElement, url: string): void => {
 		container.empty();
+		const linkText = formatGitHubSimpleLinkText(url);
 		const link = container.createEl('a', {
 			cls: 'tdc-gh-simple-link',
 			href: url,
-			text: 'GitHub Issue'
+			text: linkText
 		});
 		link.setAttribute('target', '_blank');
 	};
