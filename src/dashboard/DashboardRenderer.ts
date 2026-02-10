@@ -306,6 +306,33 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			colorInput.click();
 		});
 
+		if (dashboard.githubEnabled) {
+			const hasGithubLinks = params.githubLinks.length > 0;
+			const quickOpenBtn = btnContainer.createEl('button', {
+				cls: `tdc-btn tdc-btn-github-quickopen${hasGithubLinks ? '' : ' tdc-btn-faded'}`,
+				attr: { 'aria-label': hasGithubLinks ? 'Open GitHub link' : 'Add GitHub link' }
+			});
+			quickOpenBtn.innerHTML = ICONS.github;
+			quickOpenBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasGithubLinks) {
+					window.open(params.githubLinks[0], '_blank');
+					return;
+				}
+				if (!plugin.githubService.isAuthenticated()) {
+					new Notice('Configure GitHub token in settings to search for issues.');
+					return;
+				}
+				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
+					if (url === undefined) {
+						return;
+					}
+					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
+				}).open();
+			});
+		}
+
 		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
 			const githubWrapper = btnContainer.createDiv({ cls: 'tdc-github-btn-wrapper' });
 

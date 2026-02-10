@@ -988,6 +988,25 @@
 	margin-top: 2px;
 }
 
+/* ===== GitHub Quick-Open Button ===== */
+.tdc-btn-github-quickopen {
+	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+	color: var(--interactive-accent);
+}
+
+.tdc-btn-github-quickopen:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.tdc-btn-github-quickopen.tdc-btn-faded {
+	opacity: 0.4;
+}
+
+.tdc-btn-github-quickopen.tdc-btn-faded:hover {
+	opacity: 0.8;
+}
+
 /* ===== GitHub Button Dropdown ===== */
 .tdc-github-btn-wrapper {
 	display: inline-block;
