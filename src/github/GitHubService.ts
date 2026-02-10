@@ -4,6 +4,7 @@ import {
 	GitHubIssueMetadata,
 	GitHubLabel,
 	GitHubRateLimit,
+	GitHubRepoMetadata,
 	GitHubRepository
 } from '../types';
 
@@ -45,6 +46,7 @@ export interface GitHubServiceInstance {
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
 	getUserRepositories: () => Promise<GitHubRepository[]>;
+	getRepository: (owner: string, repo: string) => Promise<GitHubRepoMetadata | undefined>;
 	getAuthenticatedUser: () => Promise<string | undefined>;
 	getUserOrganizations: () => Promise<string[]>;
 	clearCache: () => void;
@@ -470,6 +472,39 @@ export function createGitHubService(): GitHubServiceInstance {
 		return repositories;
 	};
 
+	const getRepository = async (
+		owner: string,
+		repo: string
+	): Promise<GitHubRepoMetadata | undefined> => {
+		const cacheKey = `repo:${owner}/${repo}`;
+		const cached = getCached<GitHubRepoMetadata>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const data = await apiRequest<GitHubRepoDetailApiResponse>(`/repos/${owner}/${repo}`);
+		if (data === undefined) {
+			return undefined;
+		}
+
+		const metadata: GitHubRepoMetadata = {
+			fullName: data.full_name,
+			owner,
+			repo,
+			description: data.description ?? '',
+			url: data.html_url,
+			stars: data.stargazers_count,
+			language: data.language ?? '',
+			forksCount: data.forks_count,
+			openIssuesCount: data.open_issues_count,
+			isPrivate: data.private,
+			updatedAt: data.updated_at
+		};
+
+		setCache(cacheKey, metadata);
+		return metadata;
+	};
+
 	const getAuthenticatedUser = async (): Promise<string | undefined> => {
 		if (!isAuthenticated()) {
 			return undefined;
@@ -622,6 +657,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		parseGitHubUrl,
 		getMetadataFromUrl,
 		getUserRepositories,
+		getRepository,
 		getAuthenticatedUser,
 		getUserOrganizations,
 		clearCache,
@@ -669,6 +705,18 @@ interface GitHubRepoApiResponse {
 	full_name: string;
 	description: string | null;
 	private: boolean;
+}
+
+interface GitHubRepoDetailApiResponse {
+	full_name: string;
+	description: string | null;
+	html_url: string;
+	stargazers_count: number;
+	language: string | null;
+	forks_count: number;
+	open_issues_count: number;
+	private: boolean;
+	updated_at: string;
 }
 
 interface GitHubUserApiResponse {

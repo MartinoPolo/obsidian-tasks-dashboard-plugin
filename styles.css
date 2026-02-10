@@ -928,3 +928,131 @@
 .tdc-prompt-btn-secondary:hover {
 	background: var(--background-modifier-border);
 }
+
+/* ===== GitHub Repository Card ===== */
+.tdc-gh-card-repo .tdc-gh-repo-name {
+	font-weight: 600;
+}
+
+.tdc-gh-repo-stats {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-top: 8px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.tdc-gh-repo-stat {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.tdc-gh-repo-stat svg {
+	width: 14px;
+	height: 14px;
+}
+
+.tdc-gh-repo-stars {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.tdc-gh-repo-stars svg {
+	width: 14px;
+	height: 14px;
+}
+
+.tdc-gh-repo-language {
+	font-family: monospace;
+	font-size: 0.85em;
+}
+
+/* ===== GitHub Link Type Suggestion ===== */
+.tdc-link-type-suggestion {
+	padding: 4px 0;
+}
+
+.tdc-link-type-label {
+	font-weight: 500;
+	font-size: 1em;
+}
+
+.tdc-link-type-description {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+/* ===== GitHub Button Dropdown ===== */
+.tdc-github-btn-wrapper {
+	display: inline-block;
+	position: relative;
+}
+
+.tdc-github-dropdown {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 100;
+	min-width: 160px;
+	margin-top: 4px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	overflow: hidden;
+}
+
+.tdc-github-dropdown-item {
+	padding: 8px 14px;
+	cursor: pointer;
+	font-size: 0.9em;
+	color: var(--text-normal);
+	transition: var(--tdc-transition-fast);
+}
+
+.tdc-github-dropdown-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+/* ===== Repository Picker Modal ===== */
+.tdc-repo-suggestion {
+	padding: 4px 0;
+}
+
+.tdc-repo-suggestion-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.tdc-repo-suggestion-name {
+	font-weight: 500;
+}
+
+.tdc-repo-badge {
+	font-size: 0.75em;
+	padding: 1px 6px;
+	border-radius: 10px;
+}
+
+.tdc-repo-badge-public {
+	background: color-mix(in srgb, var(--tdc-gh-open) 20%, transparent);
+	color: var(--tdc-gh-open);
+}
+
+.tdc-repo-badge-private {
+	background: color-mix(in srgb, var(--tdc-gh-draft) 20%, transparent);
+	color: var(--tdc-gh-draft);
+}
+
+.tdc-repo-suggestion-description {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}

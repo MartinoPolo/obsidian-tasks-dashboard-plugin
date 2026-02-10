@@ -1,7 +1,8 @@
 import { App, Modal, Notice, SuggestModal, TFile, MarkdownView } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, Priority, GitHubIssueMetadata } from '../types';
+import { DashboardConfig, Priority, GitHubIssueMetadata, GitHubRepository } from '../types';
 import { GitHubSearchModal } from './GitHubSearchModal';
+import { RepositoryPickerModal } from './RepositoryPickerModal';
 
 export class NamePromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
@@ -179,20 +180,172 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 			return;
 		}
 		if (this.plugin.githubService.isAuthenticated()) {
+			new GitHubLinkTypeModal(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				priority
+			).open();
+		} else {
+			new GithubPromptModal(this.app, this.plugin, this.dashboard, this.issueName, priority).open();
+		}
+	}
+}
+
+type GitHubLinkType = 'issue-pr' | 'repository' | 'skip';
+
+interface GitHubLinkTypeOption {
+	type: GitHubLinkType;
+	label: string;
+	description: string;
+}
+
+const GITHUB_LINK_TYPE_OPTIONS: GitHubLinkTypeOption[] = [
+	{
+		type: 'issue-pr',
+		label: 'Link Issue/PR',
+		description: 'Search and link a GitHub issue or pull request'
+	},
+	{
+		type: 'repository',
+		label: 'Link Repository',
+		description: 'Link a GitHub repository to this issue'
+	},
+	{
+		type: 'skip',
+		label: 'Skip',
+		description: 'Create issue without a GitHub link'
+	}
+];
+
+class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
+	private plugin: TasksDashboardPlugin;
+	private dashboard: DashboardConfig;
+	private issueName: string;
+	private priority: Priority;
+
+	constructor(
+		app: App,
+		plugin: TasksDashboardPlugin,
+		dashboard: DashboardConfig,
+		issueName: string,
+		priority: Priority
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.dashboard = dashboard;
+		this.issueName = issueName;
+		this.priority = priority;
+		this.setPlaceholder('Choose GitHub link type...');
+	}
+
+	getSuggestions(): GitHubLinkTypeOption[] {
+		return GITHUB_LINK_TYPE_OPTIONS;
+	}
+
+	renderSuggestion(option: GitHubLinkTypeOption, el: HTMLElement) {
+		const container = el.createDiv({ cls: 'tdc-link-type-suggestion' });
+		container.createDiv({ cls: 'tdc-link-type-label', text: option.label });
+		container.createDiv({ cls: 'tdc-link-type-description', text: option.description });
+	}
+
+	onChooseSuggestion(option: GitHubLinkTypeOption) {
+		if (option.type === 'skip') {
+			void createIssueWithGitHub(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				this.priority,
+				undefined,
+				undefined
+			);
+			return;
+		}
+
+		if (option.type === 'issue-pr') {
 			new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
 				void createIssueWithGitHub(
 					this.app,
 					this.plugin,
 					this.dashboard,
 					this.issueName,
-					priority,
+					this.priority,
 					url,
 					metadata
 				);
 			}).open();
-		} else {
-			new GithubPromptModal(this.app, this.plugin, this.dashboard, this.issueName, priority).open();
+			return;
 		}
+
+		// option.type === 'repository' at this point (after prior returns)
+		void this.openRepositoryPicker();
+	}
+
+	private async openRepositoryPicker(): Promise<void> {
+		const repositories = await this.plugin.githubService.getUserRepositories();
+		if (repositories.length === 0) {
+			new Notice('No repositories found. Check your GitHub token.');
+			void createIssueWithGitHub(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				this.priority,
+				undefined,
+				undefined
+			);
+			return;
+		}
+
+		new RepositoryPickerModal(this.app, repositories, (repository: GitHubRepository) => {
+			void createIssueWithRepoLink(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				this.priority,
+				repository
+			);
+		}).open();
+	}
+}
+
+async function createIssueWithRepoLink(
+	app: App,
+	plugin: TasksDashboardPlugin,
+	dashboard: DashboardConfig,
+	issueName: string,
+	priority: Priority,
+	repository: GitHubRepository
+): Promise<void> {
+	const repoUrl = `https://github.com/${repository.fullName}`;
+	try {
+		const issue = await plugin.issueManager.createIssue({
+			name: issueName,
+			priority,
+			githubLink: repoUrl,
+			dashboard
+		});
+		new Notice(`Created issue: ${issueName}`);
+		const file = app.vault.getAbstractFileByPath(issue.filePath);
+		if (file instanceof TFile) {
+			const leaf = app.workspace.getLeaf();
+			await leaf.openFile(file);
+			setTimeout(() => {
+				const view = app.workspace.getActiveViewOfType(MarkdownView);
+				if (view?.editor) {
+					const editor = view.editor;
+					const lastLine = editor.lastLine();
+					const lastLineLength = editor.getLine(lastLine).length;
+					editor.setCursor({ line: lastLine, ch: lastLineLength });
+					editor.focus();
+				}
+			}, 100);
+		}
+	} catch (error) {
+		new Notice(`Error creating issue: ${(error as Error).message}`);
 	}
 }
 

@@ -33,6 +33,15 @@ export interface IssueManagerInstance {
 	) => Promise<void>;
 }
 
+function isGitHubRepoUrl(url: string): boolean {
+	return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(url);
+}
+
+function parseGitHubRepoName(url: string): string | undefined {
+	const match = url.match(/github\.com\/([^/]+\/[^/]+?)\/?$/);
+	return match !== null ? match[1] : undefined;
+}
+
 function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
 	if (metadata !== undefined) {
 		return `#${metadata.number} - ${metadata.title}`;
@@ -41,7 +50,13 @@ function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): str
 	if (parsed !== undefined) {
 		return `#${parsed.number}`;
 	}
-	return 'GitHub Issue';
+	if (isGitHubRepoUrl(url)) {
+		const repoName = parseGitHubRepoName(url);
+		if (repoName !== undefined) {
+			return repoName;
+		}
+	}
+	return 'GitHub Link';
 }
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {

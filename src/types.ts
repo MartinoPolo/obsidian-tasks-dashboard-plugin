@@ -22,6 +22,20 @@ export interface GitHubRepository {
 	isPrivate: boolean;
 }
 
+export interface GitHubRepoMetadata {
+	fullName: string;
+	owner: string;
+	repo: string;
+	description: string;
+	url: string;
+	stars: number;
+	language: string;
+	forksCount: number;
+	openIssuesCount: number;
+	isPrivate: boolean;
+	updatedAt: string;
+}
+
 export interface GitHubRateLimit {
 	limit: number;
 	remaining: number;
