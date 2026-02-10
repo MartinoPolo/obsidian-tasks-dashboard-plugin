@@ -568,6 +568,31 @@
 	font-family: monospace;
 }
 
+/* GitHub Rate Limit */
+.tdc-github-rate-limit {
+	padding: 4px 0 8px 0;
+}
+
+.tdc-rate-limit-info {
+	font-size: 0.85em;
+	padding: 4px 8px;
+	border-radius: 4px;
+	background: var(--background-secondary);
+}
+
+.tdc-rate-limit-ok {
+	color: var(--text-muted);
+}
+
+.tdc-rate-limit-low {
+	color: var(--text-error);
+	background: var(--background-modifier-error);
+}
+
+.tdc-rate-limit-reset {
+	color: var(--text-faint);
+}
+
 /* GitHub Container */
 .tdc-github-container {
 	margin: 8px 0;

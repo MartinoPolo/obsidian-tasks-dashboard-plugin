@@ -1,5 +1,11 @@
 import { requestUrl, RequestUrlResponse } from 'obsidian';
-import { GitHubAuth, GitHubIssueMetadata, GitHubLabel, GitHubRepository } from '../types';
+import {
+	GitHubAuth,
+	GitHubIssueMetadata,
+	GitHubLabel,
+	GitHubRateLimit,
+	GitHubRepository
+} from '../types';
 
 interface CacheEntry<T> {
 	data: T;
@@ -44,6 +50,7 @@ export interface GitHubServiceInstance {
 	clearCache: () => void;
 	clearCacheForUrl: (url: string) => void;
 	isAuthenticated: () => boolean;
+	getRateLimit: () => GitHubRateLimit | undefined;
 }
 
 const CACHE_TTL = 5 * 60 * 1000;
@@ -51,7 +58,28 @@ const API_BASE = 'https://api.github.com';
 
 export function createGitHubService(): GitHubServiceInstance {
 	let auth: GitHubAuth = { method: 'none' };
+	let rateLimit: GitHubRateLimit | undefined;
 	const cache = new Map<string, CacheEntry<unknown>>();
+
+	const parseRateLimitHeaders = (headers: Record<string, string>): void => {
+		const limit = headers['x-ratelimit-limit'];
+		const remaining = headers['x-ratelimit-remaining'];
+		const reset = headers['x-ratelimit-reset'];
+
+		if (limit === undefined || remaining === undefined || reset === undefined) {
+			return;
+		}
+
+		rateLimit = {
+			limit: parseInt(limit, 10),
+			remaining: parseInt(remaining, 10),
+			resetTimestamp: parseInt(reset, 10)
+		};
+	};
+
+	const getRateLimit = (): GitHubRateLimit | undefined => {
+		return rateLimit;
+	};
 
 	const setAuth = (newAuth: GitHubAuth): void => {
 		auth = newAuth;
@@ -111,6 +139,7 @@ export function createGitHubService(): GitHubServiceInstance {
 				url: `${API_BASE}${endpoint}`,
 				headers: getHeaders()
 			});
+			parseRateLimitHeaders(response.headers);
 			return response.json as T;
 		} catch (error) {
 			console.error('GitHub API error:', error);
@@ -131,6 +160,7 @@ export function createGitHubService(): GitHubServiceInstance {
 				url: `${API_BASE}/user`,
 				headers: getHeaders()
 			});
+			parseRateLimitHeaders(response.headers);
 			const data = response.json as { login: string };
 			return { valid: true, username: data.login };
 		} catch (error) {
@@ -587,7 +617,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		getUserOrganizations,
 		clearCache,
 		clearCacheForUrl,
-		isAuthenticated
+		isAuthenticated,
+		getRateLimit
 	};
 }
 

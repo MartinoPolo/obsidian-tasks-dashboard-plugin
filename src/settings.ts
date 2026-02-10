@@ -83,6 +83,36 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.setDesc('Connect to GitHub to enable issue search and metadata display');
 
 		const authStatus = containerEl.createDiv({ cls: 'tdc-github-auth-status' });
+		const rateLimitStatus = containerEl.createDiv({ cls: 'tdc-github-rate-limit' });
+
+		const updateRateLimitDisplay = (): void => {
+			rateLimitStatus.empty();
+			const currentRateLimit = this.plugin.githubService.getRateLimit();
+			if (currentRateLimit === undefined) {
+				return;
+			}
+
+			const resetDate = new Date(currentRateLimit.resetTimestamp * 1000);
+			const now = new Date();
+			const minutesUntilReset = Math.max(
+				0,
+				Math.ceil((resetDate.getTime() - now.getTime()) / 60000)
+			);
+
+			const isLow = currentRateLimit.remaining < currentRateLimit.limit * 0.1;
+			const statusClass = isLow ? 'tdc-rate-limit-low' : 'tdc-rate-limit-ok';
+
+			const rateLimitContainer = rateLimitStatus.createDiv({
+				cls: `tdc-rate-limit-info ${statusClass}`
+			});
+			rateLimitContainer.createSpan({
+				text: `API Rate Limit: ${currentRateLimit.remaining}/${currentRateLimit.limit} remaining`
+			});
+			rateLimitContainer.createSpan({
+				cls: 'tdc-rate-limit-reset',
+				text: minutesUntilReset > 0 ? ` (resets in ${minutesUntilReset}m)` : ' (resets now)'
+			});
+		};
 
 		const updateAuthStatus = async (): Promise<void> => {
 			authStatus.empty();
@@ -99,6 +129,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						cls: 'tdc-auth-connected',
 						text: `Connected as @${result.username}`
 					});
+					updateRateLimitDisplay();
 				} else {
 					authStatus.createSpan({
 						cls: 'tdc-auth-error',

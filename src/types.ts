@@ -22,6 +22,12 @@ export interface GitHubRepository {
 	isPrivate: boolean;
 }
 
+export interface GitHubRateLimit {
+	limit: number;
+	remaining: number;
+	resetTimestamp: number;
+}
+
 export interface GitHubIssueMetadata {
 	number: number;
 	title: string;
