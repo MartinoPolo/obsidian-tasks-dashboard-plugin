@@ -38,7 +38,7 @@ const getDashboardPath = (dashboard: DashboardConfig): string => {
 
 export function createDashboardWriter(
 	app: App,
-	_plugin: TasksDashboardPlugin
+	plugin: TasksDashboardPlugin
 ): DashboardWriterInstance {
 	const buildGithubLinkLines = (issue: Issue): string => {
 		const links = issue.githubLinks ?? [];
@@ -642,6 +642,11 @@ show tree
 	};
 
 	const rebuildDashboardFromFiles = async (dashboard: DashboardConfig): Promise<number> => {
+		// Clear GitHub cache so cards re-fetch fresh data after rebuild
+		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
+			plugin.githubService.clearCache();
+		}
+
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
 		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
