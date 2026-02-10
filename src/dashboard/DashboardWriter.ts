@@ -40,12 +40,18 @@ export function createDashboardWriter(
 	app: App,
 	_plugin: TasksDashboardPlugin
 ): DashboardWriterInstance {
+	const buildGithubLinkLines = (issue: Issue): string => {
+		const links = issue.githubLinks ?? [];
+		// Backward compat: fall back to single githubLink if githubLinks not set
+		if (links.length === 0 && issue.githubLink !== undefined && issue.githubLink !== '') {
+			return `github_link: ${issue.githubLink}\n`;
+		}
+		return links.map((url) => `github_link: ${url}\n`).join('');
+	};
+
 	const buildIssueEntry = (issue: Issue, dashboard: DashboardConfig): string => {
 		const relativePath = `Issues/Active/${issue.id}`;
-		const githubLine =
-			issue.githubLink !== undefined && issue.githubLink !== ''
-				? `github: ${issue.githubLink}\n`
-				: '';
+		const githubLines = buildGithubLinkLines(issue);
 		return `%% ISSUE:${issue.id}:START %%
 \`\`\`tasks-dashboard-controls
 issue: ${issue.id}
@@ -53,7 +59,7 @@ name: ${issue.name}
 path: ${issue.filePath}
 dashboard: ${dashboard.id}
 priority: ${issue.priority}
-${githubLine}\`\`\`
+${githubLines}\`\`\`
 \`\`\`tasks
 path includes ${relativePath}
 not done
@@ -301,9 +307,7 @@ show tree
 		const remainingBlocks = [...blocks.slice(0, issueIndex), ...blocks.slice(issueIndex + 1)];
 
 		const sortedBlocks =
-			position === 'top'
-				? [targetBlock, ...remainingBlocks]
-				: [...remainingBlocks, targetBlock];
+			position === 'top' ? [targetBlock, ...remainingBlocks] : [...remainingBlocks, targetBlock];
 
 		await rebuildActiveSectionWithSortedBlocks(
 			dashboard,
@@ -510,6 +514,7 @@ show tree
 		status: IssueStatus;
 		created: string;
 		filePath: string;
+		githubLinks: string[];
 	}
 
 	const parseYamlFrontmatter = (content: string): Record<string, string> => {
@@ -539,6 +544,39 @@ show tree
 		return headerMatch !== null ? headerMatch[1].trim() : undefined;
 	};
 
+	const extractGithubLinksFromFrontmatter = (content: string): string[] => {
+		const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+		if (frontmatterMatch === null) {
+			return [];
+		}
+		const frontmatterText = frontmatterMatch[1];
+
+		// New format: github_links: array with `- url:` entries
+		const githubLinksUrls: string[] = [];
+		const urlEntryPattern = /^\s+-\s*url:\s*"?([^"\n]+)"?/gm;
+		const hasGithubLinks = frontmatterText.includes('github_links:');
+		if (hasGithubLinks) {
+			let urlMatch;
+			while ((urlMatch = urlEntryPattern.exec(frontmatterText)) !== null) {
+				githubLinksUrls.push(urlMatch[1].trim());
+			}
+			if (githubLinksUrls.length > 0) {
+				return githubLinksUrls;
+			}
+		}
+
+		// Old format: single github: block with nested url:
+		const oldGithubMatch = frontmatterText.match(/^github:\s*\n((?:\s+\w+:.*\n?)*)/m);
+		if (oldGithubMatch !== null) {
+			const oldUrlMatch = oldGithubMatch[0].match(/url:\s*"?([^"\n]+)"?/);
+			if (oldUrlMatch !== null) {
+				return [oldUrlMatch[1].trim()];
+			}
+		}
+
+		return [];
+	};
+
 	const parseIssueFile = (file: TFile, content: string): ParsedIssueFile | undefined => {
 		const frontmatter = parseYamlFrontmatter(content);
 		const name = extractIssueName(content);
@@ -559,6 +597,7 @@ show tree
 		const status: IssueStatus =
 			statusValue === 'active' || statusValue === 'archived' ? statusValue : 'active';
 		const created = frontmatter['created'] || new Date().toISOString();
+		const githubLinks = extractGithubLinksFromFrontmatter(content);
 
 		return {
 			id: file.basename,
@@ -566,7 +605,8 @@ show tree
 			priority,
 			status,
 			created,
-			filePath: file.path
+			filePath: file.path,
+			githubLinks
 		};
 	};
 
@@ -578,6 +618,7 @@ show tree
 		const relativePath = isArchived
 			? `Issues/Archive/${issueFile.id}`
 			: `Issues/Active/${issueFile.id}`;
+		const githubLines = issueFile.githubLinks.map((url) => `github_link: ${url}\n`).join('');
 		return `%% ISSUE:${issueFile.id}:START %%
 \`\`\`tasks-dashboard-controls
 issue: ${issueFile.id}
@@ -585,7 +626,7 @@ name: ${issueFile.name}
 path: ${issueFile.filePath}
 dashboard: ${dashboard.id}
 priority: ${issueFile.priority}
-\`\`\`
+${githubLines}\`\`\`
 \`\`\`tasks
 path includes ${relativePath}
 not done

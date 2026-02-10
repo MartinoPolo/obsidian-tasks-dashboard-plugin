@@ -12,7 +12,9 @@ interface ControlParams {
 	path: string;
 	dashboard: string;
 	priority: Priority;
+	/** @deprecated Use githubLinks instead */
 	github?: string;
+	githubLinks: string[];
 }
 
 const ICONS = {
@@ -24,8 +26,7 @@ const ICONS = {
 	plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`,
 	chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
 	foldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 19-3-3-3 3"/><path d="m15 5-3 3-3-3"/></svg>`,
-	unfoldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 16-3 3-3-3"/><path d="m15 8-3-3-3 3"/></svg>`
-	,
+	unfoldAll: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-6"/><path d="M12 8V2"/><path d="M4 12H2"/><path d="M10 12H8"/><path d="M16 12h-2"/><path d="M22 12h-2"/><path d="m15 16-3 3-3-3"/><path d="m15 8-3-3-3 3"/></svg>`,
 	unarchive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"/><path d="M3 5h18"/><path d="M10 12l2-2 2 2"/><path d="M12 10v6"/></svg>`,
 	toTop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V7"/><path d="M5 12l7-7 7 7"/><line x1="5" y1="3" x2="19" y2="3"/></svg>`,
 	toBottom: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12"/><path d="M19 12l-7 7-7-7"/><line x1="5" y1="21" x2="19" y2="21"/></svg>`,
@@ -37,7 +38,11 @@ const ICONS = {
 export interface DashboardRendererInstance {
 	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
 	renderSortButton: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
-	renderGitHubNoteCard: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
+	renderGitHubNoteCard: (
+		source: string,
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext
+	) => Promise<void>;
 }
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
@@ -46,21 +51,30 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const parseParams = (source: string): ControlParams | null => {
 		const lines = source.trim().split('\n');
 		const params: Partial<ControlParams> = {};
+		const collectedGithubLinks: string[] = [];
 
 		for (const line of lines) {
 			const [key, ...valueParts] = line.split(':');
 			const value = valueParts.join(':').trim();
 			if (key !== '' && value !== '') {
-				const k = key.trim() as keyof ControlParams;
-				if (k === 'priority') {
-					params[k] = value as Priority;
-				} else if (k === 'github') {
-					params[k] = value;
+				const trimmedKey = key.trim();
+				if (trimmedKey === 'priority') {
+					params.priority = value as Priority;
+				} else if (trimmedKey === 'github') {
+					// Legacy single-link format — migrate to array
+					params.github = value;
+					collectedGithubLinks.push(value);
+				} else if (trimmedKey === 'github_link') {
+					// New multi-link format: one github_link: per URL
+					collectedGithubLinks.push(value);
 				} else {
-					params[k] = value;
+					const k = trimmedKey as keyof ControlParams;
+					(params as Record<string, unknown>)[k] = value;
 				}
 			}
 		}
+
+		params.githubLinks = collectedGithubLinks;
 
 		const hasAllParams =
 			params.issue !== undefined &&
@@ -103,8 +117,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 	const setIssueCollapsed = (element: HTMLElement, collapsed: boolean): void => {
 		const maybeControlBlock = element.closest('.block-language-tasks-dashboard-controls');
-		const controlBlock =
-			maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
+		const controlBlock = maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
 
 		const issueContainer = controlBlock.querySelector('.tdc-issue-container');
 		if (issueContainer !== null) {
@@ -258,13 +271,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		renameBtn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
-			new RenameIssueModal(
-				plugin.app,
-				plugin,
-				dashboard,
-				params.issue,
-				params.name
-			).open();
+			new RenameIssueModal(plugin.app, plugin, dashboard, params.issue, params.name).open();
 		});
 
 		const colorBtn = btnContainer.createEl('button', {
@@ -283,7 +290,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			colorInput.value = plugin.settings.issueColors[params.issue] ?? '#4a8cc7';
 			document.body.appendChild(colorInput);
 			colorInput.addEventListener('input', () => {
-				const headerElement = container.closest('.tdc-issue-container')?.querySelector('.tdc-issue-header');
+				const headerElement = container
+					.closest('.tdc-issue-container')
+					?.querySelector('.tdc-issue-header');
 				if (headerElement instanceof HTMLElement) {
 					headerElement.style.background = colorInput.value;
 				}
@@ -296,11 +305,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			colorInput.click();
 		});
 
-		const hasNoGitHubLink = params.github === undefined || params.github === '';
-		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated() && hasNoGitHubLink) {
+		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
 			const githubBtn = btnContainer.createEl('button', {
 				cls: 'tdc-btn tdc-btn-github',
-				attr: { 'aria-label': 'Link GitHub issue/PR' }
+				attr: { 'aria-label': 'Add GitHub issue/PR link' }
 			});
 			githubBtn.innerHTML = ICONS.github;
 			githubBtn.addEventListener('click', (e) => {
@@ -362,7 +370,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 
 		const onRefresh = (): void => {
-			plugin.githubService.clearCache();
+			plugin.githubService.clearCacheForUrl(githubUrl);
 			githubCardRenderer.renderLoading(githubContainer);
 			void plugin.githubService.getMetadataFromUrl(githubUrl).then((freshMetadata) => {
 				if (freshMetadata !== undefined) {
@@ -415,8 +423,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		renderProgressBar(controls, progress, params.priority);
 		renderButtons(controls, params, dashboard);
 
-		if (dashboard.githubEnabled && params.github !== undefined && params.github !== '') {
-			await renderGitHubCard(container, params.github);
+		if (dashboard.githubEnabled && params.githubLinks.length > 0) {
+			for (const githubUrl of params.githubLinks) {
+				await renderGitHubCard(container, githubUrl);
+			}
 		}
 
 		if (isCollapsed) {
@@ -626,7 +636,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		ctx.addChild(containerRenderChild);
 	};
 
-	const parseGitHubNoteParams = (source: string): { url: string; dashboard?: string } | undefined => {
+	const parseGitHubNoteParams = (
+		source: string
+	): { url: string; dashboard?: string } | undefined => {
 		const lines = source.trim().split('\n');
 		let url: string | undefined;
 		let dashboardId: string | undefined;

@@ -51,8 +51,12 @@ export interface Issue {
 	priority: Priority;
 	status: IssueStatus;
 	created: string;
+	/** @deprecated Use githubLinks instead. Kept for backward compatibility during migration. */
 	githubLink?: string;
+	/** @deprecated Use githubMetadataList instead. Kept for backward compatibility during migration. */
 	githubMetadata?: GitHubStoredMetadata;
+	githubLinks?: string[];
+	githubMetadataList?: GitHubStoredMetadata[];
 	filePath: string;
 }
 export interface DashboardConfig {

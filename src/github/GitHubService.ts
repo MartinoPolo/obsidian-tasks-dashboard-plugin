@@ -33,6 +33,8 @@ export interface GitHubServiceInstance {
 	) => Promise<GitHubIssueMetadata | undefined>;
 	searchIssues: (query: string, repo?: string) => Promise<GitHubSearchResult>;
 	searchPullRequests: (query: string, repo?: string) => Promise<GitHubSearchResult>;
+	searchIssuesInMyRepos: (query: string) => Promise<GitHubSearchResult>;
+	searchPullRequestsInMyRepos: (query: string) => Promise<GitHubSearchResult>;
 	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
@@ -40,6 +42,7 @@ export interface GitHubServiceInstance {
 	getAuthenticatedUser: () => Promise<string | undefined>;
 	getUserOrganizations: () => Promise<string[]>;
 	clearCache: () => void;
+	clearCacheForUrl: (url: string) => void;
 	isAuthenticated: () => boolean;
 }
 
@@ -88,6 +91,18 @@ export function createGitHubService(): GitHubServiceInstance {
 
 	const clearCache = (): void => {
 		cache.clear();
+	};
+
+	const clearCacheForUrl = (url: string): void => {
+		const parsed = parseGitHubUrl(url);
+		if (parsed === undefined) {
+			return;
+		}
+		const cacheKeyPrefix =
+			parsed.type === 'pull'
+				? `pr:${parsed.owner}/${parsed.repo}#${parsed.number}`
+				: `issue:${parsed.owner}/${parsed.repo}#${parsed.number}`;
+		cache.delete(cacheKeyPrefix);
 	};
 
 	const apiRequest = async <T>(endpoint: string): Promise<T | undefined> => {
@@ -457,6 +472,104 @@ export function createGitHubService(): GitHubServiceInstance {
 		return orgNames;
 	};
 
+	const MAX_PARALLEL_ORG_QUERIES = 5;
+
+	const searchInMyRepos = async (
+		query: string,
+		issueType: 'issue' | 'pr'
+	): Promise<GitHubSearchResult> => {
+		if (!isAuthenticated()) {
+			return { items: [], totalCount: 0 };
+		}
+
+		const cacheKey = `search:my-repos:${issueType}:${query}`;
+		const cached = getCached<GitHubSearchResult>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const [username, organizations] = await Promise.all([
+			getAuthenticatedUser(),
+			getUserOrganizations()
+		]);
+
+		if (username === undefined) {
+			return { items: [], totalCount: 0 };
+		}
+
+		const typeQualifier = issueType === 'issue' ? 'is:issue' : 'is:pr';
+		let allItems: GitHubIssueMetadata[];
+
+		if (organizations.length > MAX_PARALLEL_ORG_QUERIES) {
+			// Fallback: global search + client-side owner filter
+			const searchQuery = `${query} ${typeQualifier}`;
+			const data = await apiRequest<GitHubSearchApiResponse>(
+				`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=50&sort=updated`
+			);
+
+			if (data === undefined) {
+				return { items: [], totalCount: 0 };
+			}
+
+			const allowedOwners = new Set([username, ...organizations]);
+			allItems = data.items
+				.map((item) => {
+					const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
+					const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+					return mapIssueResponse(item, owner, repoName);
+				})
+				.filter((item) => {
+					const owner = item.repository.split('/')[0];
+					return allowedOwners.has(owner);
+				});
+		} else {
+			// Parallel queries: user:{login} + org:{orgName} for each
+			const qualifiers = [`user:${username}`, ...organizations.map((org) => `org:${org}`)];
+			const searchQueries = qualifiers.map((qualifier) => `${qualifier} ${query} ${typeQualifier}`);
+
+			const results = await Promise.all(
+				searchQueries.map((searchQuery) =>
+					apiRequest<GitHubSearchApiResponse>(
+						`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=20&sort=updated`
+					)
+				)
+			);
+
+			allItems = [];
+			const seenUrls = new Set<string>();
+
+			for (const data of results) {
+				if (data === undefined) {
+					continue;
+				}
+				for (const item of data.items) {
+					if (seenUrls.has(item.html_url)) {
+						continue;
+					}
+					seenUrls.add(item.html_url);
+
+					const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
+					const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+					allItems.push(mapIssueResponse(item, owner, repoName));
+				}
+			}
+		}
+
+		allItems.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+		const result = { items: allItems, totalCount: allItems.length };
+		setCache(cacheKey, result);
+		return result;
+	};
+
+	const searchIssuesInMyRepos = async (query: string): Promise<GitHubSearchResult> => {
+		return searchInMyRepos(query, 'issue');
+	};
+
+	const searchPullRequestsInMyRepos = async (query: string): Promise<GitHubSearchResult> => {
+		return searchInMyRepos(query, 'pr');
+	};
+
 	return {
 		setAuth,
 		validateToken,
@@ -464,6 +577,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		getPullRequest,
 		searchIssues,
 		searchPullRequests,
+		searchIssuesInMyRepos,
+		searchPullRequestsInMyRepos,
 		getRecentIssues,
 		parseGitHubUrl,
 		getMetadataFromUrl,
@@ -471,6 +586,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		getAuthenticatedUser,
 		getUserOrganizations,
 		clearCache,
+		clearCacheForUrl,
 		isAuthenticated
 	};
 }

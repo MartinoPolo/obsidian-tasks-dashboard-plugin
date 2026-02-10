@@ -33,10 +33,7 @@ export interface IssueManagerInstance {
 	) => Promise<void>;
 }
 
-function formatGitHubLinkText(
-	url: string,
-	metadata?: GitHubStoredMetadata
-): string {
+function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
 	if (metadata !== undefined) {
 		return `#${metadata.number} - ${metadata.title}`;
 	}
@@ -65,25 +62,71 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		return candidate;
 	};
 
+	const generateGithubLinksFrontmatter = (
+		links: string[],
+		metadataList: GitHubStoredMetadata[]
+	): string => {
+		if (links.length === 0) {
+			return '';
+		}
+		let yaml = '\ngithub_links:';
+		for (let index = 0; index < links.length; index++) {
+			const url = links[index];
+			const metadata: GitHubStoredMetadata | undefined = metadataList[index] as
+				| GitHubStoredMetadata
+				| undefined;
+			yaml += `\n  - url: "${url}"`;
+			if (metadata !== undefined) {
+				yaml += `\n    number: ${metadata.number}`;
+				yaml += `\n    state: "${metadata.state}"`;
+				yaml += `\n    title: "${metadata.title.replace(/"/g, '\\"')}"`;
+				yaml += `\n    labels: [${metadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+				yaml += `\n    lastFetched: "${metadata.lastFetched}"`;
+			}
+		}
+		return yaml;
+	};
+
+	const generateGithubLinksBody = (
+		links: string[],
+		metadataList: GitHubStoredMetadata[],
+		dashboardId: string
+	): string => {
+		let body = '';
+		for (let index = 0; index < links.length; index++) {
+			const url = links[index];
+			const metadata: GitHubStoredMetadata | undefined = metadataList[index] as
+				| GitHubStoredMetadata
+				| undefined;
+			const linkText = formatGitHubLinkText(url, metadata);
+			body += `\n[${linkText}](${url})
+
+\`\`\`tasks-dashboard-github
+url: ${url}
+dashboard: ${dashboardId}
+\`\`\``;
+		}
+		return body;
+	};
+
 	const generateIssueContent = (issue: Issue, dashboard: DashboardConfig): string => {
 		const filename = dashboard.dashboardFilename || 'Dashboard.md';
 		const relativePath = '../'.repeat(2) + encodeURI(filename);
+
+		// Collect links and metadata from both old and new fields
+		const links =
+			issue.githubLinks ??
+			(issue.githubLink !== undefined && issue.githubLink !== '' ? [issue.githubLink] : []);
+		const metadataList =
+			issue.githubMetadataList ??
+			(issue.githubMetadata !== undefined ? [issue.githubMetadata] : []);
 
 		let frontmatter = `---
 created: ${issue.created}
 status: ${issue.status}
 priority: ${issue.priority}`;
 
-		if (issue.githubMetadata !== undefined) {
-			frontmatter += `
-github:
-  url: "${issue.githubMetadata.url}"
-  number: ${issue.githubMetadata.number}
-  state: "${issue.githubMetadata.state}"
-  title: "${issue.githubMetadata.title.replace(/"/g, '\\"')}"
-  labels: [${issue.githubMetadata.labels.map((l) => `"${l}"`).join(', ')}]
-  lastFetched: "${new Date().toISOString()}"`;
-		}
+		frontmatter += generateGithubLinksFrontmatter(links, metadataList);
 
 		frontmatter += `
 ---`;
@@ -92,16 +135,7 @@ github:
 [← Back to Dashboard](${relativePath})
 # ${issue.name}`;
 
-		if (issue.githubLink !== undefined && issue.githubLink !== '') {
-			const linkText = formatGitHubLinkText(issue.githubLink, issue.githubMetadata);
-			content += `
-[${linkText}](${issue.githubLink})
-
-\`\`\`tasks-dashboard-github
-url: ${issue.githubLink}
-dashboard: ${dashboard.id}
-\`\`\``;
-		}
+		content += generateGithubLinksBody(links, metadataList, dashboard.id);
 
 		content += `
 ---
@@ -133,6 +167,9 @@ dashboard: ${dashboard.id}
 			};
 		}
 
+		const githubLinks = githubLink !== undefined && githubLink !== '' ? [githubLink] : [];
+		const githubMetadataList = storedMetadata !== undefined ? [storedMetadata] : [];
+
 		const issue: Issue = {
 			id: issueId,
 			name,
@@ -141,6 +178,8 @@ dashboard: ${dashboard.id}
 			created,
 			githubLink,
 			githubMetadata: storedMetadata,
+			githubLinks,
+			githubMetadataList,
 			filePath
 		};
 
@@ -299,20 +338,11 @@ dashboard: ${dashboard.id}
 				const blockEnd = endIndex + endMarker.length;
 				let block = content.substring(startIndex, blockEnd);
 
-				block = block.replace(
-					`%% ISSUE:${oldIssueId}:START %%`,
-					`%% ISSUE:${newIssueId}:START %%`
-				);
-				block = block.replace(
-					`%% ISSUE:${oldIssueId}:END %%`,
-					`%% ISSUE:${newIssueId}:END %%`
-				);
+				block = block.replace(`%% ISSUE:${oldIssueId}:START %%`, `%% ISSUE:${newIssueId}:START %%`);
+				block = block.replace(`%% ISSUE:${oldIssueId}:END %%`, `%% ISSUE:${newIssueId}:END %%`);
 				block = block.replace(`issue: ${oldIssueId}`, `issue: ${newIssueId}`);
 				block = block.replace(/name: .+/, `name: ${newName}`);
-				block = block.replace(
-					`path: ${file.path}`,
-					`path: ${newPath}`
-				);
+				block = block.replace(`path: ${file.path}`, `path: ${newPath}`);
 				block = block.replace(
 					`path includes Issues/${folder}/${oldIssueId}`,
 					`path includes Issues/${folder}/${newIssueId}`
@@ -374,22 +404,101 @@ dashboard: ${dashboard.id}
 			};
 		}
 
-		// Add github section to frontmatter (insert before closing ---)
+		// Migrate old single `github:` to `github_links:` if needed, then append new link
 		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
 		if (frontmatterCloseIndex !== -1) {
-			let githubFrontmatter = `\ngithub:\n  url: "${githubUrl}"`;
-			if (storedMetadata !== undefined) {
-				githubFrontmatter += `\n  number: ${storedMetadata.number}`;
-				githubFrontmatter += `\n  state: "${storedMetadata.state}"`;
-				githubFrontmatter += `\n  title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
-				githubFrontmatter += `\n  labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
-				githubFrontmatter += `\n  lastFetched: "${storedMetadata.lastFetched}"`;
+			const frontmatterSection = content.slice(0, frontmatterCloseIndex);
+			const hasGithubLinks = frontmatterSection.includes('github_links:');
+			const hasOldGithub =
+				frontmatterSection.match(/^github:\s*$/m) !== null ||
+				frontmatterSection.match(/^github:\s*\n\s+url:/m) !== null;
+
+			if (hasGithubLinks) {
+				// Append new entry to existing github_links array
+				let newEntry = `\n  - url: "${githubUrl}"`;
+				if (storedMetadata !== undefined) {
+					newEntry += `\n    number: ${storedMetadata.number}`;
+					newEntry += `\n    state: "${storedMetadata.state}"`;
+					newEntry += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
+					newEntry += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+					newEntry += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+				}
+				// Insert before the closing ---
+				content =
+					content.slice(0, frontmatterCloseIndex) +
+					newEntry +
+					'\n' +
+					content.slice(frontmatterCloseIndex);
+			} else if (hasOldGithub) {
+				// Migrate old github: block to github_links: array and add new entry
+				// Extract old github block from frontmatter
+				const oldGithubMatch = frontmatterSection.match(/^github:\s*\n((?:\s+\w+:.*\n?)*)/m);
+				if (oldGithubMatch !== null) {
+					const oldUrlMatch = oldGithubMatch[0].match(/url:\s*"?([^"\n]+)"?/);
+					const oldUrl = oldUrlMatch !== null ? oldUrlMatch[1].trim() : undefined;
+
+					// Remove old github: block from content
+					content = content.replace(oldGithubMatch[0], '');
+
+					// Build new github_links section with old + new
+					let githubLinksFrontmatter = '\ngithub_links:';
+					if (oldUrl !== undefined) {
+						githubLinksFrontmatter += `\n  - url: "${oldUrl}"`;
+						// Re-extract old metadata fields
+						const oldNumberMatch = oldGithubMatch[0].match(/number:\s*(\d+)/);
+						const oldStateMatch = oldGithubMatch[0].match(/state:\s*"?([^"\n]+)"?/);
+						const oldTitleMatch = oldGithubMatch[0].match(/title:\s*"([^"]+)"/);
+						const oldLabelsMatch = oldGithubMatch[0].match(/labels:\s*\[([^\]]*)\]/);
+						const oldFetchedMatch = oldGithubMatch[0].match(/lastFetched:\s*"([^"]+)"/);
+						if (oldNumberMatch !== null) {
+							githubLinksFrontmatter += `\n    number: ${oldNumberMatch[1]}`;
+						}
+						if (oldStateMatch !== null) {
+							githubLinksFrontmatter += `\n    state: "${oldStateMatch[1]}"`;
+						}
+						if (oldTitleMatch !== null) {
+							githubLinksFrontmatter += `\n    title: "${oldTitleMatch[1]}"`;
+						}
+						if (oldLabelsMatch !== null) {
+							githubLinksFrontmatter += `\n    labels: [${oldLabelsMatch[1]}]`;
+						}
+						if (oldFetchedMatch !== null) {
+							githubLinksFrontmatter += `\n    lastFetched: "${oldFetchedMatch[1]}"`;
+						}
+					}
+					// Add new entry
+					githubLinksFrontmatter += `\n  - url: "${githubUrl}"`;
+					if (storedMetadata !== undefined) {
+						githubLinksFrontmatter += `\n    number: ${storedMetadata.number}`;
+						githubLinksFrontmatter += `\n    state: "${storedMetadata.state}"`;
+						githubLinksFrontmatter += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
+						githubLinksFrontmatter += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+						githubLinksFrontmatter += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+					}
+
+					const newCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+					content =
+						content.slice(0, newCloseIndex) +
+						githubLinksFrontmatter +
+						'\n' +
+						content.slice(newCloseIndex);
+				}
+			} else {
+				// No existing github data — create fresh github_links
+				let githubLinksFrontmatter = `\ngithub_links:\n  - url: "${githubUrl}"`;
+				if (storedMetadata !== undefined) {
+					githubLinksFrontmatter += `\n    number: ${storedMetadata.number}`;
+					githubLinksFrontmatter += `\n    state: "${storedMetadata.state}"`;
+					githubLinksFrontmatter += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
+					githubLinksFrontmatter += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+					githubLinksFrontmatter += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+				}
+				content =
+					content.slice(0, frontmatterCloseIndex) +
+					githubLinksFrontmatter +
+					'\n' +
+					content.slice(frontmatterCloseIndex);
 			}
-			content =
-				content.slice(0, frontmatterCloseIndex) +
-				githubFrontmatter +
-				'\n' +
-				content.slice(frontmatterCloseIndex);
 		}
 
 		// Add markdown link and github code block before the --- separator (before ## Tasks)
@@ -412,7 +521,7 @@ dashboard: ${dashboard.id}
 
 		await app.vault.modify(file, content);
 
-		// Update dashboard entry to include github URL
+		// Update dashboard entry to include github_link: url
 		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
 		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
 		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
@@ -428,12 +537,15 @@ dashboard: ${dashboard.id}
 				const blockEnd = endIndex + endMarker.length;
 				let block = dashboardContent.substring(startIndex, blockEnd);
 
-				// Insert github: url before the closing ``` of tasks-dashboard-controls
+				// Also migrate any old `github:` line to `github_link:` while we're here
+				block = block.replace(/^github: (.+)$/m, 'github_link: $1');
+
+				// Insert github_link: url before the closing ``` of tasks-dashboard-controls
 				const controlsBlockEnd = block.indexOf('```\n');
 				if (controlsBlockEnd !== -1) {
 					block =
 						block.slice(0, controlsBlockEnd) +
-						`github: ${githubUrl}\n` +
+						`github_link: ${githubUrl}\n` +
 						block.slice(controlsBlockEnd);
 				}
 
