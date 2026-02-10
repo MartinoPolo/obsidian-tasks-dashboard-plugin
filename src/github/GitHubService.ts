@@ -62,18 +62,26 @@ export function createGitHubService(): GitHubServiceInstance {
 	const cache = new Map<string, CacheEntry<unknown>>();
 
 	const parseRateLimitHeaders = (headers: Record<string, string>): void => {
-		const limit = headers['x-ratelimit-limit'];
-		const remaining = headers['x-ratelimit-remaining'];
-		const reset = headers['x-ratelimit-reset'];
+		if (
+			!('x-ratelimit-limit' in headers) ||
+			!('x-ratelimit-remaining' in headers) ||
+			!('x-ratelimit-reset' in headers)
+		) {
+			return;
+		}
 
-		if (limit === undefined || remaining === undefined || reset === undefined) {
+		const parsedLimit = parseInt(headers['x-ratelimit-limit'], 10);
+		const parsedRemaining = parseInt(headers['x-ratelimit-remaining'], 10);
+		const parsedReset = parseInt(headers['x-ratelimit-reset'], 10);
+
+		if (isNaN(parsedLimit) || isNaN(parsedRemaining) || isNaN(parsedReset)) {
 			return;
 		}
 
 		rateLimit = {
-			limit: parseInt(limit, 10),
-			remaining: parseInt(remaining, 10),
-			resetTimestamp: parseInt(reset, 10)
+			limit: parsedLimit,
+			remaining: parsedRemaining,
+			resetTimestamp: parsedReset
 		};
 	};
 
@@ -84,6 +92,7 @@ export function createGitHubService(): GitHubServiceInstance {
 	const setAuth = (newAuth: GitHubAuth): void => {
 		auth = newAuth;
 		cache.clear();
+		rateLimit = undefined;
 	};
 
 	const isAuthenticated = (): boolean => {
