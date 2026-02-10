@@ -89,7 +89,12 @@ github:
 		if (issue.githubLink !== undefined && issue.githubLink !== '') {
 			const linkText = formatGitHubLinkText(issue.githubLink, issue.githubMetadata);
 			content += `
-[${linkText}](${issue.githubLink})`;
+[${linkText}](${issue.githubLink})
+
+\`\`\`tasks-dashboard-github
+url: ${issue.githubLink}
+dashboard: ${dashboard.id}
+\`\`\``;
 		}
 
 		content += `

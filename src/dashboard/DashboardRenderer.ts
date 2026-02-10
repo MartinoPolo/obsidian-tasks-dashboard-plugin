@@ -35,6 +35,7 @@ const ICONS = {
 export interface DashboardRendererInstance {
 	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
 	renderSortButton: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
+	renderGitHubNoteCard: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
 }
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
@@ -604,5 +605,51 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		ctx.addChild(containerRenderChild);
 	};
 
-	return { render, renderSortButton };
+	const parseGitHubNoteParams = (source: string): { url: string; dashboard?: string } | undefined => {
+		const lines = source.trim().split('\n');
+		let url: string | undefined;
+		let dashboardId: string | undefined;
+
+		for (const line of lines) {
+			const [key, ...valueParts] = line.split(':');
+			const value = valueParts.join(':').trim();
+			if (key.trim() === 'url' && value !== '') {
+				url = value;
+			} else if (key.trim() === 'dashboard' && value !== '') {
+				dashboardId = value;
+			}
+		}
+
+		if (url === undefined) {
+			return undefined;
+		}
+
+		return { url, dashboard: dashboardId };
+	};
+
+	const renderGitHubNoteCard = async (
+		source: string,
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext
+	): Promise<void> => {
+		const params = parseGitHubNoteParams(source);
+		if (params === undefined) {
+			el.createEl('span', { text: 'Invalid GitHub block: missing url', cls: 'tdc-error' });
+			return;
+		}
+
+		if (params.dashboard !== undefined) {
+			const dashboard = plugin.settings.dashboards.find((d) => d.id === params.dashboard);
+			if (dashboard !== undefined && !dashboard.githubEnabled) {
+				return;
+			}
+		}
+
+		const container = el.createDiv({ cls: 'tdc-github-note-container' });
+		await renderGitHubCard(container, params.url);
+
+		ctx.addChild(new MarkdownRenderChild(container));
+	};
+
+	return { render, renderSortButton, renderGitHubNoteCard };
 }

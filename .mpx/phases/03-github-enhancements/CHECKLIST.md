@@ -20,8 +20,8 @@
 - [x] Update both dashboard cards and issue note links
 
 ## Embedded GitHub in Notes (Req 6a)
-- [ ] Render GitHub metadata card inside issue note files
-- [ ] Reuse existing GitHubCardRenderer for consistency
+- [x] Render GitHub metadata card inside issue note files
+- [x] Reuse existing GitHubCardRenderer for consistency
 
 ## Add GitHub After Creation (Req 6b)
 - [ ] Add "Add GitHub Issue" button to each issue's dashboard entry
@@ -66,4 +66,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 11/23 tasks complete
+Progress: 13/23 tasks complete

@@ -51,6 +51,9 @@ export default class TasksDashboardPlugin extends Plugin {
 		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) =>
 			this.dashboardRenderer.renderSortButton(source, el, ctx)
 		);
+		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) =>
+			this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx)
+		);
 		this.registerDashboardCommands();
 		this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
 		this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
