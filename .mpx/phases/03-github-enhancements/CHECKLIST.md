@@ -9,12 +9,12 @@
 - [x] Fetch user's repos via GitHub API (with caching)
 - [x] Replace text input with searchable dropdown/suggest modal
 - [x] Show repo name, description, and visibility in suggestions
-- [ ] Replace "Search all repositories" checkbox with dropdown scope selector
-- [ ] Implement three search scopes: Linked repository, My repositories, All GitHub
+- [x] Replace "Search all repositories" checkbox with dropdown scope selector
+- [x] Implement three search scopes: Linked repository, My repositories, All GitHub
 - [ ] Fetch `/user` (username) and `/user/orgs` (org names), cache alongside repo cache
 - [ ] "My repositories" mode: parallel search queries (`user:{login}` + `org:{orgName}`), combine & dedupe, sort by updated
 - [ ] Cap parallel org queries at 5; if more, fall back to global search + client-side filter
-- [ ] Verify disabled checkbox UX bug is resolved (replaced by dropdown)
+- [x] Verify disabled checkbox UX bug is resolved (replaced by dropdown)
 
 ## Enter Key Fix (Req 6g)
 - [x] Change enter key in GitHub search to confirm without auto-selecting first result
@@ -72,4 +72,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 17/40 tasks complete
+Progress: 20/40 tasks complete

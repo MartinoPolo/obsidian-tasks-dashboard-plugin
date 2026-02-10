@@ -1,6 +1,6 @@
 import { App, Modal } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, GitHubIssueMetadata } from '../types';
+import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
 
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
 
@@ -10,7 +10,8 @@ export class GitHubSearchModal extends Modal {
 	private onSelect: OnSelectCallback;
 	private searchInput!: HTMLInputElement;
 	private resultsContainer!: HTMLElement;
-	private searchAllCheckbox!: HTMLInputElement;
+	private searchScopeSelect!: HTMLSelectElement;
+	private searchScope: GitHubSearchScope;
 	private selectedIndex = -1;
 	private currentResults: GitHubIssueMetadata[] = [];
 	private searchTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -26,6 +27,7 @@ export class GitHubSearchModal extends Modal {
 		this.plugin = plugin;
 		this.dashboard = dashboard;
 		this.onSelect = onSelect;
+		this.searchScope = this.hasLinkedRepo() ? 'linked' : 'my-repos';
 	}
 
 	onOpen(): void {
@@ -49,21 +51,27 @@ export class GitHubSearchModal extends Modal {
 
 		const optionsContainer = contentEl.createDiv({ cls: 'tdc-gh-options' });
 
-		const checkboxLabel = optionsContainer.createEl('label', { cls: 'tdc-gh-checkbox-label' });
-		this.searchAllCheckbox = checkboxLabel.createEl('input', {
-			type: 'checkbox',
-			cls: 'tdc-gh-checkbox'
-		});
-		checkboxLabel.createSpan({ text: 'Search all repositories' });
+		const scopeLabel = optionsContainer.createEl('label', { cls: 'tdc-gh-scope-label' });
+		scopeLabel.createSpan({ text: 'Search scope' });
 
-		if (this.dashboard.githubRepo === undefined || this.dashboard.githubRepo === '') {
-			this.searchAllCheckbox.checked = true;
-			this.searchAllCheckbox.disabled = true;
-			checkboxLabel.createSpan({
-				cls: 'tdc-gh-hint',
-				text: ' (no repo linked to this dashboard)'
+		this.searchScopeSelect = scopeLabel.createEl('select', { cls: 'tdc-gh-scope-select' });
+
+		if (this.hasLinkedRepo()) {
+			this.searchScopeSelect.createEl('option', {
+				value: 'linked',
+				text: `Linked repository (${this.dashboard.githubRepo})`
 			});
 		}
+		this.searchScopeSelect.createEl('option', {
+			value: 'my-repos',
+			text: 'My repositories'
+		});
+		this.searchScopeSelect.createEl('option', {
+			value: 'all-github',
+			text: 'All GitHub'
+		});
+
+		this.searchScopeSelect.value = this.searchScope;
 
 		this.resultsContainer = contentEl.createDiv({ cls: 'tdc-gh-results' });
 
@@ -101,7 +109,8 @@ export class GitHubSearchModal extends Modal {
 			this.handleKeydown(e);
 		});
 
-		this.searchAllCheckbox.addEventListener('change', () => {
+		this.searchScopeSelect.addEventListener('change', () => {
+			this.searchScope = this.searchScopeSelect.value as GitHubSearchScope;
 			this.handleSearchInput();
 		});
 	}
@@ -174,13 +183,9 @@ export class GitHubSearchModal extends Modal {
 			return;
 		}
 
-		if (query !== '') {
-			this.close();
-			this.onSelect(query);
-		} else {
-			this.close();
-			this.onSelect(undefined);
-		}
+		// No explicit selection + non-URL text = skip GitHub linking
+		this.close();
+		this.onSelect(undefined);
 	}
 
 	private isGitHubUrl(text: string): boolean {
@@ -191,7 +196,7 @@ export class GitHubSearchModal extends Modal {
 		this.showLoading('Loading recent issues...');
 		this.selectedIndex = -1;
 
-		const repo = this.searchAllCheckbox.checked ? undefined : this.dashboard.githubRepo;
+		const repo = this.getRepoForCurrentScope();
 		const results = await this.plugin.githubService.getRecentIssues(repo, 10);
 
 		this.currentResults = results;
@@ -212,7 +217,7 @@ export class GitHubSearchModal extends Modal {
 		this.showLoading('Searching...');
 		this.selectedIndex = -1;
 
-		const repo = this.searchAllCheckbox.checked ? undefined : this.dashboard.githubRepo;
+		const repo = this.getRepoForCurrentScope();
 
 		try {
 			const [issueResults, prResults] = await Promise.all([
@@ -357,6 +362,18 @@ export class GitHubSearchModal extends Modal {
 
 	private getPRIcon(): string {
 		return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`;
+	}
+
+	private hasLinkedRepo(): boolean {
+		return this.dashboard.githubRepo !== undefined && this.dashboard.githubRepo !== '';
+	}
+
+	private getRepoForCurrentScope(): string | undefined {
+		if (this.searchScope === 'linked') {
+			return this.dashboard.githubRepo;
+		}
+		// "my-repos" behaves as "all-github" for now (parallel org search is a future task)
+		return undefined;
 	}
 
 	onClose(): void {

@@ -3,6 +3,7 @@ export type IssueStatus = 'active' | 'archived';
 export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-percentage' | 'all';
 export type GitHubAuthMethod = 'none' | 'pat';
 export type GitHubDisplayMode = 'minimal' | 'compact' | 'full';
+export type GitHubSearchScope = 'linked' | 'my-repos' | 'all-github';
 
 export interface GitHubAuth {
 	method: GitHubAuthMethod;
