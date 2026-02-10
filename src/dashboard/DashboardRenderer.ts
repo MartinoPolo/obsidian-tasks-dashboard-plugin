@@ -317,7 +317,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				e.preventDefault();
 				e.stopPropagation();
 				if (hasGithubLinks) {
-					window.open(params.githubLinks[0], '_blank');
+					const targetUrl = params.githubLinks[0];
+					if (/^https?:\/\/github\.com\//.test(targetUrl)) {
+						window.open(targetUrl, '_blank');
+					}
 					return;
 				}
 				if (!plugin.githubService.isAuthenticated()) {
