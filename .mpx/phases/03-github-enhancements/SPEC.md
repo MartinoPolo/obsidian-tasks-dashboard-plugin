@@ -8,7 +8,7 @@ Level up GitHub integration with per-dashboard toggle, repo picker, better link 
 
 ## Scope
 - No-GitHub mode per dashboard (Req 6d)
-- Repo picker from user's repos (Req 6c)
+- Repo picker + search scope filtering (Req 6c)
 - Enter key fix in search modal (Req 6g)
 - Better GitHub link display with number + title (Req 6h)
 - Embedded GitHub view in issue notes (Req 6a)
@@ -27,6 +27,9 @@ Level up GitHub integration with per-dashboard toggle, repo picker, better link 
 ## Deliverables
 - Per-dashboard GitHub toggle in settings
 - Repo autocomplete from authenticated user's repos
+- Search scope dropdown: Linked repository / My repositories / All GitHub
+- `/user` + `/user/orgs` fetching with cache for scope filtering
+- Parallel org search queries (capped at 5) with fallback
 - Fixed enter key behavior in search modal
 - Issue links show `#123 - Title` format
 - GitHub cards in issue note files
@@ -44,4 +47,5 @@ Level up GitHub integration with per-dashboard toggle, repo picker, better link 
 - GitHub features depend on PAT being configured; degrade gracefully
 - Multiple GitHub links: store as array in frontmatter `github_links: [...]`
 - Repo picker: use GitHub API to list user's repos, cache result
+- Search scope defaults: "Linked repository" when `githubRepo` set, "My repositories" otherwise, "All GitHub" never default
 - Rate limit: available from GitHub API response headers

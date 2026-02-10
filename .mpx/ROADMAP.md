@@ -13,7 +13,7 @@ Phased approach starting with critical bug fixes, then UX improvements, GitHub e
 |-------|------|--------|-------|--------------|
 | 1 | Bug Fixes | Completed | 8 | None |
 | 2 | Core UX Improvements | Completed | 16 | Phase 1 |
-| 3 | GitHub Enhancements | In Progress | 23 | Phase 1 |
+| 3 | GitHub Enhancements | In Progress | 40 | Phase 1 |
 | 4 | New Features | In Progress | 18 | Phase 2 |
 | 5 | Polish & Customization | Not Started | 7 | Phase 3, 4 |
 

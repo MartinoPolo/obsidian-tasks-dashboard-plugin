@@ -27,13 +27,15 @@
 - [ ] Ability to add issue and/or PR later
 - [ ] OAuth?
 - [ ] Show more metadata - status, tags, priority...
-- [ ] Choosing repository from a list of my repos instead of typing full name, suggestions
-- [ ] If no repository is selected for the dashboard, suggest from all repos. That applies to all github features in the plugin.
+- [x] Choosing repository from a list of my repos instead of typing full name, suggestions
+- [ ] Replace "Search all repositories" checkbox with dropdown scope selector (Linked repo / My repos / All GitHub)
+- [ ] "My repositories" scope: parallel search across personal + org repos, dedupe results
+- [ ] "All GitHub" is opt-in only, never the default
 - [ ] Display rate limit somewhere
 - [ ] Option to use dashboard completely without github é even turn of the 3rd prompt for github link
 - [ ] Switching github card type should change current dashboard cards as well
 - [ ] Dashboard rebuild button should include github cards
-- [ ] Enter in the last step of prompting should confirm and create the issue but not with the first suggested github issue. It should not add the issue unless it's intentionally selected
+- [x] Enter in the last step of prompting should confirm and create the issue but not with the first suggested github issue. It should not add the issue unless it's intentionally selected
 - [ ] Add button "Add github issue" to content of each issue in dashboard (added during issue creation).
 - [ ] The link to github issue should include issue number as well as title. Now it's just a generic text
 - [ ] User is able to add multiple github issues to one dashboard issue. During issue creation, after selecting one github issue, user is NOT asked to select another one. Other issues can be added later using the "Add github issue" button mentioned above.

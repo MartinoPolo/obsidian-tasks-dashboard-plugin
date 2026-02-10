@@ -146,8 +146,8 @@ Show GitHub card/metadata in the issue note file, not just dashboard.
 #### 6b. Add GitHub Issue/PR After Creation
 Button to add GitHub issue and/or PR to an existing dashboard issue.
 
-#### 6c. Repository Picker
-Choose repo from a list instead of typing full name. Show suggestions from user's repos.
+#### 6c. Repository Picker + Search Scope
+Choose repo from a list instead of typing full name. Show suggestions from user's repos. Replace "Search all repositories" checkbox with a dropdown scope selector: **Linked repository** (default when dashboard has `githubRepo`), **My repositories** (default otherwise — searches personal + org repos via parallel queries), **All GitHub** (opt-in global search). Fetch `/user` and `/user/orgs` for scope filtering with caching. Cap parallel org queries at 5; fall back to global search + client-side filter for more.
 
 #### 6d. No-GitHub Mode
 Per-dashboard option to disable GitHub integration. Skip the GitHub link prompt during creation.

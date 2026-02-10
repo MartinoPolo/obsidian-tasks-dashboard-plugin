@@ -5,10 +5,16 @@
 - [x] Skip GitHub link prompt during issue creation when disabled
 - [x] Hide GitHub-related UI elements when disabled for that dashboard
 
-## Repository Picker (Req 6c)
+## Repository Picker + Search Scope (Req 6c)
 - [x] Fetch user's repos via GitHub API (with caching)
 - [x] Replace text input with searchable dropdown/suggest modal
 - [x] Show repo name, description, and visibility in suggestions
+- [ ] Replace "Search all repositories" checkbox with dropdown scope selector
+- [ ] Implement three search scopes: Linked repository, My repositories, All GitHub
+- [ ] Fetch `/user` (username) and `/user/orgs` (org names), cache alongside repo cache
+- [ ] "My repositories" mode: parallel search queries (`user:{login}` + `org:{orgName}`), combine & dedupe, sort by updated
+- [ ] Cap parallel org queries at 5; if more, fall back to global search + client-side filter
+- [ ] Verify disabled checkbox UX bug is resolved (replaced by dropdown)
 
 ## Enter Key Fix (Req 6g)
 - [x] Change enter key in GitHub search to confirm without auto-selecting first result
@@ -66,4 +72,4 @@
 - [ ] `pnpm lint` passes
 
 ---
-Progress: 17/23 tasks complete
+Progress: 17/40 tasks complete
