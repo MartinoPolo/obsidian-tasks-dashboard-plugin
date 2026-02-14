@@ -10,8 +10,35 @@ import { generateId } from './utils/slugify';
 import { RepositoryPickerModal } from './modals/RepositoryPickerModal';
 import { createPlatformService } from './utils/platform';
 
+type VisibilityToggleKey =
+	| 'showGitHubButtons'
+	| 'showFolderButtons'
+	| 'showTerminalButtons'
+	| 'showVSCodeButtons';
+
+function createVisibilityToggle(
+	container: HTMLElement,
+	dashboard: DashboardConfig,
+	key: VisibilityToggleKey,
+	name: string,
+	description: string,
+	plugin: TasksDashboardPlugin
+): void {
+	new Setting(container)
+		.setName(name)
+		.setDesc(description)
+		.addToggle((toggle) =>
+			toggle.setValue(dashboard[key] ?? true).onChange((value) => {
+				dashboard[key] = value;
+				void plugin.saveSettings();
+				plugin.triggerDashboardRefresh();
+			})
+		);
+}
+
 export class TasksDashboardSettingTab extends PluginSettingTab {
 	plugin: TasksDashboardPlugin;
+	private platformService = createPlatformService();
 
 	constructor(app: App, plugin: TasksDashboardPlugin) {
 		super(app, plugin);
@@ -355,8 +382,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 
 		projectFolderSetting.addButton((btn) =>
 			btn.setButtonText('Browse').onClick(() => {
-				const platformService = createPlatformService();
-				void platformService.pickFolder(dashboard.projectFolder).then((folderPath) => {
+				void this.platformService.pickFolder(dashboard.projectFolder).then((folderPath) => {
 					if (folderPath !== undefined) {
 						dashboard.projectFolder = folderPath;
 						void this.plugin.saveSettings();
@@ -366,49 +392,38 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			})
 		);
 
-		new Setting(dashboardContainer)
-			.setName('Show GitHub Buttons')
-			.setDesc('Show GitHub link buttons on each issue')
-			.addToggle((toggle) =>
-				toggle.setValue(dashboard.showGitHubButtons ?? true).onChange((value) => {
-					dashboard.showGitHubButtons = value;
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
-				})
-			);
-
-		new Setting(dashboardContainer)
-			.setName('Show Folder Buttons')
-			.setDesc('Show folder buttons on each issue and the dashboard header')
-			.addToggle((toggle) =>
-				toggle.setValue(dashboard.showFolderButtons ?? true).onChange((value) => {
-					dashboard.showFolderButtons = value;
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
-				})
-			);
-
-		new Setting(dashboardContainer)
-			.setName('Show Terminal Buttons')
-			.setDesc('Show terminal buttons on each issue and the dashboard header')
-			.addToggle((toggle) =>
-				toggle.setValue(dashboard.showTerminalButtons ?? true).onChange((value) => {
-					dashboard.showTerminalButtons = value;
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
-				})
-			);
-
-		new Setting(dashboardContainer)
-			.setName('Show VS Code Buttons')
-			.setDesc('Show VS Code buttons on each issue and the dashboard header')
-			.addToggle((toggle) =>
-				toggle.setValue(dashboard.showVSCodeButtons ?? true).onChange((value) => {
-					dashboard.showVSCodeButtons = value;
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
-				})
-			);
+		createVisibilityToggle(
+			dashboardContainer,
+			dashboard,
+			'showGitHubButtons',
+			'Show GitHub Buttons',
+			'Show GitHub link buttons on each issue',
+			this.plugin
+		);
+		createVisibilityToggle(
+			dashboardContainer,
+			dashboard,
+			'showFolderButtons',
+			'Show Folder Buttons',
+			'Show folder buttons on each issue and the dashboard header',
+			this.plugin
+		);
+		createVisibilityToggle(
+			dashboardContainer,
+			dashboard,
+			'showTerminalButtons',
+			'Show Terminal Buttons',
+			'Show terminal buttons on each issue and the dashboard header',
+			this.plugin
+		);
+		createVisibilityToggle(
+			dashboardContainer,
+			dashboard,
+			'showVSCodeButtons',
+			'Show VS Code Buttons',
+			'Show VS Code buttons on each issue and the dashboard header',
+			this.plugin
+		);
 
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
 

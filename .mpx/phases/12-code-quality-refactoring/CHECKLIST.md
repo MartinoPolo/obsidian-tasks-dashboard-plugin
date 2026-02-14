@@ -92,9 +92,9 @@ Split 570-line modal file and extract shared setup patterns.
 
 Final deduplication pass.
 
-- [ ] In `src/settings.ts`: extract `createVisibilityToggle(container, dashboard, key, name, desc)` helper for 4 identical show*Buttons toggle patterns (showGitHubButtons, showFolderButtons, showTerminalButtons, showVSCodeButtons)
-- [ ] In `src/settings.ts`: cache `createPlatformService()` result instead of creating new instance per Browse click
-- [ ] Verify `pnpm build` passes
+- [x] In `src/settings.ts`: extract `createVisibilityToggle(container, dashboard, key, name, desc)` helper for 4 identical show*Buttons toggle patterns (showGitHubButtons, showFolderButtons, showTerminalButtons, showVSCodeButtons)
+- [x] In `src/settings.ts`: cache `createPlatformService()` result instead of creating new instance per Browse click
+- [x] Verify `pnpm build` passes
 
 ## New Files Created
 - `src/utils/github-url.ts` — consolidated GitHub URL parsing
@@ -109,10 +109,10 @@ Final deduplication pass.
 - `src/modals/rename-issue-modal.ts` — rename modal
 
 ## Completion Criteria
-- [ ] All 8 groups implemented with `pnpm build` passing after each
+- [x] All 8 groups implemented with `pnpm build` passing after each
 - [ ] `pnpm lint` passes with no new warnings
 - [ ] Manual test: dashboards render, buttons work, GitHub cards load
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 41/48 tasks complete
+Progress: 44/48 tasks complete
