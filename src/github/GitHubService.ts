@@ -59,6 +59,7 @@ export interface GitHubServiceInstance {
 }
 
 const CACHE_TTL = 5 * 60 * 1000;
+const MAX_CACHE_SIZE = 200;
 const API_BASE = 'https://api.github.com';
 
 export function createGitHubService(): GitHubServiceInstance {
@@ -124,10 +125,17 @@ export function createGitHubService(): GitHubServiceInstance {
 			cache.delete(key);
 			return undefined;
 		}
+		// Move to end of Map iteration order (LRU: most recently accessed last)
+		cache.delete(key);
+		cache.set(key, entry);
 		return entry.data;
 	};
 
 	const setCache = <T>(key: string, data: T): void => {
+		if (cache.size >= MAX_CACHE_SIZE) {
+			const oldestKey = cache.keys().next().value as string;
+			cache.delete(oldestKey);
+		}
 		cache.set(key, { data, timestamp: Date.now() });
 	};
 

@@ -424,9 +424,11 @@ show tree
 		}
 
 		const issueTimestamps = new Map<string, number>();
-		for (const issue of parsed.activeIssues) {
-			const createdTimestamp = await readCreatedDateForIssue(issue.filePath);
-			issueTimestamps.set(issue.id, createdTimestamp);
+		const createdTimestamps = await Promise.all(
+			parsed.activeIssues.map((issue) => readCreatedDateForIssue(issue.filePath))
+		);
+		for (const [index, issue] of parsed.activeIssues.entries()) {
+			issueTimestamps.set(issue.id, createdTimestamps[index]);
 		}
 
 		const sortedIssues = [...parsed.activeIssues].sort((a, b) => {

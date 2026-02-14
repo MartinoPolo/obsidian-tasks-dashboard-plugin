@@ -493,9 +493,22 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		renderHeader(container, params, dashboard);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
-		const progress = await plugin.progressTracker.getProgress(params.path);
-		renderProgressBar(controls, progress, params.priority);
+		const placeholderProgress: IssueProgress = { done: 0, total: 0, percentage: 0 };
+		renderProgressBar(controls, placeholderProgress, params.priority);
 		renderButtons(controls, params, dashboard);
+
+		void plugin.progressTracker.getProgress(params.path).then((progress) => {
+			const placeholderElement = controls.querySelector('.tdc-progress');
+			if (placeholderElement !== null) {
+				placeholderElement.remove();
+			}
+			renderProgressBar(controls, progress, params.priority);
+			// Move newly appended progress element before buttons
+			const updatedProgress = controls.querySelector('.tdc-progress');
+			if (updatedProgress !== null) {
+				controls.insertBefore(updatedProgress, controls.firstChild);
+			}
+		});
 
 		if (dashboard.githubEnabled && params.githubLinks.length > 0) {
 			const cardContainers = params.githubLinks.map(() => container.createDiv());

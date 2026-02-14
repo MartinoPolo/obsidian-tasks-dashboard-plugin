@@ -210,12 +210,12 @@ export function renderSortControls(
 
 	const containerRenderChild = new MarkdownRenderChild(container);
 	const portalDropdown = sortDropdown;
-	containerRenderChild.onunload = () => {
+	containerRenderChild.register(() => {
 		document.removeEventListener('click', closeSortDropdownOnClick);
 		closeSortDropdown();
 		if (portalDropdown.parentElement !== null) {
 			portalDropdown.parentElement.removeChild(portalDropdown);
 		}
-	};
+	});
 	ctx.addChild(containerRenderChild);
 }

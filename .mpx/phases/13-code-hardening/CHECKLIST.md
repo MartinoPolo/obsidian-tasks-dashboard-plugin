@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 13/24
+## Progress: 28/72
 
 ## Group A: Security Fixes
 
@@ -59,45 +59,45 @@ Issue files read one-by-one in loop during sort. With 20 issues = 20 sequential 
 
 **File:** `src/dashboard/DashboardWriter.ts:426-478`
 
-- [ ] Replace sequential loop with `Promise.all()` for `readCreatedDateForIssue` calls
-- [ ] Apply same fix to `sortByEditedDate` file reads
-- [ ] Verify `pnpm build` passes
+- [x] Replace sequential loop with `Promise.all()` for `readCreatedDateForIssue` calls
+- [x] Apply same fix to `sortByEditedDate` file reads — N/A: `sortByEditedDate` reads `stat.mtime` synchronously
+- [x] Verify `pnpm build` passes
 
 ### B3. Fix memory leak — dropdown event listeners accumulate
 `window.addEventListener('scroll/resize')` added on render, cleanup only in `onunload`. Re-render accumulates listeners without cleanup.
 
 **File:** `src/dashboard/sort-controls.ts:144-219`
 
-- [ ] Register cleanup via `MarkdownRenderChild.register()` callback
-- [ ] Remove scroll, resize, and click listeners on re-render/unload
-- [ ] Verify `pnpm build` passes
+- [x] Register cleanup via `MarkdownRenderChild.register()` callback
+- [x] Remove scroll, resize, and click listeners on re-render/unload
+- [x] Verify `pnpm build` passes
 
 ### B4. Render progress asynchronously with placeholder
 `await getProgress()` blocks render path. Cold cache = visible delay before UI appears.
 
 **File:** `src/dashboard/DashboardRenderer.ts:496`
 
-- [ ] Render placeholder progress bar (0/0) immediately
-- [ ] Update with real data when async read completes
-- [ ] Verify `pnpm build` passes
+- [x] Render placeholder progress bar (0/0) immediately
+- [x] Update with real data when async read completes
+- [x] Verify `pnpm build` passes
 
 ### B5. Implement LRU cache with size cap for GitHub cache
 Map grows unbounded in long sessions. No eviction strategy.
 
 **File:** `src/github/GitHubService.ts:67`
 
-- [ ] Add `MAX_CACHE_SIZE` constant (~200 entries)
-- [ ] Evict oldest entry when limit reached
-- [ ] Verify `pnpm build` passes
+- [x] Add `MAX_CACHE_SIZE` constant (~200 entries)
+- [x] Evict oldest entry when limit reached
+- [x] Verify `pnpm build` passes
 
 ### B6. Debounce vault modify event handler
 Every keystroke in issue file triggers cache invalidation + dashboard refresh. No debounce.
 
 **File:** `main.ts:93-103`
 
-- [ ] Add 500ms debounce on `triggerDashboardRefresh()` call
-- [ ] Keep immediate `invalidateCache()` (cheap operation)
-- [ ] Verify `pnpm build` passes
+- [x] Add 500ms debounce on `triggerDashboardRefresh()` call
+- [x] Keep immediate `invalidateCache()` (cheap operation)
+- [x] Verify `pnpm build` passes
 
 ## Group C: Error Handling & Reliability
 

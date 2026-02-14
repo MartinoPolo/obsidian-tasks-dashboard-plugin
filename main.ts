@@ -89,6 +89,9 @@ export default class TasksDashboardPlugin extends Plugin {
 				}
 			})
 		);
+		let refreshDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+		const REFRESH_DEBOUNCE_MS = 500;
+
 		this.registerEvent(
 			this.app.vault.on('modify', (file) => {
 				if (!(file instanceof TFile)) {
@@ -98,7 +101,13 @@ export default class TasksDashboardPlugin extends Plugin {
 					return;
 				}
 				this.progressTracker.invalidateCache(file.path);
-				this.triggerDashboardRefresh();
+				if (refreshDebounceTimer !== undefined) {
+					clearTimeout(refreshDebounceTimer);
+				}
+				refreshDebounceTimer = setTimeout(() => {
+					refreshDebounceTimer = undefined;
+					this.triggerDashboardRefresh();
+				}, REFRESH_DEBOUNCE_MS);
 			})
 		);
 	}
