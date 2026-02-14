@@ -93,8 +93,13 @@ export interface DashboardConfig {
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {
-	const filename = dashboard.dashboardFilename || 'Dashboard.md';
-	return filename.replace(/\.md$/, '');
+	const filename = (dashboard.dashboardFilename || 'Dashboard.md').replace(/\.md$/, '');
+	const segments = (dashboard.rootPath || '').split('/').filter(Boolean);
+	const parentFolder = segments.length > 0 ? segments[segments.length - 1] : '';
+	if (parentFolder) {
+		return `${parentFolder}/${filename}`;
+	}
+	return filename;
 }
 export interface TasksDashboardSettings {
 	dashboards: DashboardConfig[];
