@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 51/72
+## Progress: 54/72
 
 ## Group A: Security Fixes
 
@@ -171,9 +171,9 @@ If `loadSettings()` or service creation fails, plugin initialization fails silen
 
 **File:** `src/utils/platform.ts:44`
 
-- [ ] Research Obsidian's current approach to folder picker dialogs
-- [ ] Replace with Obsidian-native API or `@electron/remote` if needed
-- [ ] Verify `pnpm build` passes
+- [x] Research Obsidian's current approach to folder picker dialogs
+- [x] Replace with `@electron/remote` (Obsidian bundles it; no native API exists)
+- [x] Verify `pnpm build` passes
 
 ## Group D: Code Quality & Conventions
 

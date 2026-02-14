@@ -59,19 +59,24 @@ export function createPlatformService(): PlatformService {
 	};
 
 	const pickFolder = async (defaultPath?: string): Promise<string | undefined> => {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-		const { dialog } = require('electron').remote;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const result = await dialog.showOpenDialog({
-			properties: ['openDirectory'],
-			defaultPath
-		});
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (result.canceled || result.filePaths.length === 0) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+			const remote = require('@electron/remote');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			const result = await remote.dialog.showOpenDialog({
+				properties: ['openDirectory'],
+				defaultPath
+			});
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (result.canceled || result.filePaths.length === 0) {
+				return undefined;
+			}
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			return result.filePaths[0] as string;
+		} catch {
+			new Notice('Could not open folder picker');
 			return undefined;
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		return result.filePaths[0] as string;
 	};
 
 	return { openInFileExplorer, openTerminal, openVSCode, pickFolder };
