@@ -15,28 +15,39 @@ export function createPlatformService(): PlatformService {
 		void shell.openPath(folderPath);
 	};
 
+	const isValidHexColor = (color: string): boolean => /^#[0-9A-Fa-f]{6}$/.test(color);
+
 	const openTerminal = (folderPath: string, tabColor?: string): void => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-		const { exec } = require('child_process');
+		const { spawn } = require('child_process');
 
 		if (Platform.isWin) {
-			const colorFlag = tabColor !== undefined ? ` --tabColor "${tabColor}"` : '';
+			const spawnArguments = ['-w', '0', 'nt', '-d', folderPath];
+			if (tabColor !== undefined && isValidHexColor(tabColor)) {
+				spawnArguments.push('--tabColor', tabColor);
+			}
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`wt -w 0 nt -d "${folderPath.replace(/"/g, '\\"')}"${colorFlag}`, { cwd: folderPath });
+			spawn('wt', spawnArguments, { shell: false, cwd: folderPath });
 		} else if (Platform.isMacOS) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`open -a Terminal "${folderPath}"`);
+			spawn('open', ['-a', 'Terminal', folderPath], { shell: false });
 		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`x-terminal-emulator --working-directory="${folderPath}" 2>/dev/null || xterm -e "cd '${folderPath}' && $SHELL" &`);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+			const terminalProcess = spawn('x-terminal-emulator', ['--working-directory', folderPath], { shell: false });
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			terminalProcess.on('error', () => {
+				// Fallback to xterm if x-terminal-emulator is not available
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				spawn('xterm', [], { shell: false, cwd: folderPath });
+			});
 		}
 	};
 
 	const openVSCode = (folderPath: string): void => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-		const { exec } = require('child_process');
+		const { spawn } = require('child_process');
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		exec(`code "${folderPath.replace(/"/g, '\\"')}"`, { cwd: folderPath });
+		spawn('code', [folderPath], { shell: false, cwd: folderPath });
 	};
 
 	const pickFolder = async (defaultPath?: string): Promise<string | undefined> => {
