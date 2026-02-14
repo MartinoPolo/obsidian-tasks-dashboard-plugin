@@ -22,7 +22,7 @@ export function createPlatformService(): PlatformService {
 		if (Platform.isWin) {
 			const colorFlag = tabColor !== undefined ? ` --tabColor "${tabColor}"` : '';
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`wt -d "${folderPath.replace(/"/g, '\\"')}"${colorFlag}`, { cwd: folderPath });
+			exec(`wt -w 0 nt -d "${folderPath.replace(/"/g, '\\"')}"${colorFlag}`, { cwd: folderPath });
 		} else if (Platform.isMacOS) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			exec(`open -a Terminal "${folderPath}"`);
