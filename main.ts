@@ -23,6 +23,7 @@ import {
 } from './src/dashboard/DashboardWriter';
 import {
 	createDashboardRenderer,
+	ReactiveRenderChild,
 	type DashboardRendererInstance
 } from './src/dashboard/DashboardRenderer';
 import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
@@ -45,15 +46,30 @@ export default class TasksDashboardPlugin extends Plugin {
 		this.progressTracker = createProgressTracker(this.app);
 		this.dashboardWriter = createDashboardWriter(this.app, this);
 		this.dashboardRenderer = createDashboardRenderer(this);
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) =>
-			this.dashboardRenderer.render(source, el, ctx)
-		);
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) =>
-			this.dashboardRenderer.renderSortButton(source, el, ctx)
-		);
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) =>
-			this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx)
-		);
+		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) => {
+			void this.dashboardRenderer.render(source, el, ctx);
+			ctx.addChild(
+				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+					this.dashboardRenderer.render(s, e, c)
+				)
+			);
+		});
+		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) => {
+			this.dashboardRenderer.renderSortButton(source, el, ctx);
+			ctx.addChild(
+				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+					this.dashboardRenderer.renderSortButton(s, e, c)
+				)
+			);
+		});
+		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) => {
+			void this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx);
+			ctx.addChild(
+				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+					this.dashboardRenderer.renderGitHubNoteCard(s, e, c)
+				)
+			);
+		});
 		this.registerDashboardCommands();
 		this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
 		this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
@@ -82,38 +98,19 @@ export default class TasksDashboardPlugin extends Plugin {
 					return;
 				}
 				this.progressTracker.invalidateCache(file.path);
-				this.rerenderDashboardViews();
+				this.triggerDashboardRefresh();
 			})
 		);
 	}
 
-	rerenderDashboardViews(): void {
-		for (const leaf of this.app.workspace.getLeavesOfType('markdown')) {
-			const view = leaf.view;
-			if (!(view instanceof MarkdownView)) {
-				continue;
-			}
-			const viewFile = view.file;
-			if (viewFile === null || !this.isDashboardFile(viewFile)) {
-				continue;
-			}
-			// Force re-render of preview mode code blocks (progress bars)
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			(view as any).previewMode?.rerender(true);
-		}
+	triggerDashboardRefresh(): void {
+		this.app.workspace.trigger('tasks-dashboard:refresh');
 	}
 
 	private isActiveIssueFile(file: TFile): boolean {
 		return this.settings.dashboards.some((dashboard) =>
 			file.path.startsWith(`${dashboard.rootPath}/Issues/Active/`)
 		);
-	}
-
-	private isDashboardFile(file: TFile): boolean {
-		return this.settings.dashboards.some((dashboard) => {
-			const filename = dashboard.dashboardFilename || 'Dashboard.md';
-			return file.path === `${dashboard.rootPath}/${filename}`;
-		});
 	}
 
 	private findTasksSectionEnd(editor: Editor): EditorPosition {

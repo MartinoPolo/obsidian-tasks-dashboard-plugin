@@ -40,6 +40,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.onChange((value) => {
 						this.plugin.settings.progressDisplayMode = value as ProgressDisplayMode;
 						void this.plugin.saveSettings();
+						this.plugin.triggerDashboardRefresh();
 					})
 			);
 
@@ -157,6 +158,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						this.plugin.githubService.setAuth({ method: 'none' });
 					}
 					void this.plugin.saveSettings();
+					this.plugin.triggerDashboardRefresh();
 					this.display();
 				})
 		);
@@ -178,6 +180,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						this.plugin.settings.githubAuth.token = value;
 						this.plugin.githubService.setAuth(this.plugin.settings.githubAuth);
 						void this.plugin.saveSettings();
+						this.plugin.triggerDashboardRefresh();
 					});
 			});
 
@@ -214,7 +217,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.onChange((value) => {
 						this.plugin.settings.githubDisplayMode = value as GitHubDisplayMode;
 						void this.plugin.saveSettings();
-						this.plugin.rerenderDashboardViews();
+						this.plugin.triggerDashboardRefresh();
 					})
 			);
 	}
@@ -325,6 +328,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				toggle.setValue(dashboard.githubEnabled).onChange((value) => {
 					dashboard.githubEnabled = value;
 					void this.plugin.saveSettings();
+					this.plugin.triggerDashboardRefresh();
 					this.display();
 				})
 			);
@@ -345,6 +349,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.onChange((value) => {
 						dashboard.projectFolder = value !== '' ? value : undefined;
 						void this.plugin.saveSettings();
+						this.plugin.triggerDashboardRefresh();
 					})
 			);
 
@@ -368,7 +373,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				toggle.setValue(dashboard.showGitHubButtons ?? true).onChange((value) => {
 					dashboard.showGitHubButtons = value;
 					void this.plugin.saveSettings();
-					this.plugin.rerenderDashboardViews();
+					this.plugin.triggerDashboardRefresh();
 				})
 			);
 
@@ -379,7 +384,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				toggle.setValue(dashboard.showFolderButtons ?? true).onChange((value) => {
 					dashboard.showFolderButtons = value;
 					void this.plugin.saveSettings();
-					this.plugin.rerenderDashboardViews();
+					this.plugin.triggerDashboardRefresh();
 				})
 			);
 
@@ -390,7 +395,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				toggle.setValue(dashboard.showTerminalButtons ?? true).onChange((value) => {
 					dashboard.showTerminalButtons = value;
 					void this.plugin.saveSettings();
-					this.plugin.rerenderDashboardViews();
+					this.plugin.triggerDashboardRefresh();
 				})
 			);
 
@@ -401,7 +406,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				toggle.setValue(dashboard.showVSCodeButtons ?? true).onChange((value) => {
 					dashboard.showVSCodeButtons = value;
 					void this.plugin.saveSettings();
-					this.plugin.rerenderDashboardViews();
+					this.plugin.triggerDashboardRefresh();
 				})
 			);
 

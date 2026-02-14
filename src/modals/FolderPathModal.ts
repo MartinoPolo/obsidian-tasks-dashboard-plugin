@@ -108,7 +108,7 @@ export class FolderPathModal extends Modal {
 			clearBtn.addEventListener('click', () => {
 				this.setValue(undefined);
 				void this.plugin.saveSettings();
-				this.plugin.rerenderDashboardViews();
+				this.plugin.triggerDashboardRefresh();
 				new Notice('Project folder cleared');
 				this.close();
 			});
@@ -138,7 +138,7 @@ export class FolderPathModal extends Modal {
 			this.setValue(value);
 		}
 		void this.plugin.saveSettings();
-		this.plugin.rerenderDashboardViews();
+		this.plugin.triggerDashboardRefresh();
 		new Notice(value !== '' ? `Project folder set: ${value}` : 'Project folder cleared');
 		this.close();
 	}

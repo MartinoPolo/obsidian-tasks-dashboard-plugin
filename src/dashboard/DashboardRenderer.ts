@@ -50,6 +50,37 @@ export interface DashboardRendererInstance {
 	) => Promise<void>;
 }
 
+type RenderFunction = (
+	source: string,
+	el: HTMLElement,
+	ctx: MarkdownPostProcessorContext
+) => void | Promise<void>;
+
+export class ReactiveRenderChild extends MarkdownRenderChild {
+	private debounceTimer: number | undefined;
+
+	constructor(
+		containerEl: HTMLElement,
+		private source: string,
+		private ctx: MarkdownPostProcessorContext,
+		plugin: TasksDashboardPlugin,
+		private renderFunction: RenderFunction
+	) {
+		super(containerEl);
+		// Register in constructor — ctx.addChild() may never call onload()
+		this.registerEvent(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(plugin.app.workspace as any).on('tasks-dashboard:refresh', () => {
+				window.clearTimeout(this.debounceTimer);
+				this.debounceTimer = window.setTimeout(() => {
+					this.containerEl.empty();
+					void this.renderFunction(this.source, this.containerEl, this.ctx);
+				}, 100);
+			})
+		);
+	}
+}
+
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const githubCardRenderer = createGitHubCardRenderer();
 	const platformService = createPlatformService();
@@ -608,8 +639,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		if (isCollapsed) {
 			setIssueCollapsed(el, true);
 		}
-
-		ctx.addChild(new MarkdownRenderChild(container));
 	};
 
 	const getActiveIssueIds = async (dashboard: DashboardConfig): Promise<string[]> => {
@@ -953,8 +982,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const container = el.createDiv({ cls: 'tdc-github-note-container' });
 		await renderGitHubCard(container, params.url);
-
-		ctx.addChild(new MarkdownRenderChild(container));
 	};
 
 	return { render, renderSortButton, renderGitHubNoteCard };
