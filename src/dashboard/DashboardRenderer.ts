@@ -36,7 +36,8 @@ const ICONS = {
 	palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"/></svg>`,
 	github: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`,
 	folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`,
-	terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`
+	terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+	vscode: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -233,6 +234,17 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				e.stopPropagation();
 				const issueColor = plugin.settings.issueColors[params.issue];
 				platformService.openTerminal(issueFolder, issueColor);
+			});
+
+			const vscodeBtn = headerActions.createEl('button', {
+				cls: 'tdc-btn tdc-btn-vscode',
+				attr: { 'aria-label': 'Open in VS Code' }
+			});
+			vscodeBtn.innerHTML = ICONS.vscode;
+			vscodeBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				platformService.openVSCode(issueFolder);
 			});
 		}
 
@@ -792,6 +804,16 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			terminalButton.addEventListener('click', (e) => {
 				e.preventDefault();
 				platformService.openTerminal(dashboard.projectFolder!);
+			});
+
+			const vscodeButton = container.createEl('button', {
+				cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode',
+				attr: { 'aria-label': 'Open in VS Code' }
+			});
+			vscodeButton.innerHTML = ICONS.vscode + ' VS Code';
+			vscodeButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				platformService.openVSCode(dashboard.projectFolder!);
 			});
 		}
 

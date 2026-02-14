@@ -360,6 +360,16 @@
 	color: var(--text-on-accent);
 }
 
+.tdc-btn-vscode {
+	background: color-mix(in srgb, #007ACC 15%, transparent);
+	color: #007ACC;
+}
+
+.tdc-btn-vscode:hover {
+	background: #007ACC;
+	color: white;
+}
+
 .tdc-btn-folder.tdc-btn-faded {
 	opacity: 0.4;
 }
