@@ -39,77 +39,88 @@ export default class TasksDashboardPlugin extends Plugin {
 	githubService!: GitHubServiceInstance;
 	private registeredCommands: string[] = [];
 	async onload() {
-		await this.loadSettings();
-		this.githubService = createGitHubService();
-		this.githubService.setAuth(this.settings.githubAuth);
-		this.issueManager = createIssueManager(this.app, this);
-		this.progressTracker = createProgressTracker(this.app);
-		this.dashboardWriter = createDashboardWriter(this.app, this);
-		this.dashboardRenderer = createDashboardRenderer(this);
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) => {
-			void this.dashboardRenderer.render(source, el, ctx);
-			ctx.addChild(
-				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-					this.dashboardRenderer.render(s, e, c)
-				)
+		try {
+			await this.loadSettings();
+			this.githubService = createGitHubService();
+			this.githubService.setAuth(this.settings.githubAuth);
+			this.issueManager = createIssueManager(this.app, this);
+			this.progressTracker = createProgressTracker(this.app);
+			this.dashboardWriter = createDashboardWriter(this.app, this);
+			this.dashboardRenderer = createDashboardRenderer(this);
+			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) => {
+				this.dashboardRenderer.render(source, el, ctx).catch((error: unknown) => {
+					console.error('Tasks Dashboard: render failed', error);
+					el.createEl('span', { text: 'Failed to render dashboard controls', cls: 'tdc-error' });
+				});
+				ctx.addChild(
+					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+						this.dashboardRenderer.render(s, e, c)
+					)
+				);
+			});
+			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) => {
+				this.dashboardRenderer.renderSortButton(source, el, ctx);
+				ctx.addChild(
+					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+						this.dashboardRenderer.renderSortButton(s, e, c)
+					)
+				);
+			});
+			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) => {
+				this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx).catch((error: unknown) => {
+					console.error('Tasks Dashboard: GitHub card render failed', error);
+					el.createEl('span', { text: 'Failed to render GitHub card', cls: 'tdc-error' });
+				});
+				ctx.addChild(
+					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
+						this.dashboardRenderer.renderGitHubNoteCard(s, e, c)
+					)
+				);
+			});
+			this.registerDashboardCommands();
+			this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
+			this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
+				this.showDashboardSelector();
+			});
+			this.registerEvent(
+				this.app.workspace.on('file-open', (file) => {
+					if (file !== null && this.isActiveIssueFile(file)) {
+						setTimeout(() => {
+							const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+							if (view?.editor) {
+								const editor = view.editor;
+								const cursorPosition = this.findTasksSectionEnd(editor);
+								editor.setCursor(cursorPosition);
+							}
+						}, 50);
+					}
+				})
 			);
-		});
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) => {
-			this.dashboardRenderer.renderSortButton(source, el, ctx);
-			ctx.addChild(
-				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-					this.dashboardRenderer.renderSortButton(s, e, c)
-				)
-			);
-		});
-		this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) => {
-			void this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx);
-			ctx.addChild(
-				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-					this.dashboardRenderer.renderGitHubNoteCard(s, e, c)
-				)
-			);
-		});
-		this.registerDashboardCommands();
-		this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
-		this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
-			this.showDashboardSelector();
-		});
-		this.registerEvent(
-			this.app.workspace.on('file-open', (file) => {
-				if (file !== null && this.isActiveIssueFile(file)) {
-					setTimeout(() => {
-						const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-						if (view?.editor) {
-							const editor = view.editor;
-							const cursorPosition = this.findTasksSectionEnd(editor);
-							editor.setCursor(cursorPosition);
-						}
-					}, 50);
-				}
-			})
-		);
-		let refreshDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-		const REFRESH_DEBOUNCE_MS = 500;
+			let refreshDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+			const REFRESH_DEBOUNCE_MS = 500;
 
-		this.registerEvent(
-			this.app.vault.on('modify', (file) => {
-				if (!(file instanceof TFile)) {
-					return;
-				}
-				if (!this.isActiveIssueFile(file)) {
-					return;
-				}
-				this.progressTracker.invalidateCache(file.path);
-				if (refreshDebounceTimer !== undefined) {
-					clearTimeout(refreshDebounceTimer);
-				}
-				refreshDebounceTimer = setTimeout(() => {
-					refreshDebounceTimer = undefined;
-					this.triggerDashboardRefresh();
-				}, REFRESH_DEBOUNCE_MS);
-			})
-		);
+			this.registerEvent(
+				this.app.vault.on('modify', (file) => {
+					if (!(file instanceof TFile)) {
+						return;
+					}
+					if (!this.isActiveIssueFile(file)) {
+						return;
+					}
+					this.progressTracker.invalidateCache(file.path);
+					if (refreshDebounceTimer !== undefined) {
+						clearTimeout(refreshDebounceTimer);
+					}
+					refreshDebounceTimer = setTimeout(() => {
+						refreshDebounceTimer = undefined;
+						this.triggerDashboardRefresh();
+					}, REFRESH_DEBOUNCE_MS);
+				})
+			);
+		} catch (error) {
+			console.error('Tasks Dashboard: failed to initialize', error);
+			new Notice('Tasks Dashboard: initialization failed. Check console for details.');
+		}
 	}
 
 	triggerDashboardRefresh(): void {
@@ -223,11 +234,30 @@ export default class TasksDashboardPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<TasksDashboardSettings>
-		);
+		const loaded: unknown = await this.loadData();
+		const validatedData =
+			loaded !== null && loaded !== undefined && typeof loaded === 'object' && !Array.isArray(loaded)
+				? (loaded as Partial<TasksDashboardSettings>)
+				: {};
+
+		// Validate critical fields — discard if wrong type
+		if ('dashboards' in validatedData && !Array.isArray(validatedData.dashboards)) {
+			delete validatedData.dashboards;
+		}
+		if ('githubAuth' in validatedData && typeof validatedData.githubAuth !== 'string') {
+			delete validatedData.githubAuth;
+		}
+		if ('collapsedIssues' in validatedData && (typeof validatedData.collapsedIssues !== 'object' || validatedData.collapsedIssues === null)) {
+			delete validatedData.collapsedIssues;
+		}
+		if ('issueColors' in validatedData && (typeof validatedData.issueColors !== 'object' || validatedData.issueColors === null)) {
+			delete validatedData.issueColors;
+		}
+		if ('issueFolders' in validatedData && (typeof validatedData.issueFolders !== 'object' || validatedData.issueFolders === null)) {
+			delete validatedData.issueFolders;
+		}
+
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, validatedData);
 		for (const dashboard of this.settings.dashboards) {
 			if ((dashboard as unknown as Record<string, unknown>).githubEnabled === undefined) {
 				dashboard.githubEnabled = true;

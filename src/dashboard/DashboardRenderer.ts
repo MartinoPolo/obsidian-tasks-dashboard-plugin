@@ -53,7 +53,13 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 				window.clearTimeout(this.debounceTimer);
 				this.debounceTimer = window.setTimeout(() => {
 					this.containerEl.empty();
-					void this.renderFunction(this.source, this.containerEl, this.ctx);
+					const result = this.renderFunction(this.source, this.containerEl, this.ctx);
+					if (result instanceof Promise) {
+						result.catch((error: unknown) => {
+							console.error('Tasks Dashboard: reactive render failed', error);
+							this.containerEl.createEl('span', { text: 'Failed to render', cls: 'tdc-error' });
+						});
+					}
 				}, 100);
 			})
 		);

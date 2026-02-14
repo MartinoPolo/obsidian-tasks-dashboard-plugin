@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 41/72
+## Progress: 51/72
 
 ## Group A: Security Fixes
 
@@ -143,28 +143,28 @@ Shell commands fail silently if terminal/VS Code not installed. No user feedback
 
 **File:** `main.ts:220`
 
-- [ ] Check `loaded && typeof loaded === 'object'` before merging
-- [ ] Validate key fields exist and have expected types
-- [ ] Verify `pnpm build` passes
+- [x] Check `loaded && typeof loaded === 'object'` before merging
+- [x] Validate key fields exist and have expected types
+- [x] Verify `pnpm build` passes
 
 ### C6. Add error handling for swallowed promise rejections in render
 `void` keyword on async render calls swallows errors. Failed renders show nothing.
 
 **File:** `src/dashboard/DashboardRenderer.ts:50-56`
 
-- [ ] Replace `void` with `.catch()` that shows error in container
-- [ ] Log error to console for debugging
-- [ ] Verify `pnpm build` passes
+- [x] Replace `void` with `.catch()` that shows error in container
+- [x] Log error to console for debugging
+- [x] Verify `pnpm build` passes
 
 ### C7. Add try/catch to plugin onload() with user notice
 If `loadSettings()` or service creation fails, plugin initialization fails silently.
 
 **File:** `main.ts:41-104`
 
-- [ ] Wrap onload body in try/catch
-- [ ] Show `Notice` with error message on failure
-- [ ] Log full error to console
-- [ ] Verify `pnpm build` passes
+- [x] Wrap onload body in try/catch
+- [x] Show `Notice` with error message on failure
+- [x] Log full error to console
+- [x] Verify `pnpm build` passes
 
 ### C8. Replace deprecated electron.remote
 `require('electron').remote` removed in newer Electron versions. Will crash in future Obsidian updates.
