@@ -217,13 +217,21 @@ export class GitHubSearchModal extends Modal {
 		this.showLoading('Searching...');
 		this.selectedIndex = -1;
 
-		const repo = this.getRepoForCurrentScope();
-
 		try {
-			const [issueResults, prResults] = await Promise.all([
-				this.plugin.githubService.searchIssues(query, repo),
-				this.plugin.githubService.searchPullRequests(query, repo)
-			]);
+			let issueResults, prResults;
+
+			if (this.searchScope === 'my-repos') {
+				[issueResults, prResults] = await Promise.all([
+					this.plugin.githubService.searchIssuesInMyRepos(query),
+					this.plugin.githubService.searchPullRequestsInMyRepos(query)
+				]);
+			} else {
+				const repo = this.getRepoForCurrentScope();
+				[issueResults, prResults] = await Promise.all([
+					this.plugin.githubService.searchIssues(query, repo),
+					this.plugin.githubService.searchPullRequests(query, repo)
+				]);
+			}
 
 			const combined = [...issueResults.items, ...prResults.items]
 				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -372,7 +380,6 @@ export class GitHubSearchModal extends Modal {
 		if (this.searchScope === 'linked') {
 			return this.dashboard.githubRepo;
 		}
-		// "my-repos" behaves as "all-github" for now (parallel org search is a future task)
 		return undefined;
 	}
 

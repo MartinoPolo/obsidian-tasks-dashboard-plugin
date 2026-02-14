@@ -1,5 +1,17 @@
 # Phase 1: Bug Fixes - Checklist
 
+**Status:** Complete
+**Dependencies:** None
+
+## Objective
+Fix critical bugs: progress refresh, backlinks with spaces, command registration, create files button, task query tree display.
+
+## Decisions
+- Auto-refresh via `vault.on('modify')` chosen over manual refresh button
+- `encodeURI()` used for backlink paths (standard markdown links, not wiki-links)
+- Hardcoded hotkey removed entirely; users configure via Obsidian Settings > Hotkeys
+- Create Files button already idempotent, no code change needed
+
 ## Progress Refresh (Req 1)
 - [x] Investigate why progress doesn't update when tasks toggled from dashboard
 - [x] Fix progress recalculation on vault modify events for dashboard file

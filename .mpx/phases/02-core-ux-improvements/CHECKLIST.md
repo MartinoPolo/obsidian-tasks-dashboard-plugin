@@ -1,5 +1,11 @@
 # Phase 2: Core UX Improvements - Checklist
 
+**Status:** Complete
+**Dependencies:** Phase 1
+
+## Objective
+Improve daily workflow: collapsible issues, smart cursor positioning, separate archive/delete, date sorting.
+
 ## Collapsible Issues (Req 3)
 - [x] Add collapse/expand toggle button per issue in DashboardRenderer
 - [x] Implement collapsed state persistence in plugin settings (keyed by issue ID)

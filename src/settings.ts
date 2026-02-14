@@ -8,6 +8,7 @@ import {
 } from './types';
 import { generateId } from './utils/slugify';
 import { RepositoryPickerModal } from './modals/RepositoryPickerModal';
+import { createPlatformService } from './utils/platform';
 
 export class TasksDashboardSettingTab extends PluginSettingTab {
 	plugin: TasksDashboardPlugin;
@@ -331,6 +332,67 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		if (dashboard.githubEnabled) {
 			this.renderRepositoryPicker(dashboardContainer, dashboard);
 		}
+
+		const projectFolderSetting = new Setting(dashboardContainer)
+			.setName('Project Folder')
+			.setDesc(
+				'Absolute path to the on-disk project folder. Enables Open Folder and Terminal buttons on the dashboard.'
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder('C:\\Projects\\MyApp')
+					.setValue(dashboard.projectFolder ?? '')
+					.onChange((value) => {
+						dashboard.projectFolder = value !== '' ? value : undefined;
+						void this.plugin.saveSettings();
+					})
+			);
+
+		projectFolderSetting.addButton((btn) =>
+			btn.setButtonText('Browse').onClick(() => {
+				const platformService = createPlatformService();
+				void platformService.pickFolder(dashboard.projectFolder).then((folderPath) => {
+					if (folderPath !== undefined) {
+						dashboard.projectFolder = folderPath;
+						void this.plugin.saveSettings();
+						this.display();
+					}
+				});
+			})
+		);
+
+		new Setting(dashboardContainer)
+			.setName('Show GitHub Buttons')
+			.setDesc('Show GitHub link buttons on each issue')
+			.addToggle((toggle) =>
+				toggle.setValue(dashboard.showGitHubButtons ?? true).onChange((value) => {
+					dashboard.showGitHubButtons = value;
+					void this.plugin.saveSettings();
+					this.plugin.rerenderDashboardViews();
+				})
+			);
+
+		new Setting(dashboardContainer)
+			.setName('Show Folder Buttons')
+			.setDesc('Show folder buttons on each issue and the dashboard header')
+			.addToggle((toggle) =>
+				toggle.setValue(dashboard.showFolderButtons ?? true).onChange((value) => {
+					dashboard.showFolderButtons = value;
+					void this.plugin.saveSettings();
+					this.plugin.rerenderDashboardViews();
+				})
+			);
+
+		new Setting(dashboardContainer)
+			.setName('Show Terminal Buttons')
+			.setDesc('Show terminal buttons on each issue and the dashboard header')
+			.addToggle((toggle) =>
+				toggle.setValue(dashboard.showTerminalButtons ?? true).onChange((value) => {
+					dashboard.showTerminalButtons = value;
+					void this.plugin.saveSettings();
+					this.plugin.rerenderDashboardViews();
+				})
+			);
 
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
 
