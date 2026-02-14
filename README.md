@@ -129,9 +129,9 @@ Link on-disk project folders to your dashboard and individual issues for quick a
 
 ### Per-Issue Folders
 Each issue can have its own independent folder:
-- Click the folder icon on any issue to assign a folder
-- Left-click: opens the assigned folder (or prompts to set)
-- Right-click: reassign or clear
+- Folder, terminal, and GitHub buttons appear in the issue header row (right side)
+- Left-click folder: opens the assigned folder (or prompts to set)
+- Right-click folder: reassign or clear
 - Terminal icon appears only when a folder is assigned
 - Issue folders are independent — assigning one does not affect other issues or the global folder
 

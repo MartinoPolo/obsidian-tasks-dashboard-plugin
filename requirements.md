@@ -95,7 +95,7 @@
 
 - [x] Per-dashboard global project folder setting (`dashboard.projectFolder`)
 - [x] Per-issue independent folder storage (`settings.issueFolders[dashboardId:issueId]`)
-- [x] Folder button in dashboard header (global) and per-issue controls
+- [x] Folder button in dashboard header (global) and per-issue header
 - [x] Left-click folder button: opens explorer if folder set, opens FolderPathModal if not
 - [x] Right-click folder button: opens FolderPathModal to reassign/clear (when folder set)
 - [x] Faded folder button indicates no folder assigned

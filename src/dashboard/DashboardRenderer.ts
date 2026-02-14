@@ -139,7 +139,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 	};
 
-	const renderHeader = (container: HTMLElement, params: ControlParams): void => {
+	const renderHeader = (
+		container: HTMLElement,
+		params: ControlParams,
+		dashboard: DashboardConfig
+	): void => {
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
 
 		const header = container.createDiv({
@@ -183,6 +187,84 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			e.preventDefault();
 			void plugin.app.workspace.openLinkText(params.path, '', false);
 		});
+
+		header.createDiv({ cls: 'tdc-header-spacer' });
+
+		const headerActions = header.createDiv({ cls: 'tdc-header-actions' });
+
+		const issueFolderKey = dashboard.id + ':' + params.issue;
+		const issueFolder = plugin.settings.issueFolders[issueFolderKey];
+		const hasIssueFolder = issueFolder !== undefined && issueFolder !== '';
+
+		if (dashboard.showFolderButtons ?? true) {
+			const folderBtn = headerActions.createEl('button', {
+				cls: `tdc-btn tdc-btn-folder${hasIssueFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasIssueFolder ? 'Open issue folder' : 'Set issue folder'
+				}
+			});
+			folderBtn.innerHTML = ICONS.folder;
+			folderBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasIssueFolder) {
+					platformService.openInFileExplorer(issueFolder);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+			folderBtn.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasIssueFolder) {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+		}
+
+		if ((dashboard.showTerminalButtons ?? true) && hasIssueFolder) {
+			const terminalBtn = headerActions.createEl('button', {
+				cls: 'tdc-btn tdc-btn-terminal',
+				attr: { 'aria-label': 'Open terminal' }
+			});
+			terminalBtn.innerHTML = ICONS.terminal;
+			terminalBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				const issueColor = plugin.settings.issueColors[params.issue];
+				platformService.openTerminal(issueFolder, issueColor);
+			});
+		}
+
+		if ((dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled) {
+			const hasGithubLinks = params.githubLinks.length > 0;
+			const quickOpenBtn = headerActions.createEl('button', {
+				cls: `tdc-btn tdc-btn-github-quickopen${hasGithubLinks ? '' : ' tdc-btn-faded'}`,
+				attr: { 'aria-label': hasGithubLinks ? 'Open GitHub link' : 'Add GitHub link' }
+			});
+			quickOpenBtn.innerHTML = ICONS.github;
+			quickOpenBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasGithubLinks) {
+					const targetUrl = params.githubLinks[0];
+					if (/^https?:\/\/github\.com\//.test(targetUrl)) {
+						window.open(targetUrl, '_blank');
+					}
+					return;
+				}
+				if (!plugin.githubService.isAuthenticated()) {
+					new Notice('Configure GitHub token in settings to search for issues.');
+					return;
+				}
+				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
+					if (url === undefined) {
+						return;
+					}
+					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
+				}).open();
+			});
+		}
 	};
 
 	const renderProgressBar = (
@@ -309,80 +391,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			});
 			colorInput.click();
 		});
-
-		const issueFolderKey = dashboard.id + ':' + params.issue;
-		const issueFolder = plugin.settings.issueFolders[issueFolderKey];
-		const hasIssueFolder = issueFolder !== undefined && issueFolder !== '';
-
-		if (dashboard.showFolderButtons ?? true) {
-			const folderBtn = btnContainer.createEl('button', {
-				cls: `tdc-btn tdc-btn-folder${hasIssueFolder ? '' : ' tdc-btn-faded'}`,
-				attr: {
-					'aria-label': hasIssueFolder ? 'Open issue folder' : 'Set issue folder'
-				}
-			});
-			folderBtn.innerHTML = ICONS.folder;
-			folderBtn.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				if (hasIssueFolder) {
-					platformService.openInFileExplorer(issueFolder);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
-				}
-			});
-			folderBtn.addEventListener('contextmenu', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				if (hasIssueFolder) {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
-				}
-			});
-		}
-
-		if ((dashboard.showTerminalButtons ?? true) && hasIssueFolder) {
-			const terminalBtn = btnContainer.createEl('button', {
-				cls: 'tdc-btn tdc-btn-terminal',
-				attr: { 'aria-label': 'Open terminal' }
-			});
-			terminalBtn.innerHTML = ICONS.terminal;
-			terminalBtn.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				const issueColor = plugin.settings.issueColors[params.issue];
-				platformService.openTerminal(issueFolder, issueColor);
-			});
-		}
-
-		if ((dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled) {
-			const hasGithubLinks = params.githubLinks.length > 0;
-			const quickOpenBtn = btnContainer.createEl('button', {
-				cls: `tdc-btn tdc-btn-github-quickopen${hasGithubLinks ? '' : ' tdc-btn-faded'}`,
-				attr: { 'aria-label': hasGithubLinks ? 'Open GitHub link' : 'Add GitHub link' }
-			});
-			quickOpenBtn.innerHTML = ICONS.github;
-			quickOpenBtn.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				if (hasGithubLinks) {
-					const targetUrl = params.githubLinks[0];
-					if (/^https?:\/\/github\.com\//.test(targetUrl)) {
-						window.open(targetUrl, '_blank');
-					}
-					return;
-				}
-				if (!plugin.githubService.isAuthenticated()) {
-					new Notice('Configure GitHub token in settings to search for issues.');
-					return;
-				}
-				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
-					if (url === undefined) {
-						return;
-					}
-					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
-				}).open();
-			});
-		}
 
 		const archiveBtn = btnContainer.createEl('button', {
 			cls: 'tdc-btn tdc-btn-archive',
@@ -540,7 +548,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 		el.setAttribute('data-tdc-issue', params.issue);
 
-		renderHeader(container, params);
+		renderHeader(container, params, dashboard);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
 		const progress = await plugin.progressTracker.getProgress(params.path);
