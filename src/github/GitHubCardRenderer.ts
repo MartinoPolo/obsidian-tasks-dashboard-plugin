@@ -1,5 +1,12 @@
 import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubDisplayMode } from '../types';
 import { parseGitHubUrlInfo } from '../utils/github';
+import {
+	getStateClass,
+	getStateText,
+	truncateText,
+	formatRelativeDate,
+	getContrastColor
+} from '../utils/github-helpers';
 
 const ICONS = {
 	refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`,
@@ -42,38 +49,113 @@ function formatGitHubSimpleLinkText(url: string): string {
 	return 'GitHub Link';
 }
 
+function renderRefreshButton(parent: HTMLElement, onRefresh: () => void): void {
+	const refreshBtn = parent.createEl('button', {
+		cls: 'tdc-gh-refresh',
+		attr: { 'aria-label': 'Refresh GitHub data' }
+	});
+	refreshBtn.innerHTML = ICONS.refresh;
+	refreshBtn.addEventListener('click', (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		onRefresh();
+	});
+}
+
+interface LabelData {
+	name: string;
+	color: string;
+}
+
+function renderLabels(
+	container: HTMLElement,
+	labels: LabelData[],
+	maxCount?: number
+): void {
+	if (labels.length === 0) {
+		return;
+	}
+
+	const labelsContainer = container.createDiv({ cls: 'tdc-gh-labels' });
+	const displayLabels = maxCount !== undefined ? labels.slice(0, maxCount) : labels;
+
+	for (const label of displayLabels) {
+		const labelEl = labelsContainer.createSpan({ cls: 'tdc-gh-label' });
+		labelEl.style.backgroundColor = `#${label.color}`;
+		labelEl.style.color = getContrastColor(label.color);
+		labelEl.textContent = label.name;
+	}
+
+	if (maxCount !== undefined && labels.length > maxCount) {
+		labelsContainer.createSpan({
+			cls: 'tdc-gh-label-more',
+			text: `+${labels.length - maxCount}`
+		});
+	}
+}
+
+interface IssueHeaderOptions {
+	titleMaxLength?: number;
+}
+
+function renderIssueHeader(
+	container: HTMLElement,
+	metadata: GitHubIssueMetadata,
+	options: IssueHeaderOptions = {}
+): HTMLElement {
+	const header = container.createDiv({ cls: 'tdc-gh-header' });
+
+	const link = header.createEl('a', {
+		cls: 'tdc-gh-link',
+		href: metadata.url
+	});
+	link.setAttribute('target', '_blank');
+
+	const icon = metadata.isPR ? ICONS.pr : ICONS.issue;
+	link.innerHTML = icon;
+	link.createSpan({ cls: 'tdc-gh-number', text: `#${metadata.number}` });
+
+	const titleText =
+		options.titleMaxLength !== undefined
+			? truncateText(metadata.title, options.titleMaxLength)
+			: metadata.title;
+
+	header.createSpan({
+		cls: 'tdc-gh-title',
+		text: titleText
+	});
+
+	header.createSpan({
+		cls: `tdc-gh-state tdc-gh-state-${getStateClass(metadata)}`,
+		text: getStateText(metadata)
+	});
+
+	return header;
+}
+
+function renderRepoHeader(
+	container: HTMLElement,
+	metadata: GitHubRepoMetadata
+): HTMLElement {
+	const header = container.createDiv({ cls: 'tdc-gh-header' });
+
+	const link = header.createEl('a', {
+		cls: 'tdc-gh-link',
+		href: metadata.url
+	});
+	link.setAttribute('target', '_blank');
+	link.innerHTML = ICONS.repo;
+	link.createSpan({ cls: 'tdc-gh-repo-name', text: metadata.fullName });
+
+	header.createSpan({
+		cls: `tdc-gh-state ${metadata.isPrivate ? 'tdc-gh-state-closed' : 'tdc-gh-state-open'}`,
+		text: metadata.isPrivate ? 'Private' : 'Public'
+	});
+
+	return header;
+}
+
 export function createGitHubCardRenderer(): GitHubCardRendererInstance {
-	const getStateClass = (metadata: GitHubIssueMetadata): string => {
-		if (metadata.isPR) {
-			if (metadata.prStatus === 'merged') {
-				return 'tdc-gh-state-merged';
-			}
-			if (metadata.prStatus === 'draft') {
-				return 'tdc-gh-state-draft';
-			}
-		}
-		return metadata.state === 'open' ? 'tdc-gh-state-open' : 'tdc-gh-state-closed';
-	};
-
-	const getStateText = (metadata: GitHubIssueMetadata): string => {
-		if (metadata.isPR) {
-			if (metadata.prStatus === 'merged') {
-				return 'Merged';
-			}
-			if (metadata.prStatus === 'draft') {
-				return 'Draft';
-			}
-		}
-		return metadata.state === 'open' ? 'Open' : 'Closed';
-	};
-
-	const truncateText = (text: string, maxLength: number): string => {
-		if (text.length <= maxLength) {
-			return text;
-		}
-		return text.substring(0, maxLength).trim() + '...';
-	};
-
 	const renderMinimal = (
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
@@ -92,20 +174,11 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		link.createSpan({ text: `#${metadata.number}` });
 
 		card.createSpan({
-			cls: `tdc-gh-state ${getStateClass(metadata)}`,
+			cls: `tdc-gh-state tdc-gh-state-${getStateClass(metadata)}`,
 			text: getStateText(metadata)
 		});
 
-		const refreshBtn = card.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
+		renderRefreshButton(card, onRefresh);
 	};
 
 	const renderCompact = (
@@ -115,54 +188,10 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-compact' });
 
-		const header = card.createDiv({ cls: 'tdc-gh-header' });
+		const header = renderIssueHeader(card, metadata, { titleMaxLength: 60 });
+		renderRefreshButton(header, onRefresh);
 
-		const link = header.createEl('a', {
-			cls: 'tdc-gh-link',
-			href: metadata.url
-		});
-		link.setAttribute('target', '_blank');
-
-		const icon = metadata.isPR ? ICONS.pr : ICONS.issue;
-		link.innerHTML = icon;
-		link.createSpan({ cls: 'tdc-gh-number', text: `#${metadata.number}` });
-
-		header.createSpan({
-			cls: 'tdc-gh-title',
-			text: truncateText(metadata.title, 60)
-		});
-
-		header.createSpan({
-			cls: `tdc-gh-state ${getStateClass(metadata)}`,
-			text: getStateText(metadata)
-		});
-
-		const refreshBtn = header.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
-
-		if (metadata.labels.length > 0) {
-			const labelsContainer = card.createDiv({ cls: 'tdc-gh-labels' });
-			for (const label of metadata.labels.slice(0, 5)) {
-				const labelEl = labelsContainer.createSpan({ cls: 'tdc-gh-label' });
-				labelEl.style.backgroundColor = `#${label.color}`;
-				labelEl.style.color = getContrastColor(label.color);
-				labelEl.textContent = label.name;
-			}
-			if (metadata.labels.length > 5) {
-				labelsContainer.createSpan({
-					cls: 'tdc-gh-label-more',
-					text: `+${metadata.labels.length - 5}`
-				});
-			}
-		}
+		renderLabels(card, metadata.labels, 5);
 
 		if (metadata.body !== undefined && metadata.body !== '') {
 			const preview = card.createDiv({ cls: 'tdc-gh-preview' });
@@ -177,48 +206,10 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-full' });
 
-		const header = card.createDiv({ cls: 'tdc-gh-header' });
+		const header = renderIssueHeader(card, metadata);
+		renderRefreshButton(header, onRefresh);
 
-		const link = header.createEl('a', {
-			cls: 'tdc-gh-link',
-			href: metadata.url
-		});
-		link.setAttribute('target', '_blank');
-
-		const icon = metadata.isPR ? ICONS.pr : ICONS.issue;
-		link.innerHTML = icon;
-		link.createSpan({ cls: 'tdc-gh-number', text: `#${metadata.number}` });
-
-		header.createSpan({
-			cls: 'tdc-gh-title',
-			text: metadata.title
-		});
-
-		header.createSpan({
-			cls: `tdc-gh-state ${getStateClass(metadata)}`,
-			text: getStateText(metadata)
-		});
-
-		const refreshBtn = header.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
-
-		if (metadata.labels.length > 0) {
-			const labelsContainer = card.createDiv({ cls: 'tdc-gh-labels' });
-			for (const label of metadata.labels) {
-				const labelEl = labelsContainer.createSpan({ cls: 'tdc-gh-label' });
-				labelEl.style.backgroundColor = `#${label.color}`;
-				labelEl.style.color = getContrastColor(label.color);
-				labelEl.textContent = label.name;
-			}
-		}
+		renderLabels(card, metadata.labels);
 
 		if (metadata.assignees.length > 0) {
 			const assigneesContainer = card.createDiv({ cls: 'tdc-gh-assignees' });
@@ -295,6 +286,40 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		return count.toString();
 	};
 
+	const renderRepoStats = (
+		container: HTMLElement,
+		metadata: GitHubRepoMetadata,
+		includeOpenIssues: boolean
+	): void => {
+		const statsContainer = container.createDiv({ cls: 'tdc-gh-repo-stats' });
+
+		if (metadata.stars > 0) {
+			const starSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
+			starSpan.innerHTML = ICONS.star;
+			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
+		}
+
+		if (metadata.forksCount > 0) {
+			const forkSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
+			forkSpan.innerHTML = ICONS.fork;
+			forkSpan.createSpan({ text: metadata.forksCount.toString() });
+		}
+
+		if (metadata.language !== '') {
+			statsContainer.createSpan({
+				cls: 'tdc-gh-repo-stat tdc-gh-repo-language',
+				text: metadata.language
+			});
+		}
+
+		if (includeOpenIssues && metadata.openIssuesCount > 0) {
+			statsContainer.createSpan({
+				cls: 'tdc-gh-repo-stat',
+				text: `${metadata.openIssuesCount} open issues`
+			});
+		}
+	};
+
 	const renderRepoMinimal = (
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
@@ -316,16 +341,7 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
 		}
 
-		const refreshBtn = card.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
+		renderRefreshButton(card, onRefresh);
 	};
 
 	const renderRepoCompact = (
@@ -335,52 +351,10 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-compact tdc-gh-card-repo' });
 
-		const header = card.createDiv({ cls: 'tdc-gh-header' });
+		const header = renderRepoHeader(card, metadata);
+		renderRefreshButton(header, onRefresh);
 
-		const link = header.createEl('a', {
-			cls: 'tdc-gh-link',
-			href: metadata.url
-		});
-		link.setAttribute('target', '_blank');
-		link.innerHTML = ICONS.repo;
-		link.createSpan({ cls: 'tdc-gh-repo-name', text: metadata.fullName });
-
-		header.createSpan({
-			cls: `tdc-gh-state ${metadata.isPrivate ? 'tdc-gh-state-closed' : 'tdc-gh-state-open'}`,
-			text: metadata.isPrivate ? 'Private' : 'Public'
-		});
-
-		const refreshBtn = header.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
-
-		const statsContainer = card.createDiv({ cls: 'tdc-gh-repo-stats' });
-
-		if (metadata.stars > 0) {
-			const starSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			starSpan.innerHTML = ICONS.star;
-			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
-		}
-
-		if (metadata.forksCount > 0) {
-			const forkSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			forkSpan.innerHTML = ICONS.fork;
-			forkSpan.createSpan({ text: metadata.forksCount.toString() });
-		}
-
-		if (metadata.language !== '') {
-			statsContainer.createSpan({
-				cls: 'tdc-gh-repo-stat tdc-gh-repo-language',
-				text: metadata.language
-			});
-		}
+		renderRepoStats(card, metadata, false);
 
 		if (metadata.description !== '') {
 			const preview = card.createDiv({ cls: 'tdc-gh-preview' });
@@ -395,64 +369,15 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-full tdc-gh-card-repo' });
 
-		const header = card.createDiv({ cls: 'tdc-gh-header' });
-
-		const link = header.createEl('a', {
-			cls: 'tdc-gh-link',
-			href: metadata.url
-		});
-		link.setAttribute('target', '_blank');
-		link.innerHTML = ICONS.repo;
-		link.createSpan({ cls: 'tdc-gh-repo-name', text: metadata.fullName });
-
-		header.createSpan({
-			cls: `tdc-gh-state ${metadata.isPrivate ? 'tdc-gh-state-closed' : 'tdc-gh-state-open'}`,
-			text: metadata.isPrivate ? 'Private' : 'Public'
-		});
-
-		const refreshBtn = header.createEl('button', {
-			cls: 'tdc-gh-refresh',
-			attr: { 'aria-label': 'Refresh GitHub data' }
-		});
-		refreshBtn.innerHTML = ICONS.refresh;
-		refreshBtn.addEventListener('click', (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			onRefresh();
-		});
+		const header = renderRepoHeader(card, metadata);
+		renderRefreshButton(header, onRefresh);
 
 		if (metadata.description !== '') {
 			const body = card.createDiv({ cls: 'tdc-gh-body' });
 			body.textContent = truncateText(metadata.description, 200);
 		}
 
-		const statsContainer = card.createDiv({ cls: 'tdc-gh-repo-stats' });
-
-		if (metadata.stars > 0) {
-			const starSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			starSpan.innerHTML = ICONS.star;
-			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
-		}
-
-		if (metadata.forksCount > 0) {
-			const forkSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			forkSpan.innerHTML = ICONS.fork;
-			forkSpan.createSpan({ text: metadata.forksCount.toString() });
-		}
-
-		if (metadata.language !== '') {
-			statsContainer.createSpan({
-				cls: 'tdc-gh-repo-stat tdc-gh-repo-language',
-				text: metadata.language
-			});
-		}
-
-		if (metadata.openIssuesCount > 0) {
-			statsContainer.createSpan({
-				cls: 'tdc-gh-repo-stat',
-				text: `${metadata.openIssuesCount} open issues`
-			});
-		}
+		renderRepoStats(card, metadata, true);
 
 		const footer = card.createDiv({ cls: 'tdc-gh-footer' });
 		footer.createSpan({
@@ -487,39 +412,4 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	};
 
 	return { render, renderRepoCard, renderLoading, renderError, renderSimpleLink };
-}
-
-function getContrastColor(hexColor: string): string {
-	const r = parseInt(hexColor.substring(0, 2), 16);
-	const g = parseInt(hexColor.substring(2, 4), 16);
-	const b = parseInt(hexColor.substring(4, 6), 16);
-	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-	return luminance > 0.5 ? '#000000' : '#ffffff';
-}
-
-function formatRelativeDate(dateString: string): string {
-	const date = new Date(dateString);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-	if (diffDays === 0) {
-		return 'today';
-	}
-	if (diffDays === 1) {
-		return 'yesterday';
-	}
-	if (diffDays < 7) {
-		return `${diffDays} days ago`;
-	}
-	if (diffDays < 30) {
-		const weeks = Math.floor(diffDays / 7);
-		return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-	}
-	if (diffDays < 365) {
-		const months = Math.floor(diffDays / 30);
-		return `${months} month${months > 1 ? 's' : ''} ago`;
-	}
-	const years = Math.floor(diffDays / 365);
-	return `${years} year${years > 1 ? 's' : ''} ago`;
 }

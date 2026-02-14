@@ -1,6 +1,7 @@
 import { App, Modal } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
+import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
 
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
 
@@ -318,12 +319,12 @@ export class GitHubSearchModal extends Modal {
 
 			row.createSpan({
 				cls: 'tdc-gh-result-title',
-				text: this.truncate(item.title, 50)
+				text: truncateText(item.title, 50)
 			});
 
 			row.createSpan({
-				cls: `tdc-gh-result-state tdc-gh-state-${this.getStateClass(item)}`,
-				text: this.getStateText(item)
+				cls: `tdc-gh-result-state tdc-gh-state-${getStateClass(item)}`,
+				text: getStateText(item)
 			});
 
 			if (item.repository !== '') {
@@ -333,35 +334,6 @@ export class GitHubSearchModal extends Modal {
 				});
 			}
 		}
-	}
-
-	private getStateClass(item: GitHubIssueMetadata): string {
-		if (item.isPR && item.prStatus === 'merged') {
-			return 'merged';
-		}
-		if (item.isPR && item.prStatus === 'draft') {
-			return 'draft';
-		}
-		return item.state;
-	}
-
-	private getStateText(item: GitHubIssueMetadata): string {
-		if (item.isPR) {
-			if (item.prStatus === 'merged') {
-				return 'Merged';
-			}
-			if (item.prStatus === 'draft') {
-				return 'Draft';
-			}
-		}
-		return item.state === 'open' ? 'Open' : 'Closed';
-	}
-
-	private truncate(text: string, maxLength: number): string {
-		if (text.length <= maxLength) {
-			return text;
-		}
-		return text.substring(0, maxLength).trim() + '...';
 	}
 
 	private getIssueIcon(): string {

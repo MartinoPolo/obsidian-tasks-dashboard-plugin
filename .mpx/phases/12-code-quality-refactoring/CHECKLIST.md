@@ -38,13 +38,13 @@ Deduplicate search functions and extract API response types.
 
 Extract shared display helpers used by both GitHubCardRenderer and GitHubSearchModal.
 
-- [ ] Create `src/utils/github-helpers.ts` with `getStateClass(metadata)`, `getStateText(metadata)`, `truncateText(text, maxLength)`, `formatRelativeDate(dateString)`, `getContrastColor(hexColor)`
-- [ ] In `GitHubCardRenderer.ts`: extract `renderRefreshButton(parent, onRefresh)` (used 6 times)
-- [ ] In `GitHubCardRenderer.ts`: extract `renderLabels(container, labels, maxCount?)` (used 3 times)
-- [ ] In `GitHubCardRenderer.ts`: extract `renderIssueHeader(container, metadata, opts)` shared by minimal/compact/full
-- [ ] In `GitHubCardRenderer.ts`: extract `renderRepoHeader(container, metadata)` shared by repo variants
-- [ ] In `GitHubSearchModal.ts`: import `getStateClass`, `getStateText`, `truncateText` from shared helpers, delete local duplicates (`truncate()`, `getStateClass`, `getStateText`)
-- [ ] Verify `pnpm build` passes
+- [x] Create `src/utils/github-helpers.ts` with `getStateClass(metadata)`, `getStateText(metadata)`, `truncateText(text, maxLength)`, `formatRelativeDate(dateString)`, `getContrastColor(hexColor)`
+- [x] In `GitHubCardRenderer.ts`: extract `renderRefreshButton(parent, onRefresh)` (used 6 times)
+- [x] In `GitHubCardRenderer.ts`: extract `renderLabels(container, labels, maxCount?)` (used 3 times)
+- [x] In `GitHubCardRenderer.ts`: extract `renderIssueHeader(container, metadata, opts)` shared by minimal/compact/full
+- [x] In `GitHubCardRenderer.ts`: extract `renderRepoHeader(container, metadata)` shared by repo variants
+- [x] In `GitHubSearchModal.ts`: import `getStateClass`, `getStateText`, `truncateText` from shared helpers, delete local duplicates (`truncate()`, `getStateClass`, `getStateText`)
+- [x] Verify `pnpm build` passes
 
 ## Group 6: IssueManager — Unify YAML Building + File Search (~80 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 12/40 tasks complete
+Progress: 19/40 tasks complete
