@@ -1,7 +1,7 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
-import { NamePromptModal } from '../modals/IssueModal';
+import { NamePromptModal } from '../modals/issue-creation-modal';
 import { parseDashboard } from './DashboardParser';
 import { ICONS, renderGlobalActionButtons } from './header-actions';
 

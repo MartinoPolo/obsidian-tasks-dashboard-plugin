@@ -14,7 +14,7 @@ import {
 	getDashboardDisplayName
 } from './src/types';
 import { TasksDashboardSettingTab } from './src/settings';
-import { NamePromptModal } from './src/modals/IssueModal';
+import { NamePromptModal } from './src/modals/issue-creation-modal';
 import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
 import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
 import {

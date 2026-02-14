@@ -81,12 +81,12 @@ Split largest file (989 lines) into focused modules.
 
 Split 570-line modal file and extract shared setup patterns.
 
-- [ ] Create `src/modals/modal-helpers.ts` — `setupPromptModal(modal, titleText)` for addClass/empty/title; `createConfirmCancelButtons(contentEl, onConfirm, onCancel)` (repeated 5 times); `createInputWithEnterHandler(contentEl, placeholder, onEnter)` (repeated 5 times)
-- [ ] Move creation flow modals to `src/modals/issue-creation-modal.ts` — `NamePromptModal`, `PriorityPromptModal`, `GithubPromptModal`, `GitHubLinkTypeModal` + `createIssueWithGitHub`, `createIssueWithRepoLink` helpers
-- [ ] Move `DeleteConfirmationModal` to `src/modals/delete-confirmation-modal.ts`
-- [ ] Move `RenameIssueModal` to `src/modals/rename-issue-modal.ts`
-- [ ] Update all imports across codebase (DashboardRenderer.ts imports NamePromptModal, DeleteConfirmationModal, RenameIssueModal)
-- [ ] Verify `pnpm build` passes
+- [x] Create `src/modals/modal-helpers.ts` — `setupPromptModal(modal, titleText)` for addClass/empty/title; `createConfirmCancelButtons(contentEl, onConfirm, onCancel)` (repeated 5 times); `createInputWithEnterHandler(contentEl, placeholder, onEnter)` (repeated 5 times)
+- [x] Move creation flow modals to `src/modals/issue-creation-modal.ts` — `NamePromptModal`, `PriorityPromptModal`, `GithubPromptModal`, `GitHubLinkTypeModal` + `createIssueWithGitHub`, `createIssueWithRepoLink` helpers
+- [x] Move `DeleteConfirmationModal` to `src/modals/delete-confirmation-modal.ts`
+- [x] Move `RenameIssueModal` to `src/modals/rename-issue-modal.ts`
+- [x] Update all imports across codebase (DashboardRenderer.ts imports NamePromptModal, DeleteConfirmationModal, RenameIssueModal)
+- [x] Verify `pnpm build` passes
 
 ## Group 8: Settings + Minor Cleanup (~40 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 35/40 tasks complete
+Progress: 41/48 tasks complete

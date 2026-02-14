@@ -1,7 +1,8 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
-import { DeleteConfirmationModal, RenameIssueModal } from '../modals/IssueModal';
+import { DeleteConfirmationModal } from '../modals/delete-confirmation-modal';
+import { RenameIssueModal } from '../modals/rename-issue-modal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { isGitHubRepoUrl, parseGitHubRepoName } from '../utils/github-url';
 import { ICONS, renderIssueActionButtons } from './header-actions';
