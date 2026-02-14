@@ -2,7 +2,7 @@
 
 Project: Tasks Dashboard Plugin
 Updated: 2026-02-14
-Total Phases: 12
+Total Phases: 13
 
 ## Phase Summary
 
@@ -20,6 +20,7 @@ Total Phases: 12
 | 10 | Dashboard Deletion | Not Started | 0/7 | Phases 4–9 |
 | 11 | Color Customization | Not Started | 0/6 | Phases 4–9 |
 | 12 | Code Quality Refactoring | Complete | 40/40 | None |
+| 13 | Code Hardening | Complete | 24/24 | Phase 12 |
 
 ## Dependency Graph
 ```
@@ -35,6 +36,8 @@ Phases 4,5,6,8,9 → Phase 10 (dashboard-deletion)
 Phases 4,5,6,8,9 → Phase 11 (color-customization)
 
 Phase 12 (code-quality-refactoring) — independent, no deps
+
+Phase 12 → Phase 13 (code-hardening)
 ```
 
 ## Phase Details
@@ -86,3 +89,7 @@ Customizable priority colors and dashboard section backgrounds.
 ### Phase 12: Code Quality Refactoring [Complete]
 Eliminate ~800 lines of duplication across 8 groups. Extract shared utilities (GitHub URL parsing, dashboard paths, display helpers), unify duplicate patterns (search, move operations, YAML building, button creation), split oversized files (DashboardRenderer 989→~500 lines, IssueModal 570→3 files). No functional changes.
 **Reqs:** 18
+
+### Phase 13: Code Hardening [Complete]
+Security fixes (command injection, prototype pollution, URL validation), performance (parallel I/O, memory leaks, async render, LRU cache, debounce), error handling (TFile guards, typed API errors, race conditions, spawn failures, loadData validation, onload safety), code quality (split long functions, unify sort logic, extract constants, convention fixes). 24 tasks across 4 groups.
+**Reqs:** 19
