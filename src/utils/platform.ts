@@ -53,7 +53,11 @@ export function createPlatformService(): PlatformService {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 		const { spawn } = require('child_process');
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		spawn('code', [folderPath], { shell: false, cwd: folderPath }).on('error', () => {
+		const child = spawn('code', [folderPath], { shell: process.platform === 'win32', cwd: folderPath, detached: true, stdio: 'ignore' });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		child.unref();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		child.on('error', () => {
 			new Notice('Could not open VS Code — is it installed and in PATH?');
 		});
 	};

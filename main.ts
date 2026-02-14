@@ -246,7 +246,7 @@ export default class TasksDashboardPlugin extends Plugin {
 		if ('dashboards' in validatedData && !Array.isArray(validatedData.dashboards)) {
 			delete validatedData.dashboards;
 		}
-		if ('githubAuth' in validatedData && typeof validatedData.githubAuth !== 'string') {
+		if ('githubAuth' in validatedData && (typeof validatedData.githubAuth !== 'object' || validatedData.githubAuth === null)) {
 			delete validatedData.githubAuth;
 		}
 		if ('collapsedIssues' in validatedData && (typeof validatedData.collapsedIssues !== 'object' || validatedData.collapsedIssues === null)) {
