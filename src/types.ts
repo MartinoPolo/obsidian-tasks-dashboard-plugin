@@ -89,6 +89,7 @@ export interface DashboardConfig {
 	showGitHubButtons?: boolean;
 	showFolderButtons?: boolean;
 	showTerminalButtons?: boolean;
+	showVSCodeButtons?: boolean;
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {

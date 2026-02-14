@@ -101,6 +101,9 @@
 - [x] Faded folder button indicates no folder assigned
 - [x] Terminal button hidden when no folder assigned (not faded)
 - [x] Terminal opens PowerShell on Windows, default terminal on Mac/Linux
+- [x] VS Code button opens folder in VS Code (uses `code` CLI, cross-platform)
+- [x] VS Code button hidden when no folder assigned (same visibility as terminal)
+- [x] VS Code button styled with brand color (#007ACC)
 - [x] Per-dashboard toggle for folder/terminal button visibility
 - [x] Issue folder assignment is independent — does not affect other issues or global
 

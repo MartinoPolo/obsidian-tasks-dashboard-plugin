@@ -235,7 +235,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				const issueColor = plugin.settings.issueColors[params.issue];
 				platformService.openTerminal(issueFolder, issueColor);
 			});
+		}
 
+		if ((dashboard.showVSCodeButtons ?? true) && hasIssueFolder) {
 			const vscodeBtn = headerActions.createEl('button', {
 				cls: 'tdc-btn tdc-btn-vscode',
 				attr: { 'aria-label': 'Open in VS Code' }
@@ -805,7 +807,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				e.preventDefault();
 				platformService.openTerminal(dashboard.projectFolder!);
 			});
+		}
 
+		if ((dashboard.showVSCodeButtons ?? true) && hasProjectFolder) {
 			const vscodeButton = container.createEl('button', {
 				cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode',
 				attr: { 'aria-label': 'Open in VS Code' }

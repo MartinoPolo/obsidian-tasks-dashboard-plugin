@@ -394,6 +394,17 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				})
 			);
 
+		new Setting(dashboardContainer)
+			.setName('Show VS Code Buttons')
+			.setDesc('Show VS Code buttons on each issue and the dashboard header')
+			.addToggle((toggle) =>
+				toggle.setValue(dashboard.showVSCodeButtons ?? true).onChange((value) => {
+					dashboard.showVSCodeButtons = value;
+					void this.plugin.saveSettings();
+					this.plugin.rerenderDashboardViews();
+				})
+			);
+
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
 
 		const updateDashboardButton = (): void => {

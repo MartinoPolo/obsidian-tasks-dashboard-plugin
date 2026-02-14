@@ -202,6 +202,7 @@ Same UX for both per-issue and global buttons, but each uses **independent** sto
 - Terminal button hidden when no folder assigned (not faded)
 - Assigning folder to one issue does not affect other issues or the global button
 - Platform-aware: PowerShell on Windows, default terminal on Mac/Linux
+- VS Code button opens folder via `code` CLI (cross-platform), hidden when no folder assigned
 
 ### 8. Add Existing Notes as Issues
 Import existing Obsidian notes into a dashboard as issues.

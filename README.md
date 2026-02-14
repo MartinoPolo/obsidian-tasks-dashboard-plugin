@@ -125,14 +125,14 @@ Link on-disk project folders to your dashboard and individual issues for quick a
 - Set a global project folder per dashboard in settings or via the **Open Folder** button
 - Left-click: opens folder in system explorer (or prompts to set if none)
 - Right-click: reassign or clear the folder
-- **Terminal** button appears only when a folder is set
+- **Terminal** and **VS Code** buttons appear only when a folder is set
 
 ### Per-Issue Folders
 Each issue can have its own independent folder:
-- Folder, terminal, and GitHub buttons appear in the issue header row (right side)
+- Folder, terminal, VS Code, and GitHub buttons appear in the issue header row (right side)
 - Left-click folder: opens the assigned folder (or prompts to set)
 - Right-click folder: reassign or clear
-- Terminal icon appears only when a folder is assigned
+- Terminal and VS Code icons appear only when a folder is assigned
 - Issue folders are independent — assigning one does not affect other issues or the global folder
 
 ## Hotkeys
