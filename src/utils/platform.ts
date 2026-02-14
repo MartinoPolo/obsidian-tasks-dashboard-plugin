@@ -20,7 +20,7 @@ export function createPlatformService(): PlatformService {
 
 		if (Platform.isWin) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`start powershell -NoExit -Command "Set-Location '${folderPath.replace(/'/g, "''")}'"`, { cwd: folderPath });
+			exec(`wt -d "${folderPath.replace(/"/g, '\\"')}"`, { cwd: folderPath });
 		} else if (Platform.isMacOS) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			exec(`open -a Terminal "${folderPath}"`);
