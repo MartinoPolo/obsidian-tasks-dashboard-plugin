@@ -290,6 +290,29 @@ Custom background color per issue header via native color picker.
 - Persists to `issueColors` in settings
 - Color migrated on rename, cleaned up on delete
 
+### 18. Code Quality Refactoring
+Eliminate ~800 lines of duplicated code across 15 files. Pure refactoring — no functional changes.
+
+#### Scope
+- Consolidate GitHub URL parsing (3+ regex patterns across 4 files) into `src/utils/github-url.ts`
+- Extract shared dashboard path construction into `src/utils/dashboard-path.ts`
+- Extract GitHub display helpers (state, truncate, date, contrast) into `src/utils/github-helpers.ts`
+- Move API response interfaces from GitHubService.ts into `src/github/github-api-types.ts`
+- Unify 99% identical `searchIssues`/`searchPullRequests` into shared `searchItems`
+- Unify 3 identical move operations in DashboardWriter via `extractAndRemoveIssueBlock`
+- Unify `buildIssueEntry` + `buildIssueBlock` into single `buildIssueMarkdownBlock`
+- Split DashboardRenderer.ts (989 lines) into header-actions.ts + sort-controls.ts (~500 lines remaining)
+- Deduplicate button creation (4+ times), visibility checks (9 times), collapse/expand (90% shared)
+- Deduplicate YAML metadata building (4 times) and file search (3 times) in IssueManager
+- Split IssueModal.ts (570 lines) into 3 files + modal-helpers.ts
+- Extract visibility toggle pattern (4 identical) in settings.ts
+
+#### Acceptance Criteria
+- `pnpm build` passes after each group
+- No functional changes — behavior identical pre/post refactoring
+- 10 new utility/module files created
+- DashboardRenderer.ts reduced from 989 to ~500 lines
+
 ## Technical Constraints
 - Must integrate with existing factory function patterns
 - Preserve existing Obsidian API class inheritance (Plugin, Modal, etc.)

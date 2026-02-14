@@ -1,4 +1,4 @@
-const GITHUB_URL_PATTERN = /github\.com\/[^/]+\/[^/]+\/(issues|pull)\/(\d+)/;
+import { parseGitHubUrl } from './github-url';
 
 export interface ParsedGitHubUrlInfo {
 	type: 'issue' | 'pr';
@@ -6,12 +6,12 @@ export interface ParsedGitHubUrlInfo {
 }
 
 export function parseGitHubUrlInfo(url: string): ParsedGitHubUrlInfo | undefined {
-	const match = url.match(GITHUB_URL_PATTERN);
-	if (match === null) {
+	const parsed = parseGitHubUrl(url);
+	if (parsed === undefined) {
 		return undefined;
 	}
 	return {
-		type: match[1] === 'pull' ? 'pr' : 'issue',
-		number: parseInt(match[2], 10)
+		type: parsed.type === 'pull' ? 'pr' : 'issue',
+		number: parsed.number
 	};
 }

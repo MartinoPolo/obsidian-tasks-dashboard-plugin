@@ -6,6 +6,7 @@ import { GitHubSearchModal } from '../modals/GitHubSearchModal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { createPlatformService } from '../utils/platform';
+import { isGitHubRepoUrl, parseGitHubRepoName } from '../utils/github-url';
 import { parseDashboard } from './DashboardParser';
 
 interface ControlParams {
@@ -497,18 +498,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 	};
 
-	const isGitHubRepoUrl = (url: string): boolean => {
-		return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(url);
-	};
-
-	const parseGitHubRepoUrl = (url: string): { owner: string; repo: string } | undefined => {
-		const match = url.match(/github\.com\/([^/]+)\/([^/]+?)\/?$/);
-		if (match === null) {
-			return undefined;
-		}
-		return { owner: match[1], repo: match[2] };
-	};
-
 	const renderGitHubRepoCard = async (container: HTMLElement, githubUrl: string): Promise<void> => {
 		const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
 
@@ -517,7 +506,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			return;
 		}
 
-		const parsed = parseGitHubRepoUrl(githubUrl);
+		const parsed = parseGitHubRepoName(githubUrl);
 		if (parsed === undefined) {
 			githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
 			return;

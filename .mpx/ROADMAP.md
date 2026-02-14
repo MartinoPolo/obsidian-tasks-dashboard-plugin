@@ -1,8 +1,8 @@
 # Implementation Roadmap
 
 Project: Tasks Dashboard Plugin
-Updated: 2026-02-10
-Total Phases: 11
+Updated: 2026-02-14
+Total Phases: 12
 
 ## Phase Summary
 
@@ -15,10 +15,11 @@ Total Phases: 11
 | 5 | GitHub Repo & Rate Limits | Complete | 8/8 | Phase 3 |
 | 6 | GitHub Quick-Open | Complete | 7/7 | Phase 3 (soft: 5) |
 | 7 | Issue UX | Complete | 10/10 | Phase 2 |
-| 8 | Project Folder | Not Started | 0/8 | Phase 2 |
+| 8 | Project Folder | Complete | 13/13 | Phase 2 |
 | 9 | Note Import | Not Started | 0/7 | Phase 2 |
 | 10 | Dashboard Deletion | Not Started | 0/7 | Phases 4–9 |
 | 11 | Color Customization | Not Started | 0/6 | Phases 4–9 |
+| 12 | Code Quality Refactoring | Not Started | 0/40 | None |
 
 ## Dependency Graph
 ```
@@ -32,6 +33,8 @@ Phase 1 ──┬── Phase 2 ──┬── Phase 7 (complete)
 
 Phases 4,5,6,8,9 → Phase 10 (dashboard-deletion)
 Phases 4,5,6,8,9 → Phase 11 (color-customization)
+
+Phase 12 (code-quality-refactoring) — independent, no deps
 ```
 
 ## Phase Details
@@ -64,7 +67,7 @@ Quick-open button in issue controls for linked GitHub URLs.
 Move to top/bottom, rename with state migration, per-issue header color.
 **Reqs:** 15, 16, 17
 
-### Phase 8: Project Folder
+### Phase 8: Project Folder [Complete]
 Link on-disk project folder to dashboard with explorer/terminal buttons.
 **Reqs:** 7
 
@@ -79,3 +82,7 @@ Delete dashboard from settings with confirmation and data cleanup.
 ### Phase 11: Color Customization
 Customizable priority colors and dashboard section backgrounds.
 **Reqs:** 14
+
+### Phase 12: Code Quality Refactoring [Not Started]
+Eliminate ~800 lines of duplication across 8 groups. Extract shared utilities (GitHub URL parsing, dashboard paths, display helpers), unify duplicate patterns (search, move operations, YAML building, button creation), split oversized files (DashboardRenderer 989→~500 lines, IssueModal 570→3 files). No functional changes.
+**Reqs:** 18

@@ -7,6 +7,7 @@ import {
 	initializeDashboardStructure,
 	MARKERS
 } from './DashboardParser';
+import { getDashboardPath } from '../utils/dashboard-path';
 
 export type SortDirection = 'newest' | 'oldest';
 
@@ -30,11 +31,6 @@ export interface DashboardWriterInstance {
 	sortByEditedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	rebuildDashboardFromFiles: (dashboard: DashboardConfig) => Promise<number>;
 }
-
-const getDashboardPath = (dashboard: DashboardConfig): string => {
-	const filename = dashboard.dashboardFilename || 'Dashboard.md';
-	return `${dashboard.rootPath}/${filename}`;
-};
 
 export function createDashboardWriter(
 	app: App,

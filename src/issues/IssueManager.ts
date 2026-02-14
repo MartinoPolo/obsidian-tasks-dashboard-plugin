@@ -9,6 +9,8 @@ import {
 	GitHubStoredMetadata
 } from '../types';
 import { slugify } from '../utils/slugify';
+import { getDashboardPath } from '../utils/dashboard-path';
+import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
 import { parseGitHubUrlInfo } from '../utils/github';
 
 export interface CreateIssueParams {
@@ -33,15 +35,6 @@ export interface IssueManagerInstance {
 	) => Promise<void>;
 }
 
-function isGitHubRepoUrl(url: string): boolean {
-	return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/?$/.test(url);
-}
-
-function parseGitHubRepoName(url: string): string | undefined {
-	const match = url.match(/github\.com\/([^/]+\/[^/]+?)\/?$/);
-	return match !== null ? match[1] : undefined;
-}
-
 function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
 	if (metadata !== undefined) {
 		return `#${metadata.number} - ${metadata.title}`;
@@ -51,9 +44,9 @@ function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): str
 		return `#${parsed.number}`;
 	}
 	if (isGitHubRepoUrl(url)) {
-		const repoName = parseGitHubRepoName(url);
-		if (repoName !== undefined) {
-			return repoName;
+		const repoFullName = parseGitHubRepoFullName(url);
+		if (repoFullName !== undefined) {
+			return repoFullName;
 		}
 	}
 	return 'GitHub Link';
@@ -338,8 +331,7 @@ priority: ${issue.priority}`;
 		}
 
 		// Update dashboard file — replace within the issue's block only
-		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardPath = getDashboardPath(dashboard);
 		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
 
 		if (dashboardFile !== null) {

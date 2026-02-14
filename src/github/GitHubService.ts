@@ -7,6 +7,7 @@ import {
 	GitHubRepoMetadata,
 	GitHubRepository
 } from '../types';
+import { parseGitHubUrl, ParsedGitHubUrl } from '../utils/github-url';
 
 interface CacheEntry<T> {
 	data: T;
@@ -16,13 +17,6 @@ interface CacheEntry<T> {
 interface GitHubSearchResult {
 	items: GitHubIssueMetadata[];
 	totalCount: number;
-}
-
-interface ParsedGitHubUrl {
-	owner: string;
-	repo: string;
-	number: number;
-	type: 'issues' | 'pull';
 }
 
 export interface GitHubServiceInstance {
@@ -183,33 +177,21 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 	};
 
-	const parseGitHubUrl = (url: string): ParsedGitHubUrl | undefined => {
-		const patterns = [
-			/github\.com\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)/,
-			/github\.com\/([^/]+)\/([^/]+)\/pulls\/(\d+)/
-		];
-
-		for (const pattern of patterns) {
-			const match = url.match(pattern);
-			if (match !== null) {
-				const [, owner, repo, typeOrNumber, numberOrUndefined] = match;
-				if (typeOrNumber === 'issues' || typeOrNumber === 'pull') {
-					return {
-						owner,
-						repo,
-						type: typeOrNumber === 'pull' ? 'pull' : 'issues',
-						number: parseInt(numberOrUndefined, 10)
-					};
-				}
-				return {
-					owner,
-					repo,
-					type: 'pull',
-					number: parseInt(typeOrNumber, 10)
-				};
+	const mapLabels = (labels: Array<string | { name: string; color?: string }>): GitHubLabel[] => {
+		return labels.map((label): GitHubLabel => {
+			if (typeof label === 'string') {
+				return { name: label, color: '888888' };
 			}
-		}
-		return undefined;
+			return {
+				name: label.name,
+				color: label.color !== undefined && label.color !== '' ? label.color : '888888'
+			};
+		});
+	};
+
+	const parseRepoFromUrl = (repositoryUrl: string): { owner: string; repoName: string } => {
+		const repoMatch = repositoryUrl.match(/repos\/([^/]+)\/([^/]+)$/);
+		return repoMatch ? { owner: repoMatch[1], repoName: repoMatch[2] } : { owner: '', repoName: '' };
 	};
 
 	const mapIssueResponse = (
@@ -236,15 +218,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			number: data.number,
 			title: data.title,
 			state: data.state as 'open' | 'closed',
-			labels: data.labels.map((label): GitHubLabel => {
-				if (typeof label === 'string') {
-					return { name: label, color: '888888' };
-				}
-				return {
-					name: label.name,
-					color: label.color !== undefined && label.color !== '' ? label.color : '888888'
-				};
-			}),
+			labels: mapLabels(data.labels),
 			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
 			body: data.body !== null ? data.body : undefined,
 			createdAt: data.created_at,
@@ -301,15 +275,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			number: data.number,
 			title: data.title,
 			state: data.state as 'open' | 'closed',
-			labels: data.labels.map((label): GitHubLabel => {
-				if (typeof label === 'string') {
-					return { name: label, color: '888888' };
-				}
-				return {
-					name: label.name,
-					color: label.color !== undefined && label.color !== '' ? label.color : '888888'
-				};
-			}),
+			labels: mapLabels(data.labels),
 			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
 			body: data.body !== null ? data.body : undefined,
 			createdAt: data.created_at,
@@ -368,8 +334,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const items = data.items.map((item) => {
-			const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
-			const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
 			return mapIssueResponse(item, owner, repoName);
 		});
 
@@ -404,8 +369,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const items = data.items.map((item) => {
-			const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
-			const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
 			return mapIssueResponse(item, owner, repoName);
 		});
 
@@ -588,8 +552,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			const allowedOwners = new Set([username, ...organizations]);
 			allItems = data.items
 				.map((item) => {
-					const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
-					const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+					const { owner, repoName } = parseRepoFromUrl(item.repository_url);
 					return mapIssueResponse(item, owner, repoName);
 				})
 				.filter((item) => {
@@ -622,8 +585,7 @@ export function createGitHubService(): GitHubServiceInstance {
 					}
 					seenUrls.add(item.html_url);
 
-					const repoMatch = item.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
-					const [owner, repoName] = repoMatch ? [repoMatch[1], repoMatch[2]] : ['', ''];
+					const { owner, repoName } = parseRepoFromUrl(item.repository_url);
 					allItems.push(mapIssueResponse(item, owner, repoName));
 				}
 			}
