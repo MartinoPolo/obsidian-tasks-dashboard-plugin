@@ -69,13 +69,13 @@ Deduplicate block extraction, move operations, and issue block builders.
 
 Split largest file (989 lines) into focused modules.
 
-- [ ] Create `src/dashboard/header-actions.ts` — `getButtonVisibility(dashboard)` returning `{ folder, terminal, vscode, github }` booleans (eliminates 9 duplicate checks); `createActionButton(config)` factory; `renderActionButtons(container, params, dashboard, plugin)` for folder/terminal/vscode/github buttons used by BOTH renderHeader and renderSortButton; move `ICONS` constant here
-- [ ] Create `src/dashboard/sort-controls.ts` — move `renderSortButton` (283 lines); move `getActiveIssueIds`; unify collapse/expand all into `toggleAllIssues(collapsed, ...)`; extract `findDashboardContainer(el)` (duplicated twice)
-- [ ] In `DashboardRenderer.ts`: merge `renderGitHubRepoCard` + `renderGitHubCard` into single `renderGitHubCardWithRefresh`
-- [ ] In `DashboardRenderer.ts`: fix naming inconsistency — standardize to `folderButton`, `terminalButton`, `vscodeButton` (no `Btn` suffix)
-- [ ] In `DashboardRenderer.ts`: remove unused `showFolderButtons` variable (line 257) and stale `dropdownMounted` variable (line 688) — derive from DOM state
-- [ ] Import from new modules, reduce DashboardRenderer.ts to ~500 lines
-- [ ] Verify `pnpm build` passes
+- [x] Create `src/dashboard/header-actions.ts` — `getButtonVisibility(dashboard)` returning `{ folder, terminal, vscode, github }` booleans (eliminates 9 duplicate checks); `createActionButton(config)` factory; `renderActionButtons(container, params, dashboard, plugin)` for folder/terminal/vscode/github buttons used by BOTH renderHeader and renderSortButton; move `ICONS` constant here
+- [x] Create `src/dashboard/sort-controls.ts` — move `renderSortButton` (283 lines); move `getActiveIssueIds`; unify collapse/expand all into `toggleAllIssues(collapsed, ...)`; extract `findDashboardContainer(el)` (duplicated twice)
+- [x] In `DashboardRenderer.ts`: merge `renderGitHubRepoCard` + `renderGitHubCard` into single `renderGitHubCardWithRefresh`
+- [x] In `DashboardRenderer.ts`: fix naming inconsistency — standardize to `folderButton`, `terminalButton`, `vscodeButton` (no `Btn` suffix)
+- [x] In `DashboardRenderer.ts`: remove unused `showFolderButtons` variable (line 257) and stale `dropdownMounted` variable (line 688) — derive from DOM state
+- [x] Import from new modules, reduce DashboardRenderer.ts to ~500 lines
+- [x] Verify `pnpm build` passes
 
 ## Group 7: IssueModal — Split File + Extract Helpers (~60 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 28/40 tasks complete
+Progress: 35/40 tasks complete
