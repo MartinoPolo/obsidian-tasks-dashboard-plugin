@@ -16,24 +16,24 @@ Total Phases: 13
 | 6 | GitHub Quick-Open | Complete | 7/7 | Phase 3 (soft: 5) |
 | 7 | Issue UX | Complete | 10/10 | Phase 2 |
 | 8 | Project Folder | Complete | 13/13 | Phase 2 |
-| 9 | Note Import | Not Started | 0/7 | Phase 2 |
-| 10 | Dashboard Deletion | Not Started | 0/7 | Phases 4–9 |
-| 11 | Color Customization | Not Started | 0/6 | Phases 4–9 |
+| 9 | Note Import | Complete | 7/7 | Phase 2 |
+| 10 | Dashboard Deletion | Complete | 7/7 | Phases 4–9 |
+| 11 | Color Customization | Skipped | 0/6 | Phases 4–9 |
 | 12 | Code Quality Refactoring | Complete | 40/40 | None |
 | 13 | Code Hardening | Complete | 24/24 | Phase 12 |
 
 ## Dependency Graph
 ```
 Phase 1 ──┬── Phase 2 ──┬── Phase 7 (complete)
-           │             ├── Phase 8 (project-folder)
-           │             └── Phase 9 (note-import)
+           │             ├── Phase 8 (complete)
+           │             └── Phase 9 (complete)
            │
            └── Phase 3 (complete) ──┬── Phase 4 (multi-links)
-                                    ├── Phase 5 (repo/rate-limits)
-                                    └── Phase 6 (quick-open, soft dep on 5)
+                                    ├── Phase 5 (complete)
+                                    └── Phase 6 (complete)
 
-Phases 4,5,6,8,9 → Phase 10 (dashboard-deletion)
-Phases 4,5,6,8,9 → Phase 11 (color-customization)
+Phases 4,5,6,8,9 → Phase 10 (complete)
+Phases 4,5,6,8,9 → Phase 11 (skipped)
 
 Phase 12 (code-quality-refactoring) — independent, no deps
 
@@ -74,16 +74,16 @@ Move to top/bottom, rename with state migration, per-issue header color.
 Link on-disk project folder to dashboard with explorer/terminal buttons.
 **Reqs:** 7
 
-### Phase 9: Note Import
+### Phase 9: Note Import [Complete]
 Import existing vault notes as dashboard issues with autocomplete.
 **Reqs:** 8
 
-### Phase 10: Dashboard Deletion
+### Phase 10: Dashboard Deletion [Complete]
 Delete dashboard from settings with confirmation and data cleanup.
 **Reqs:** 13
 
-### Phase 11: Color Customization
-Customizable priority colors and dashboard section backgrounds.
+### Phase 11: Color Customization [Skipped]
+Customizable priority colors and dashboard section backgrounds. Per-issue color picker covers the use case.
 **Reqs:** 14
 
 ### Phase 12: Code Quality Refactoring [Complete]

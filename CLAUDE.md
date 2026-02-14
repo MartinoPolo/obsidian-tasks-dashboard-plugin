@@ -82,7 +82,8 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 - `FolderPathModal.ts` - Folder path input modal with optional `issueId` for per-issue vs global storage
 - `github-links-modal.ts` - Modal to manage GitHub links for issues
 - `rename-issue-modal.ts` - Rename issue dialog
-- `delete-confirmation-modal.ts` - Confirm deletion action
+- `delete-confirmation-modal.ts` - Confirm issue deletion action
+- `dashboard-delete-modal.ts` - Dashboard deletion with optional file cleanup checkbox
 - `RepositoryPickerModal.ts` - Select GitHub repository (settings only)
 - `modal-helpers.ts` - Shared modal utility functions
 
