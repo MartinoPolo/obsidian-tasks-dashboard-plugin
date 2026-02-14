@@ -364,8 +364,15 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 	const renderGitHubCardWithRefresh = async (
 		container: HTMLElement,
-		githubUrl: string
+		githubUrl: string,
+		issueId?: string,
+		dashboard?: DashboardConfig
 	): Promise<void> => {
+		const onUnlink = (issueId !== undefined && dashboard !== undefined)
+			? (): void => {
+				void plugin.issueManager.removeGitHubLink(dashboard, issueId, githubUrl);
+			}
+			: undefined;
 		const isRepo = isGitHubRepoUrl(githubUrl);
 
 		if (isRepo) {
@@ -399,7 +406,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 							githubContainer,
 							freshMetadata,
 							plugin.settings.githubDisplayMode,
-							onRefresh
+							onRefresh,
+							onUnlink
 						);
 					} else {
 						githubCardRenderer.renderError(githubContainer, 'Failed to refresh');
@@ -411,7 +419,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				githubContainer,
 				metadata,
 				plugin.settings.githubDisplayMode,
-				onRefresh
+				onRefresh,
+				onUnlink
 			);
 			return;
 		}
@@ -441,7 +450,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 						githubContainer,
 						freshMetadata,
 						plugin.settings.githubDisplayMode,
-						onRefresh
+						onRefresh,
+						onUnlink
 					);
 				} else {
 					githubCardRenderer.renderError(githubContainer, 'Failed to refresh');
@@ -453,7 +463,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			githubContainer,
 			metadata,
 			plugin.settings.githubDisplayMode,
-			onRefresh
+			onRefresh,
+			onUnlink
 		);
 	};
 
@@ -488,7 +499,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		if (dashboard.githubEnabled && params.githubLinks.length > 0) {
 			for (const githubUrl of params.githubLinks) {
-				await renderGitHubCardWithRefresh(container, githubUrl);
+				await renderGitHubCardWithRefresh(container, githubUrl, params.issue, dashboard);
 			}
 		}
 

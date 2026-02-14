@@ -33,6 +33,11 @@ export interface IssueManagerInstance {
 		githubUrl: string,
 		metadata?: GitHubIssueMetadata
 	) => Promise<void>;
+	removeGitHubLink: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		githubUrl: string
+	) => Promise<void>;
 }
 
 function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
@@ -553,5 +558,83 @@ priority: ${issue.priority}`;
 		new Notice(`GitHub link added to ${issueId}`);
 	};
 
-	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink };
+	const removeGitHubLink = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		githubUrl: string
+	): Promise<void> => {
+		const issueResult = findIssueFile(dashboard, issueId);
+		if (issueResult === null) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+
+		const { file } = issueResult;
+		let content = await app.vault.read(file);
+
+		// --- Remove from frontmatter ---
+		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+		if (frontmatterCloseIndex !== -1) {
+			const frontmatter = content.slice(0, frontmatterCloseIndex);
+			const afterFrontmatter = content.slice(frontmatterCloseIndex);
+
+			// Match the `- url: "{url}"` entry and its metadata children
+			const entryPattern = new RegExp(
+				`\\n  - url: "${githubUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"` +
+				`(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
+				'g'
+			);
+			let cleanedFrontmatter = frontmatter.replace(entryPattern, '');
+
+			// If no entries remain under github_links:, remove the key entirely
+			if (cleanedFrontmatter.includes('github_links:') &&
+				!/github_links:\s*\n\s+-/.test(cleanedFrontmatter)) {
+				cleanedFrontmatter = cleanedFrontmatter.replace(/\ngithub_links:\s*/, '');
+			}
+
+			content = cleanedFrontmatter + afterFrontmatter;
+		}
+
+		// --- Remove markdown link + code block from body ---
+		// Pattern: [linkText](url)\n\n```tasks-dashboard-github\nurl: {url}\ndashboard: ...\n```
+		const escapedUrl = githubUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const bodyLinkPattern = new RegExp(
+			`\\n?\\[([^\\]]*?)\\]\\(${escapedUrl}\\)\\s*\\n\\n\`\`\`tasks-dashboard-github\\nurl: ${escapedUrl}\\ndashboard: [^\\n]+\\n\`\`\``,
+			'g'
+		);
+		content = content.replace(bodyLinkPattern, '');
+
+		await app.vault.modify(file, content);
+
+		// --- Remove from Dashboard.md ---
+		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (dashboardFile !== null) {
+			let dashboardContent = await app.vault.read(dashboardFile);
+			const startMarker = `%% ISSUE:${issueId}:START %%`;
+			const endMarker = `%% ISSUE:${issueId}:END %%`;
+			const startIndex = dashboardContent.indexOf(startMarker);
+			const endIndex = dashboardContent.indexOf(endMarker);
+
+			if (startIndex !== -1 && endIndex !== -1) {
+				const blockEnd = endIndex + endMarker.length;
+				let block = dashboardContent.substring(startIndex, blockEnd);
+
+				// Remove the github_link: {url} line
+				block = block.replace(
+					new RegExp(`\\ngithub_link: ${escapedUrl}`, 'g'),
+					''
+				);
+
+				dashboardContent =
+					dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
+				await app.vault.modify(dashboardFile, dashboardContent);
+			}
+		}
+
+		new Notice(`GitHub link removed from ${issueId}`);
+	};
+
+	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink, removeGitHubLink };
 }

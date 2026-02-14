@@ -773,6 +773,32 @@
 	height: 14px;
 }
 
+/* GitHub Unlink Button */
+.tdc-gh-unlink {
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	transition: var(--tdc-transition-fast);
+}
+
+.tdc-gh-unlink:hover {
+	background: color-mix(in srgb, var(--tdc-priority-high) 20%, transparent);
+	color: var(--tdc-priority-high);
+}
+
+.tdc-gh-unlink svg {
+	width: 14px;
+	height: 14px;
+}
+
 /* GitHub Labels */
 .tdc-gh-labels {
 	display: flex;
@@ -1109,4 +1135,41 @@
 	font-size: 0.85em;
 	color: var(--text-muted);
 	margin-top: 2px;
+}
+
+/* ===== GitHub Links Modal ===== */
+.tdc-gh-links-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 12px;
+}
+
+.tdc-gh-links-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: var(--tdc-border-radius);
+	background: var(--background-secondary);
+}
+
+.tdc-gh-links-label {
+	flex: 1;
+	color: var(--text-accent);
+	text-decoration: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tdc-gh-links-label:hover {
+	text-decoration: underline;
+}
+
+.tdc-gh-links-open,
+.tdc-gh-links-remove {
+	padding: 4px 10px;
+	font-size: 0.8em;
+	flex-shrink: 0;
 }

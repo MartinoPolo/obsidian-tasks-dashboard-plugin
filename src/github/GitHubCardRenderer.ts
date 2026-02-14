@@ -10,6 +10,7 @@ import {
 
 const ICONS = {
 	refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`,
+	unlink: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
 	pr: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
 	issue: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
 	externalLink: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
@@ -23,13 +24,15 @@ export interface GitHubCardRendererInstance {
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
 		displayMode: GitHubDisplayMode,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	) => void;
 	renderRepoCard: (
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
 		displayMode: GitHubDisplayMode,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	) => void;
 	renderLoading: (container: HTMLElement) => void;
 	renderError: (container: HTMLElement, message: string) => void;
@@ -60,6 +63,26 @@ function renderRefreshButton(parent: HTMLElement, onRefresh: () => void): void {
 		e.stopPropagation();
 		onRefresh();
 	});
+}
+
+function renderUnlinkButton(parent: HTMLElement, onUnlink: () => void): void {
+	const unlinkBtn = parent.createEl('button', {
+		cls: 'tdc-gh-unlink',
+		attr: { 'aria-label': 'Remove GitHub link' }
+	});
+	unlinkBtn.innerHTML = ICONS.unlink;
+	unlinkBtn.addEventListener('click', (e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		onUnlink();
+	});
+}
+
+function renderCardActions(parent: HTMLElement, onRefresh: () => void, onUnlink?: () => void): void {
+	renderRefreshButton(parent, onRefresh);
+	if (onUnlink !== undefined) {
+		renderUnlinkButton(parent, onUnlink);
+	}
 }
 
 interface LabelData {
@@ -159,7 +182,8 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	const renderMinimal = (
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-minimal' });
 
@@ -178,18 +202,19 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 			text: getStateText(metadata)
 		});
 
-		renderRefreshButton(card, onRefresh);
+		renderCardActions(card, onRefresh, onUnlink);
 	};
 
 	const renderCompact = (
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-compact' });
 
 		const header = renderIssueHeader(card, metadata, { titleMaxLength: 60 });
-		renderRefreshButton(header, onRefresh);
+		renderCardActions(header, onRefresh, onUnlink);
 
 		renderLabels(card, metadata.labels, 5);
 
@@ -202,12 +227,13 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	const renderFull = (
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-full' });
 
 		const header = renderIssueHeader(card, metadata);
-		renderRefreshButton(header, onRefresh);
+		renderCardActions(header, onRefresh, onUnlink);
 
 		renderLabels(card, metadata.labels);
 
@@ -239,19 +265,20 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		container: HTMLElement,
 		metadata: GitHubIssueMetadata,
 		displayMode: GitHubDisplayMode,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		container.empty();
 
 		switch (displayMode) {
 			case 'minimal':
-				renderMinimal(container, metadata, onRefresh);
+				renderMinimal(container, metadata, onRefresh, onUnlink);
 				break;
 			case 'compact':
-				renderCompact(container, metadata, onRefresh);
+				renderCompact(container, metadata, onRefresh, onUnlink);
 				break;
 			case 'full':
-				renderFull(container, metadata, onRefresh);
+				renderFull(container, metadata, onRefresh, onUnlink);
 				break;
 		}
 	};
@@ -323,7 +350,8 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	const renderRepoMinimal = (
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-minimal tdc-gh-card-repo' });
 
@@ -341,18 +369,19 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
 		}
 
-		renderRefreshButton(card, onRefresh);
+		renderCardActions(card, onRefresh, onUnlink);
 	};
 
 	const renderRepoCompact = (
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-compact tdc-gh-card-repo' });
 
 		const header = renderRepoHeader(card, metadata);
-		renderRefreshButton(header, onRefresh);
+		renderCardActions(header, onRefresh, onUnlink);
 
 		renderRepoStats(card, metadata, false);
 
@@ -365,12 +394,13 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 	const renderRepoFull = (
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-full tdc-gh-card-repo' });
 
 		const header = renderRepoHeader(card, metadata);
-		renderRefreshButton(header, onRefresh);
+		renderCardActions(header, onRefresh, onUnlink);
 
 		if (metadata.description !== '') {
 			const body = card.createDiv({ cls: 'tdc-gh-body' });
@@ -394,19 +424,20 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		container: HTMLElement,
 		metadata: GitHubRepoMetadata,
 		displayMode: GitHubDisplayMode,
-		onRefresh: () => void
+		onRefresh: () => void,
+		onUnlink?: () => void
 	): void => {
 		container.empty();
 
 		switch (displayMode) {
 			case 'minimal':
-				renderRepoMinimal(container, metadata, onRefresh);
+				renderRepoMinimal(container, metadata, onRefresh, onUnlink);
 				break;
 			case 'compact':
-				renderRepoCompact(container, metadata, onRefresh);
+				renderRepoCompact(container, metadata, onRefresh, onUnlink);
 				break;
 			case 'full':
-				renderRepoFull(container, metadata, onRefresh);
+				renderRepoFull(container, metadata, onRefresh, onUnlink);
 				break;
 		}
 	};

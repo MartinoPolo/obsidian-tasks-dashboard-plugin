@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
 import { GitHubSearchModal } from '../modals/GitHubSearchModal';
+import { GitHubLinksModal } from '../modals/github-links-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { createPlatformService, type PlatformService } from '../utils/platform';
 
@@ -196,6 +197,16 @@ export function renderIssueActionButtons(
 					}
 					void plugin.issueManager.addGitHubLink(dashboard, params.issueId, url, metadata);
 				}).open();
+			},
+			onContextMenu: () => {
+				if (hasGithubLinks) {
+					new GitHubLinksModal(
+						plugin,
+						dashboard,
+						params.issueId,
+						params.githubLinks
+					).open();
+				}
 			}
 		});
 	}
