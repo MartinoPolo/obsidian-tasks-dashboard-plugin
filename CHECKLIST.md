@@ -44,12 +44,13 @@
 - [ ] Each dashboard should be able to disable github integration
 
 ## Link to project folder
-- [ ] Add option to link a project folder (path on disc) to the dashboard. This way user can quickly open the project folder from the dashboard.
-- [ ] Add button "Open project folder" to dashboard header that opens the linked folder in
-    - [ ] Pressing the button when the folder is not linked should open a prompt to select the folder
-    - [ ] Pressing the button when the folder is linked should open the folder in system
-    - [ ] Button style should indicate whether the folder is linked or not (different color/icon)
-- [ ] Add links to open bash/powerhsell in the project folder as well
+- [x] Add option to link a project folder (path on disc) to the dashboard (global) and per-issue (independent storage)
+- [x] Folder button in dashboard header and per-issue controls
+    - [x] Left-click: opens explorer if folder set, opens FolderPathModal if not
+    - [x] Right-click: opens FolderPathModal to reassign/clear (when folder set)
+    - [x] Faded style indicates no folder assigned
+- [x] Terminal button hidden when no folder (not faded); opens PowerShell/bash when folder set
+- [x] Per-issue folders stored in `issueFolders[dashboardId:issueId]`, independent from global and other issues
 
 
 ## Allow adding foreign issues to dashboard

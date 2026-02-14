@@ -1,10 +1,11 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { Priority, IssueProgress, DashboardConfig, GitHubRepository } from '../types';
+import { Priority, IssueProgress, DashboardConfig } from '../types';
 import { NamePromptModal, DeleteConfirmationModal, RenameIssueModal } from '../modals/IssueModal';
 import { GitHubSearchModal } from '../modals/GitHubSearchModal';
-import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
+import { FolderPathModal } from '../modals/FolderPathModal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
+import { createPlatformService } from '../utils/platform';
 import { parseDashboard } from './DashboardParser';
 
 interface ControlParams {
@@ -33,7 +34,9 @@ const ICONS = {
 	toBottom: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v12"/><path d="M19 12l-7 7-7-7"/><line x1="5" y1="21" x2="19" y2="21"/></svg>`,
 	rename: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>`,
 	palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"/></svg>`,
-	github: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`
+	github: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`,
+	folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`,
+	terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`
 };
 
 export interface DashboardRendererInstance {
@@ -48,6 +51,7 @@ export interface DashboardRendererInstance {
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const githubCardRenderer = createGitHubCardRenderer();
+	const platformService = createPlatformService();
 
 	const parseParams = (source: string): ControlParams | null => {
 		const lines = source.trim().split('\n');
@@ -306,7 +310,50 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			colorInput.click();
 		});
 
-		if (dashboard.githubEnabled) {
+		const issueFolderKey = dashboard.id + ':' + params.issue;
+		const issueFolder = plugin.settings.issueFolders[issueFolderKey];
+		const hasIssueFolder = issueFolder !== undefined && issueFolder !== '';
+
+		if (dashboard.showFolderButtons ?? true) {
+			const folderBtn = btnContainer.createEl('button', {
+				cls: `tdc-btn tdc-btn-folder${hasIssueFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasIssueFolder ? 'Open issue folder' : 'Set issue folder'
+				}
+			});
+			folderBtn.innerHTML = ICONS.folder;
+			folderBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasIssueFolder) {
+					platformService.openInFileExplorer(issueFolder);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+			folderBtn.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (hasIssueFolder) {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+		}
+
+		if ((dashboard.showTerminalButtons ?? true) && hasIssueFolder) {
+			const terminalBtn = btnContainer.createEl('button', {
+				cls: 'tdc-btn tdc-btn-terminal',
+				attr: { 'aria-label': 'Open terminal' }
+			});
+			terminalBtn.innerHTML = ICONS.terminal;
+			terminalBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				platformService.openTerminal(issueFolder);
+			});
+		}
+
+		if ((dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled) {
 			const hasGithubLinks = params.githubLinks.length > 0;
 			const quickOpenBtn = btnContainer.createEl('button', {
 				cls: `tdc-btn tdc-btn-github-quickopen${hasGithubLinks ? '' : ' tdc-btn-faded'}`,
@@ -334,102 +381,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
 				}).open();
 			});
-		}
-
-		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
-			const githubWrapper = btnContainer.createDiv({ cls: 'tdc-github-btn-wrapper' });
-
-			const githubBtn = githubWrapper.createEl('button', {
-				cls: 'tdc-btn tdc-btn-github',
-				attr: { 'aria-label': 'Add GitHub link' }
-			});
-			githubBtn.innerHTML = ICONS.github;
-
-			const githubDropdown = githubWrapper.createDiv({ cls: 'tdc-github-dropdown' });
-			githubDropdown.style.display = 'none';
-			let githubDropdownOpen = false;
-			let githubDropdownMounted = false;
-
-			const issuePrOption = githubDropdown.createDiv({
-				cls: 'tdc-github-dropdown-item',
-				text: 'Link Issue/PR'
-			});
-			issuePrOption.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				closeGithubDropdown();
-				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
-					if (url === undefined) {
-						return;
-					}
-					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
-				}).open();
-			});
-
-			const repoOption = githubDropdown.createDiv({
-				cls: 'tdc-github-dropdown-item',
-				text: 'Link Repository'
-			});
-			repoOption.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				closeGithubDropdown();
-				void openRepositoryPickerForExistingIssue(dashboard, params.issue);
-			});
-
-			const positionGithubDropdown = (): void => {
-				if (!githubDropdownOpen) {
-					return;
-				}
-				const rect = githubBtn.getBoundingClientRect();
-				const viewportPadding = 8;
-				const dropdownWidth = Math.max(githubDropdown.offsetWidth, 160);
-				const maxLeft = window.innerWidth - dropdownWidth - viewportPadding;
-				const left = Math.max(viewportPadding, Math.min(rect.left, maxLeft));
-				githubDropdown.style.minWidth = '160px';
-				githubDropdown.style.left = `${left}px`;
-				githubDropdown.style.top = `${rect.bottom + 4}px`;
-			};
-
-			const openGithubDropdown = (): void => {
-				githubDropdownOpen = true;
-				if (!githubDropdownMounted) {
-					document.body.appendChild(githubDropdown);
-					githubDropdown.classList.add('tdc-sort-dropdown-portal');
-					githubDropdownMounted = true;
-				}
-				githubDropdown.style.display = 'block';
-				requestAnimationFrame(positionGithubDropdown);
-				window.addEventListener('scroll', positionGithubDropdown, true);
-				window.addEventListener('resize', positionGithubDropdown);
-			};
-
-			const closeGithubDropdown = (): void => {
-				githubDropdownOpen = false;
-				githubDropdown.style.display = 'none';
-				window.removeEventListener('scroll', positionGithubDropdown, true);
-				window.removeEventListener('resize', positionGithubDropdown);
-			};
-
-			githubBtn.addEventListener('click', (e) => {
-				e.preventDefault();
-				e.stopPropagation();
-				if (githubDropdownOpen) {
-					closeGithubDropdown();
-				} else {
-					openGithubDropdown();
-				}
-			});
-
-			const closeGithubDropdownOnClick = (e: MouseEvent): void => {
-				const target = e.target as Node;
-				if (githubWrapper.contains(target) || githubDropdown.contains(target)) {
-					return;
-				}
-				closeGithubDropdown();
-			};
-
-			document.addEventListener('click', closeGithubDropdownOnClick);
 		}
 
 		const archiveBtn = btnContainer.createEl('button', {
@@ -564,22 +515,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			plugin.settings.githubDisplayMode,
 			onRefresh
 		);
-	};
-
-	const openRepositoryPickerForExistingIssue = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<void> => {
-		const repositories = await plugin.githubService.getUserRepositories();
-		if (repositories.length === 0) {
-			new Notice('No repositories found. Check your GitHub token.');
-			return;
-		}
-
-		new RepositoryPickerModal(plugin.app, repositories, (repository: GitHubRepository) => {
-			const repoUrl = `https://github.com/${repository.fullName}`;
-			void plugin.issueManager.addGitHubLink(dashboard, issueId, repoUrl);
-		}).open();
 	};
 
 	const render = async (
@@ -812,6 +747,44 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				}
 			});
 		});
+
+		const hasProjectFolder = dashboard.projectFolder !== undefined && dashboard.projectFolder !== '';
+
+		if (dashboard.showFolderButtons ?? true) {
+			const folderButton = container.createEl('button', {
+				cls: `tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-folder${hasProjectFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasProjectFolder ? 'Open project folder' : 'Set project folder'
+				}
+			});
+			folderButton.innerHTML = ICONS.folder + ' Open Folder';
+			folderButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				if (hasProjectFolder) {
+					platformService.openInFileExplorer(dashboard.projectFolder!);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard).open();
+				}
+			});
+			folderButton.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				if (hasProjectFolder) {
+					new FolderPathModal(plugin.app, plugin, dashboard).open();
+				}
+			});
+		}
+
+		if ((dashboard.showTerminalButtons ?? true) && hasProjectFolder) {
+			const terminalButton = container.createEl('button', {
+				cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-terminal',
+				attr: { 'aria-label': 'Open terminal' }
+			});
+			terminalButton.innerHTML = ICONS.terminal + ' Terminal';
+			terminalButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				platformService.openTerminal(dashboard.projectFolder!);
+			});
+		}
 
 		const containerRenderChild = new MarkdownRenderChild(container);
 		containerRenderChild.onunload = () => {

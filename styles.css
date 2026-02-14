@@ -293,6 +293,14 @@
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.tdc-btn-action-secondary.tdc-btn-faded {
+	opacity: 0.4;
+}
+
+.tdc-btn-action-secondary.tdc-btn-faded:hover {
+	opacity: 0.8;
+}
+
 /* ===== Archive Button ===== */
 .tdc-btn-archive {
 	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
@@ -313,6 +321,27 @@
 .tdc-btn-delete:hover {
 	background: var(--tdc-priority-high);
 	color: white;
+}
+
+/* ===== Folder & Terminal Buttons ===== */
+.tdc-btn-folder,
+.tdc-btn-terminal {
+	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+	color: var(--interactive-accent);
+}
+
+.tdc-btn-folder:hover,
+.tdc-btn-terminal:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.tdc-btn-folder.tdc-btn-faded {
+	opacity: 0.4;
+}
+
+.tdc-btn-folder.tdc-btn-faded:hover {
+	opacity: 0.8;
 }
 
 /* ===== Sort Code Block Overflow ===== */
@@ -1005,38 +1034,6 @@
 
 .tdc-btn-github-quickopen.tdc-btn-faded:hover {
 	opacity: 0.8;
-}
-
-/* ===== GitHub Button Dropdown ===== */
-.tdc-github-btn-wrapper {
-	display: inline-block;
-	position: relative;
-}
-
-.tdc-github-dropdown {
-	position: absolute;
-	top: 100%;
-	left: 0;
-	z-index: 100;
-	min-width: 160px;
-	margin-top: 4px;
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--tdc-border-radius);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-	overflow: hidden;
-}
-
-.tdc-github-dropdown-item {
-	padding: 8px 14px;
-	cursor: pointer;
-	font-size: 0.9em;
-	color: var(--text-normal);
-	transition: var(--tdc-transition-fast);
-}
-
-.tdc-github-dropdown-item:hover {
-	background: var(--background-modifier-hover);
 }
 
 /* ===== Repository Picker Modal ===== */

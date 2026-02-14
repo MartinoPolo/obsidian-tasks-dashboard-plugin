@@ -85,6 +85,10 @@ export interface DashboardConfig {
 	dashboardFilename: string;
 	githubRepo?: string;
 	githubEnabled: boolean;
+	projectFolder?: string;
+	showGitHubButtons?: boolean;
+	showFolderButtons?: boolean;
+	showTerminalButtons?: boolean;
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {
@@ -98,6 +102,7 @@ export interface TasksDashboardSettings {
 	githubDisplayMode: GitHubDisplayMode;
 	collapsedIssues: Record<string, boolean>;
 	issueColors: Record<string, string>;
+	issueFolders: Record<string, string>;
 }
 export interface IssueProgress {
 	done: number;
@@ -110,7 +115,8 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	githubAuth: { method: 'none' },
 	githubDisplayMode: 'compact',
 	collapsedIssues: {},
-	issueColors: {}
+	issueColors: {},
+	issueFolders: {}
 };
 
 export const PRIORITY_ORDER: Record<Priority, number> = {

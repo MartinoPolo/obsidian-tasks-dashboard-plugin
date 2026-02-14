@@ -76,8 +76,9 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 **Modals** (`src/modals/`):
 - `IssueModal.ts` - Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
 - `GitHubSearchModal.ts` - Rich search modal for finding GitHub issues/PRs when authenticated
+- `FolderPathModal.ts` - Folder path input modal with optional `issueId` for per-issue vs global storage
 
-**Types** (`src/types.ts`): Priority levels, GitHub types, settings interfaces
+**Types** (`src/types.ts`): Priority levels, GitHub types, settings interfaces. `issueFolders` stores per-issue folders keyed by `dashboardId:issueId`.
 
 ### File Structure
 
@@ -99,5 +100,4 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 ## MPX Project
 - Spec: `.mpx/SPEC.md`
 - Roadmap: `.mpx/ROADMAP.md`
-- State: `.mpx/STATE.md`
 - Phases: `.mpx/phases/`

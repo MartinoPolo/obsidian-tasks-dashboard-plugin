@@ -102,7 +102,7 @@ Link your issues to GitHub issues and pull requests for enhanced tracking.
 Optionally link each dashboard to a specific GitHub repository:
 1. In the dashboard settings, enter the **GitHub Repository** (e.g., `owner/repo`)
 2. When creating issues, suggestions will be filtered to that repository
-3. Toggle "Search all repositories" in the search modal to expand scope
+3. Use the "Search scope" dropdown to choose between Linked repository, My repositories, or All GitHub
 
 ### Creating Issues with GitHub Links
 When GitHub is configured, step 3 of issue creation shows a rich search modal:
@@ -117,6 +117,23 @@ Issues linked to GitHub display metadata cards on the dashboard:
 - **Compact**: Number, title, status, labels, and description preview
 - **Full**: All metadata including assignees and timestamps
 - Click the refresh icon to update GitHub data
+
+## Project Folder Integration
+Link on-disk project folders to your dashboard and individual issues for quick access.
+
+### Global Folder (Dashboard Header)
+- Set a global project folder per dashboard in settings or via the **Open Folder** button
+- Left-click: opens folder in system explorer (or prompts to set if none)
+- Right-click: reassign or clear the folder
+- **Terminal** button appears only when a folder is set
+
+### Per-Issue Folders
+Each issue can have its own independent folder:
+- Click the folder icon on any issue to assign a folder
+- Left-click: opens the assigned folder (or prompts to set)
+- Right-click: reassign or clear
+- Terminal icon appears only when a folder is assigned
+- Issue folders are independent — assigning one does not affect other issues or the global folder
 
 ## Hotkeys
 Configure custom hotkeys in Settings → Hotkeys:

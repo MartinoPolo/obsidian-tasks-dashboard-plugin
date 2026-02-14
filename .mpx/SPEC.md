@@ -180,16 +180,28 @@ Button in issue controls row to open linked GitHub URL in browser. When no link 
 - Each sub-feature works independently
 - Backward compatible with existing GitHub-linked issues
 
-### 7. Link Project Folder to Dashboard
-Associate an on-disk project folder with a dashboard.
+### 7. Link Project Folder to Dashboard & Issues
+Associate on-disk project folders independently with the dashboard (global) and with individual issues (per-issue).
+
+#### Behavior
+| State | Folder Button | Terminal Button |
+|-------|--------------|-----------------|
+| No folder | Visible (faded) — click opens FolderPathModal | Hidden |
+| Has folder | Visible (full) — left-click opens Explorer, right-click opens FolderPathModal (reassign/clear) | Visible — click opens terminal |
+
+Same UX for both per-issue and global buttons, but each uses **independent** storage:
+- Global: `dashboard.projectFolder` (set via settings or dashboard header button)
+- Per-issue: `settings.issueFolders[dashboardId:issueId]` (set via issue controls)
 
 #### Acceptance Criteria
-- Setting per dashboard to link a folder path
-- "Open project folder" button in dashboard header
-- Button opens folder in system file explorer
-- Button indicates linked/unlinked state (different color/icon)
-- Unlinked state: button opens prompt to select folder
-- Additional buttons to open bash/PowerShell in the project folder
+- Setting per dashboard to link a global folder path
+- Per-issue folder stored independently in `issueFolders` (namespaced by dashboardId:issueId)
+- Folder buttons in both dashboard header and per-issue controls
+- Left-click: opens explorer (if folder set) or FolderPathModal (if not)
+- Right-click: opens FolderPathModal to reassign/clear (only when folder is set)
+- Terminal button hidden when no folder assigned (not faded)
+- Assigning folder to one issue does not affect other issues or the global button
+- Platform-aware: PowerShell on Windows, default terminal on Mac/Linux
 
 ### 8. Add Existing Notes as Issues
 Import existing Obsidian notes into a dashboard as issues.
