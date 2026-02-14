@@ -2,6 +2,7 @@ import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidi
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/issue-creation-modal';
+import { NoteImportModal } from '../modals/note-import-modal';
 import { parseDashboard } from './DashboardParser';
 import { ICONS, renderGlobalActionButtons } from './header-actions';
 
@@ -91,6 +92,13 @@ export function renderSortControls(
 	addButton.addEventListener('click', (event) => {
 		event.preventDefault();
 		new NamePromptModal(plugin.app, plugin, dashboard).open();
+	});
+
+	const importButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
+	importButton.innerHTML = ICONS.fileInput + ' Import Note';
+	importButton.addEventListener('click', (event) => {
+		event.preventDefault();
+		new NoteImportModal(plugin.app, plugin, dashboard).open();
 	});
 
 	const sortWrapper = container.createDiv({ cls: 'tdc-sort-wrapper' });

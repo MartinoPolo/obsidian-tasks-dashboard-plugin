@@ -21,8 +21,15 @@ export interface CreateIssueParams {
 	dashboard: DashboardConfig;
 }
 
+export interface ImportNoteParams {
+	file: TFile;
+	priority: Priority;
+	dashboard: DashboardConfig;
+}
+
 export interface IssueManagerInstance {
 	createIssue: (params: CreateIssueParams) => Promise<Issue>;
+	importNoteAsIssue: (params: ImportNoteParams) => Promise<Issue>;
 	archiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	unarchiveIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	deleteIssue: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
@@ -225,6 +232,70 @@ priority: ${issue.priority}`;
 
 		const content = generateIssueContent(issue, dashboard);
 		await app.vault.create(filePath, content);
+		await plugin.dashboardWriter.addIssueToDashboard(dashboard, issue);
+
+		return issue;
+	};
+
+	const importNoteAsIssue = async (params: ImportNoteParams): Promise<Issue> => {
+		const { file, priority, dashboard } = params;
+		const name = file.basename;
+		const issueId = slugify(name);
+		const activePath = `${dashboard.rootPath}/Issues/Active`;
+
+		await ensureFolderExists(activePath);
+
+		const filePath = generateUniqueFilePath(activePath, issueId);
+		const created = new Date().toISOString();
+		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const relativePath = '../'.repeat(2) + encodeURI(dashboardFilename);
+
+		// Read original note content — original stays untouched
+		const originalContent = await app.vault.read(file);
+
+		// Extract and merge frontmatter from original
+		let originalBody = originalContent;
+		let originalFrontmatterFields = '';
+		const frontmatterMatch = originalContent.match(/^---\n([\s\S]*?)\n---/);
+		if (frontmatterMatch !== null) {
+			const originalFields = frontmatterMatch[1];
+			// Filter out fields we'll set ourselves
+			const ownFields = new Set(['created', 'status', 'priority']);
+			const preservedLines = originalFields
+				.split('\n')
+				.filter((line) => {
+					const key = line.match(/^(\w+):/);
+					return key === null || !ownFields.has(key[1]);
+				})
+				.join('\n');
+			if (preservedLines.trim() !== '') {
+				originalFrontmatterFields = '\n' + preservedLines;
+			}
+			originalBody = originalContent.slice(frontmatterMatch[0].length).trimStart();
+		}
+
+		const newContent = `---
+created: ${created}
+status: active
+priority: ${priority}${originalFrontmatterFields}
+---
+[← Back to Dashboard](${relativePath})
+
+${originalBody}`;
+
+		await app.vault.create(filePath, newContent);
+
+		const issue: Issue = {
+			id: issueId,
+			name,
+			priority,
+			status: 'active',
+			created,
+			githubLinks: [],
+			githubMetadataList: [],
+			filePath
+		};
+
 		await plugin.dashboardWriter.addIssueToDashboard(dashboard, issue);
 
 		return issue;
@@ -710,5 +781,5 @@ priority: ${issue.priority}`;
 		new Notice(`GitHub link removed from ${issueId}`);
 	};
 
-	return { createIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink, removeGitHubLink };
+	return { createIssue, importNoteAsIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink, removeGitHubLink };
 }
