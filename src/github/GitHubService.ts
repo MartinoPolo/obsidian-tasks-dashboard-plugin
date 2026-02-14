@@ -8,6 +8,15 @@ import {
 	GitHubRepository
 } from '../types';
 import { parseGitHubUrl, ParsedGitHubUrl } from '../utils/github-url';
+import {
+	GitHubIssueApiResponse,
+	GitHubOrgApiResponse,
+	GitHubPullRequestApiResponse,
+	GitHubRepoApiResponse,
+	GitHubRepoDetailApiResponse,
+	GitHubSearchApiResponse,
+	GitHubUserApiResponse
+} from './github-api-types';
 
 interface CacheEntry<T> {
 	data: T;
@@ -308,7 +317,11 @@ export function createGitHubService(): GitHubServiceInstance {
 		return getIssue(parsed.owner, parsed.repo, parsed.number);
 	};
 
-	const searchIssues = async (query: string, repo?: string): Promise<GitHubSearchResult> => {
+	const searchItems = async (
+		query: string,
+		repo: string | undefined,
+		type: 'issue' | 'pr'
+	): Promise<GitHubSearchResult> => {
 		if (!isAuthenticated()) {
 			return { items: [], totalCount: 0 };
 		}
@@ -317,9 +330,9 @@ export function createGitHubService(): GitHubServiceInstance {
 		if (repo !== undefined && repo !== '') {
 			searchQuery = `repo:${repo} ${query}`;
 		}
-		searchQuery = `${searchQuery} is:issue`;
+		searchQuery = `${searchQuery} is:${type}`;
 
-		const cacheKey = `search:issues:${searchQuery}`;
+		const cacheKey = `search:${type === 'issue' ? 'issues' : 'pr'}:${searchQuery}`;
 		const cached = getCached<GitHubSearchResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
@@ -343,39 +356,12 @@ export function createGitHubService(): GitHubServiceInstance {
 		return result;
 	};
 
+	const searchIssues = async (query: string, repo?: string): Promise<GitHubSearchResult> => {
+		return searchItems(query, repo, 'issue');
+	};
+
 	const searchPullRequests = async (query: string, repo?: string): Promise<GitHubSearchResult> => {
-		if (!isAuthenticated()) {
-			return { items: [], totalCount: 0 };
-		}
-
-		let searchQuery = query;
-		if (repo !== undefined && repo !== '') {
-			searchQuery = `repo:${repo} ${query}`;
-		}
-		searchQuery = `${searchQuery} is:pr`;
-
-		const cacheKey = `search:pr:${searchQuery}`;
-		const cached = getCached<GitHubSearchResult>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
-
-		const data = await apiRequest<GitHubSearchApiResponse>(
-			`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=20&sort=updated`
-		);
-
-		if (data === undefined) {
-			return { items: [], totalCount: 0 };
-		}
-
-		const items = data.items.map((item) => {
-			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
-			return mapIssueResponse(item, owner, repoName);
-		});
-
-		const result = { items, totalCount: data.total_count };
-		setCache(cacheKey, result);
-		return result;
+		return searchItems(query, repo, 'pr');
 	};
 
 	const getRecentIssues = async (repo?: string, limit = 10): Promise<GitHubIssueMetadata[]> => {
@@ -627,64 +613,4 @@ export function createGitHubService(): GitHubServiceInstance {
 		isAuthenticated,
 		getRateLimit
 	};
-}
-
-interface GitHubIssueApiResponse {
-	number: number;
-	title: string;
-	state: string;
-	labels: Array<string | { name: string; color?: string }>;
-	assignees?: Array<{ login: string }>;
-	body: string | null;
-	created_at: string;
-	updated_at: string;
-	html_url: string;
-	pull_request?: { merged_at?: string };
-	draft?: boolean;
-	repository_url: string;
-}
-
-interface GitHubPullRequestApiResponse {
-	number: number;
-	title: string;
-	state: string;
-	labels: Array<string | { name: string; color?: string }>;
-	assignees?: Array<{ login: string }>;
-	body: string | null;
-	created_at: string;
-	updated_at: string;
-	html_url: string;
-	merged: boolean;
-	draft: boolean;
-}
-
-interface GitHubSearchApiResponse {
-	total_count: number;
-	items: GitHubIssueApiResponse[];
-}
-
-interface GitHubRepoApiResponse {
-	full_name: string;
-	description: string | null;
-	private: boolean;
-}
-
-interface GitHubRepoDetailApiResponse {
-	full_name: string;
-	description: string | null;
-	html_url: string;
-	stargazers_count: number;
-	language: string | null;
-	forks_count: number;
-	open_issues_count: number;
-	private: boolean;
-	updated_at: string;
-}
-
-interface GitHubUserApiResponse {
-	login: string;
-}
-
-interface GitHubOrgApiResponse {
-	login: string;
 }

@@ -29,10 +29,10 @@ Create foundation utilities consumed by all subsequent groups.
 
 Deduplicate search functions and extract API response types.
 
-- [ ] Create `src/github/github-api-types.ts` — move 7 API response interfaces (~60 lines) from bottom of GitHubService.ts: `GitHubIssueApiResponse`, `GitHubPullRequestApiResponse`, `GitHubSearchApiResponse`, `GitHubRepoApiResponse`, `GitHubRepoDetailApiResponse`, `GitHubUserApiResponse`, `GitHubOrgApiResponse`
-- [ ] Create private `searchItems(query, repo, type: 'issue' | 'pr')` — shared implementation for 99% identical `searchIssues`/`searchPullRequests`
-- [ ] Make `searchIssues`/`searchPullRequests` one-liner wrappers calling `searchItems`
-- [ ] Verify `pnpm build` passes
+- [x] Create `src/github/github-api-types.ts` — move 7 API response interfaces (~60 lines) from bottom of GitHubService.ts: `GitHubIssueApiResponse`, `GitHubPullRequestApiResponse`, `GitHubSearchApiResponse`, `GitHubRepoApiResponse`, `GitHubRepoDetailApiResponse`, `GitHubUserApiResponse`, `GitHubOrgApiResponse`
+- [x] Create private `searchItems(query, repo, type: 'issue' | 'pr')` — shared implementation for 99% identical `searchIssues`/`searchPullRequests`
+- [x] Make `searchIssues`/`searchPullRequests` one-liner wrappers calling `searchItems`
+- [x] Verify `pnpm build` passes
 
 ## Group 5: GitHubCardRenderer — Deduplicate Render Modes (~120 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 8/40 tasks complete
+Progress: 12/40 tasks complete
