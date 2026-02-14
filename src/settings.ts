@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 import TasksDashboardPlugin from '../main';
 import {
 	DashboardConfig,
@@ -9,6 +9,8 @@ import {
 import { generateId } from './utils/slugify';
 import { RepositoryPickerModal } from './modals/RepositoryPickerModal';
 import { createPlatformService } from './utils/platform';
+import { DashboardDeleteConfirmationModal } from './modals/dashboard-delete-modal';
+import { parseDashboard } from './dashboard/DashboardParser';
 
 type VisibilityToggleKey =
 	| 'showGitHubButtons'
@@ -503,17 +505,107 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 		new Setting(dashboardContainer)
 			.setName('Remove Dashboard')
-			.setDesc('Delete this dashboard configuration (does not delete files)')
+			.setDesc('Delete this dashboard configuration and clean up related settings')
 			.addButton((btn) =>
 				btn
 					.setButtonText('Remove')
 					.setWarning()
 					.onClick(() => {
-						this.plugin.settings.dashboards.splice(index, 1);
-						void this.plugin.saveSettings();
-						this.plugin.registerDashboardCommands();
-						this.display();
+						const displayName = getDashboardDisplayName(dashboard);
+						new DashboardDeleteConfirmationModal(
+							this.app,
+							displayName,
+							(result) => {
+								if (!result.confirmed) {
+									return;
+								}
+								void this.deleteDashboard(dashboard, index, result.deleteFiles);
+							}
+						).open();
 					})
 			);
+	}
+
+	private async deleteDashboard(
+		dashboard: DashboardConfig,
+		index: number,
+		deleteFiles: boolean
+	): Promise<void> {
+		// Collect issue IDs before deletion so we can clean up related settings
+		const issueIds = await this.collectDashboardIssueIds(dashboard);
+
+		// Clean up per-issue settings (collapsedIssues, issueColors)
+		for (const issueId of issueIds) {
+			delete this.plugin.settings.collapsedIssues[issueId];
+			delete this.plugin.settings.issueColors[issueId];
+		}
+
+		// Clean up issueFolders entries keyed by dashboardId:*
+		const issueFolderPrefix = dashboard.id + ':';
+		for (const key of Object.keys(this.plugin.settings.issueFolders)) {
+			if (key.startsWith(issueFolderPrefix)) {
+				delete this.plugin.settings.issueFolders[key];
+			}
+		}
+
+		// Optionally delete dashboard file and Issues folder
+		if (deleteFiles) {
+			await this.trashDashboardFiles(dashboard);
+		}
+
+		// Remove dashboard from settings array
+		this.plugin.settings.dashboards.splice(index, 1);
+		await this.plugin.saveSettings();
+		this.plugin.registerDashboardCommands();
+		this.display();
+	}
+
+	private async collectDashboardIssueIds(dashboard: DashboardConfig): Promise<string[]> {
+		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath =
+			dashboard.rootPath !== '' ? `${dashboard.rootPath}/${filename}` : filename;
+		const file = this.app.vault.getAbstractFileByPath(dashboardPath);
+
+		if (!(file instanceof TFile)) {
+			return [];
+		}
+
+		try {
+			const content = await this.app.vault.cachedRead(file);
+			const parsed = parseDashboard(content);
+			const activeIds = parsed.activeIssues.map((issue) => issue.id);
+			const archivedIds = parsed.archivedIssues.map((issue) => issue.id);
+			return [...activeIds, ...archivedIds];
+		} catch {
+			return [];
+		}
+	}
+
+	private async trashDashboardFiles(dashboard: DashboardConfig): Promise<void> {
+		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath =
+			dashboard.rootPath !== '' ? `${dashboard.rootPath}/${filename}` : filename;
+		const issuesFolderPath =
+			dashboard.rootPath !== '' ? `${dashboard.rootPath}/Issues` : 'Issues';
+
+		// Trash dashboard file
+		const dashboardFile = this.app.vault.getAbstractFileByPath(dashboardPath);
+		if (dashboardFile instanceof TFile) {
+			try {
+				await this.app.vault.trash(dashboardFile, true);
+			} catch {
+				new Notice(`Could not delete dashboard file: ${dashboardPath}`);
+			}
+		}
+
+		// Trash Issues folder
+		const issuesFolder = this.app.vault.getAbstractFileByPath(issuesFolderPath);
+		if (issuesFolder instanceof TFolder) {
+			try {
+				await this.app.vault.trash(issuesFolder, true);
+			} catch {
+				new Notice(`Could not delete Issues folder: ${issuesFolderPath}`);
+			}
+		}
 	}
 }
