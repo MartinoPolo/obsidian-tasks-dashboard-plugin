@@ -223,30 +223,60 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			});
 		}
 
-		if ((dashboard.showTerminalButtons ?? true) && hasIssueFolder) {
+		const showFolderButtons = dashboard.showFolderButtons ?? true;
+
+		if (
+			(dashboard.showTerminalButtons ?? true) &&
+			(hasIssueFolder || !showFolderButtons)
+		) {
 			const terminalBtn = headerActions.createEl('button', {
-				cls: 'tdc-btn tdc-btn-terminal',
-				attr: { 'aria-label': 'Open terminal' }
+				cls: `tdc-btn tdc-btn-terminal${hasIssueFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasIssueFolder ? 'Open terminal' : 'Set issue folder'
+				}
 			});
 			terminalBtn.innerHTML = ICONS.terminal;
 			terminalBtn.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				const issueColor = plugin.settings.issueColors[params.issue];
-				platformService.openTerminal(issueFolder, issueColor);
+				if (hasIssueFolder) {
+					const issueColor = plugin.settings.issueColors[params.issue];
+					platformService.openTerminal(issueFolder, issueColor);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+			terminalBtn.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
 			});
 		}
 
-		if ((dashboard.showVSCodeButtons ?? true) && hasIssueFolder) {
+		if (
+			(dashboard.showVSCodeButtons ?? true) &&
+			(hasIssueFolder || !showFolderButtons)
+		) {
 			const vscodeBtn = headerActions.createEl('button', {
-				cls: 'tdc-btn tdc-btn-vscode',
-				attr: { 'aria-label': 'Open in VS Code' }
+				cls: `tdc-btn tdc-btn-vscode${hasIssueFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasIssueFolder ? 'Open in VS Code' : 'Set issue folder'
+				}
 			});
 			vscodeBtn.innerHTML = ICONS.vscode;
 			vscodeBtn.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				platformService.openVSCode(issueFolder);
+				if (hasIssueFolder) {
+					platformService.openVSCode(issueFolder);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+				}
+			});
+			vscodeBtn.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
 			});
 		}
 
@@ -797,27 +827,74 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			});
 		}
 
-		if ((dashboard.showTerminalButtons ?? true) && hasProjectFolder) {
+		const globalShowFolderButtons = dashboard.showFolderButtons ?? true;
+
+		if (
+			(dashboard.showTerminalButtons ?? true) &&
+			(hasProjectFolder || !globalShowFolderButtons)
+		) {
 			const terminalButton = container.createEl('button', {
-				cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-terminal',
-				attr: { 'aria-label': 'Open terminal' }
+				cls: `tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-terminal${hasProjectFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasProjectFolder ? 'Open terminal' : 'Set project folder'
+				}
 			});
 			terminalButton.innerHTML = ICONS.terminal + ' Terminal';
 			terminalButton.addEventListener('click', (e) => {
 				e.preventDefault();
-				platformService.openTerminal(dashboard.projectFolder!);
+				if (hasProjectFolder) {
+					platformService.openTerminal(dashboard.projectFolder!);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard).open();
+				}
+			});
+			terminalButton.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				new FolderPathModal(plugin.app, plugin, dashboard).open();
 			});
 		}
 
-		if ((dashboard.showVSCodeButtons ?? true) && hasProjectFolder) {
+		if (
+			(dashboard.showVSCodeButtons ?? true) &&
+			(hasProjectFolder || !globalShowFolderButtons)
+		) {
 			const vscodeButton = container.createEl('button', {
-				cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode',
-				attr: { 'aria-label': 'Open in VS Code' }
+				cls: `tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode${hasProjectFolder ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasProjectFolder ? 'Open in VS Code' : 'Set project folder'
+				}
 			});
 			vscodeButton.innerHTML = ICONS.vscode + ' VS Code';
 			vscodeButton.addEventListener('click', (e) => {
 				e.preventDefault();
-				platformService.openVSCode(dashboard.projectFolder!);
+				if (hasProjectFolder) {
+					platformService.openVSCode(dashboard.projectFolder!);
+				} else {
+					new FolderPathModal(plugin.app, plugin, dashboard).open();
+				}
+			});
+			vscodeButton.addEventListener('contextmenu', (e) => {
+				e.preventDefault();
+				new FolderPathModal(plugin.app, plugin, dashboard).open();
+			});
+		}
+
+		if ((dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled) {
+			const hasGithubRepo = dashboard.githubRepo !== undefined && dashboard.githubRepo !== '';
+			const githubButton = container.createEl('button', {
+				cls: `tdc-btn tdc-btn-action tdc-btn-action-secondary tdc-btn-github-quickopen${hasGithubRepo ? '' : ' tdc-btn-faded'}`,
+				attr: {
+					'aria-label': hasGithubRepo ? 'Open GitHub repo' : 'Configure GitHub repo in settings'
+				}
+			});
+			githubButton.innerHTML = ICONS.github + ' GitHub';
+			githubButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				if (hasGithubRepo) {
+					window.open(`https://github.com/${dashboard.githubRepo}`, '_blank');
+				} else {
+					new Notice('Configure GitHub repository in dashboard settings.');
+				}
 			});
 		}
 
