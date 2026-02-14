@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 10/24
+## Progress: 13/24
 
 ## Group A: Security Fixes
 
@@ -50,9 +50,9 @@ Sequential `await` in loop creates waterfall — each card waits for previous. W
 
 **File:** `src/dashboard/DashboardRenderer.ts:500-503`
 
-- [ ] Replace `for...of await` loop with `Promise.all(params.githubLinks.map(...))`
-- [ ] Ensure DOM order preserved (pre-create containers, pass to each promise)
-- [ ] Verify `pnpm build` passes
+- [x] Replace `for...of await` loop with `Promise.all(params.githubLinks.map(...))`
+- [x] Ensure DOM order preserved (pre-create containers, pass to each promise)
+- [x] Verify `pnpm build` passes
 
 ### B2. Parallelize file reads during sort operations
 Issue files read one-by-one in loop during sort. With 20 issues = 20 sequential I/O operations.

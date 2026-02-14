@@ -498,9 +498,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		renderButtons(controls, params, dashboard);
 
 		if (dashboard.githubEnabled && params.githubLinks.length > 0) {
-			for (const githubUrl of params.githubLinks) {
-				await renderGitHubCardWithRefresh(container, githubUrl, params.issue, dashboard);
-			}
+			const cardContainers = params.githubLinks.map(() => container.createDiv());
+			await Promise.all(
+				params.githubLinks.map((githubUrl, index) =>
+					renderGitHubCardWithRefresh(cardContainers[index], githubUrl, params.issue, dashboard)
+				)
+			);
 		}
 
 		if (isCollapsed) {
