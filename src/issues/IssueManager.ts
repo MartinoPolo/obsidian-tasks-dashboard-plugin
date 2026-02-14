@@ -52,6 +52,22 @@ function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): str
 	return 'GitHub Link';
 }
 
+function buildGitHubMetadataYaml(metadata: GitHubStoredMetadata, indent: string = '    '): string {
+	let yaml = '';
+	yaml += `\n${indent}number: ${metadata.number}`;
+	yaml += `\n${indent}state: "${metadata.state}"`;
+	yaml += `\n${indent}title: "${metadata.title.replace(/"/g, '\\"')}"`;
+	yaml += `\n${indent}labels: [${metadata.labels.map((l) => `"${l}"`).join(', ')}]`;
+	yaml += `\n${indent}lastFetched: "${metadata.lastFetched}"`;
+	return yaml;
+}
+
+function findIssueFilesByPath(app: App, basePath: string, issueId: string): TFile[] {
+	return app.vault
+		.getFiles()
+		.filter((f) => f.path.startsWith(basePath) && f.basename.startsWith(issueId));
+}
+
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
 	const ensureFolderExists = async (path: string): Promise<void> => {
 		const folder = app.vault.getAbstractFileByPath(path);
@@ -85,11 +101,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 				| undefined;
 			yaml += `\n  - url: "${url}"`;
 			if (metadata !== undefined) {
-				yaml += `\n    number: ${metadata.number}`;
-				yaml += `\n    state: "${metadata.state}"`;
-				yaml += `\n    title: "${metadata.title.replace(/"/g, '\\"')}"`;
-				yaml += `\n    labels: [${metadata.labels.map((l) => `"${l}"`).join(', ')}]`;
-				yaml += `\n    lastFetched: "${metadata.lastFetched}"`;
+				yaml += buildGitHubMetadataYaml(metadata);
 			}
 		}
 		return yaml;
@@ -205,18 +217,12 @@ priority: ${issue.priority}`;
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
 		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
-		const activeFiles = app.vault
-			.getFiles()
-			.filter((f) => f.path.startsWith(activePath) && f.basename.startsWith(issueId));
-
+		const activeFiles = findIssueFilesByPath(app, activePath, issueId);
 		if (activeFiles.length > 0) {
 			return { file: activeFiles[0], status: 'active' };
 		}
 
-		const archiveFiles = app.vault
-			.getFiles()
-			.filter((f) => f.path.startsWith(archivePath) && f.basename.startsWith(issueId));
-
+		const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
 		if (archiveFiles.length > 0) {
 			return { file: archiveFiles[0], status: 'archived' };
 		}
@@ -230,10 +236,7 @@ priority: ${issue.priority}`;
 
 		await ensureFolderExists(archivePath);
 
-		const activeFiles = app.vault
-			.getFiles()
-			.filter((f) => f.path.startsWith(activePath) && f.basename.startsWith(issueId));
-
+		const activeFiles = findIssueFilesByPath(app, activePath, issueId);
 		if (activeFiles.length === 0) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
@@ -257,10 +260,7 @@ priority: ${issue.priority}`;
 
 		await ensureFolderExists(activePath);
 
-		const archiveFiles = app.vault
-			.getFiles()
-			.filter((f) => f.path.startsWith(archivePath) && f.basename.startsWith(issueId));
-
+		const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
 		if (archiveFiles.length === 0) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
@@ -424,11 +424,7 @@ priority: ${issue.priority}`;
 				// Append new entry to existing github_links array
 				let newEntry = `\n  - url: "${githubUrl}"`;
 				if (storedMetadata !== undefined) {
-					newEntry += `\n    number: ${storedMetadata.number}`;
-					newEntry += `\n    state: "${storedMetadata.state}"`;
-					newEntry += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
-					newEntry += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
-					newEntry += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+					newEntry += buildGitHubMetadataYaml(storedMetadata);
 				}
 				// Insert before the closing ---
 				content =
@@ -476,11 +472,7 @@ priority: ${issue.priority}`;
 					// Add new entry
 					githubLinksFrontmatter += `\n  - url: "${githubUrl}"`;
 					if (storedMetadata !== undefined) {
-						githubLinksFrontmatter += `\n    number: ${storedMetadata.number}`;
-						githubLinksFrontmatter += `\n    state: "${storedMetadata.state}"`;
-						githubLinksFrontmatter += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
-						githubLinksFrontmatter += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
-						githubLinksFrontmatter += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+						githubLinksFrontmatter += buildGitHubMetadataYaml(storedMetadata);
 					}
 
 					const newCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
@@ -494,11 +486,7 @@ priority: ${issue.priority}`;
 				// No existing github data — create fresh github_links
 				let githubLinksFrontmatter = `\ngithub_links:\n  - url: "${githubUrl}"`;
 				if (storedMetadata !== undefined) {
-					githubLinksFrontmatter += `\n    number: ${storedMetadata.number}`;
-					githubLinksFrontmatter += `\n    state: "${storedMetadata.state}"`;
-					githubLinksFrontmatter += `\n    title: "${storedMetadata.title.replace(/"/g, '\\"')}"`;
-					githubLinksFrontmatter += `\n    labels: [${storedMetadata.labels.map((l) => `"${l}"`).join(', ')}]`;
-					githubLinksFrontmatter += `\n    lastFetched: "${storedMetadata.lastFetched}"`;
+					githubLinksFrontmatter += buildGitHubMetadataYaml(storedMetadata);
 				}
 				content =
 					content.slice(0, frontmatterCloseIndex) +

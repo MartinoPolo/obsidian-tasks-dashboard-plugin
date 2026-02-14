@@ -50,10 +50,10 @@ Extract shared display helpers used by both GitHubCardRenderer and GitHubSearchM
 
 Deduplicate YAML metadata building and file search patterns.
 
-- [ ] Extract `buildGitHubMetadataYaml(metadata: GitHubStoredMetadata)` helper — returns YAML string for single entry (used 4 times in `addGitHubLink` with identical `number:`, `state:`, `title:`, `labels:`, `lastFetched:` pattern)
-- [ ] Extract `findIssueFileByPath(app, basePath, issueId)` helper — shared file search pattern used by `findIssueFile`, `archiveIssue`, `unarchiveIssue`
-- [ ] Simplify `addGitHubLink` by using `buildGitHubMetadataYaml` for all 4 content-rebuild branches
-- [ ] Verify `pnpm build` passes
+- [x] Extract `buildGitHubMetadataYaml(metadata: GitHubStoredMetadata)` helper — returns YAML string for single entry (used 4 times in `addGitHubLink` with identical `number:`, `state:`, `title:`, `labels:`, `lastFetched:` pattern)
+- [x] Extract `findIssueFileByPath(app, basePath, issueId)` helper — shared file search pattern used by `findIssueFile`, `archiveIssue`, `unarchiveIssue`
+- [x] Simplify `addGitHubLink` by using `buildGitHubMetadataYaml` for all 4 content-rebuild branches
+- [x] Verify `pnpm build` passes
 
 ## Group 3: DashboardWriter — Unify Move Operations + Builders (~150 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 19/40 tasks complete
+Progress: 23/40 tasks complete
