@@ -349,7 +349,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			terminalBtn.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				platformService.openTerminal(issueFolder);
+				const issueColor = plugin.settings.issueColors[params.issue];
+				platformService.openTerminal(issueFolder, issueColor);
 			});
 		}
 

@@ -2,7 +2,7 @@ import { Platform } from 'obsidian';
 
 export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
-	openTerminal: (folderPath: string) => void;
+	openTerminal: (folderPath: string, tabColor?: string) => void;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 }
 
@@ -14,13 +14,14 @@ export function createPlatformService(): PlatformService {
 		void shell.openPath(folderPath);
 	};
 
-	const openTerminal = (folderPath: string): void => {
+	const openTerminal = (folderPath: string, tabColor?: string): void => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 		const { exec } = require('child_process');
 
 		if (Platform.isWin) {
+			const colorFlag = tabColor !== undefined ? ` --tabColor "${tabColor}"` : '';
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			exec(`wt -d "${folderPath.replace(/"/g, '\\"')}"`, { cwd: folderPath });
+			exec(`wt -d "${folderPath.replace(/"/g, '\\"')}"${colorFlag}`, { cwd: folderPath });
 		} else if (Platform.isMacOS) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			exec(`open -a Terminal "${folderPath}"`);
