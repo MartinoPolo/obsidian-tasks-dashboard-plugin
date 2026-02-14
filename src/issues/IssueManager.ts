@@ -74,6 +74,21 @@ function findIssueFilesByPath(app: App, basePath: string, issueId: string): TFil
 }
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
+	const activeOperationLocks = new Set<string>();
+
+	const acquireOperationLock = (dashboardId: string, issueId: string): boolean => {
+		const lockKey = `${dashboardId}:${issueId}`;
+		if (activeOperationLocks.has(lockKey)) {
+			return false;
+		}
+		activeOperationLocks.add(lockKey);
+		return true;
+	};
+
+	const releaseOperationLock = (dashboardId: string, issueId: string): void => {
+		activeOperationLocks.delete(`${dashboardId}:${issueId}`);
+	};
+
 	const ensureFolderExists = async (path: string): Promise<void> => {
 		const folder = app.vault.getAbstractFileByPath(path);
 		if (folder === null) {
@@ -236,51 +251,69 @@ priority: ${issue.priority}`;
 	};
 
 	const archiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
-		const activePath = `${dashboard.rootPath}/Issues/Active`;
-		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
-
-		await ensureFolderExists(archivePath);
-
-		const activeFiles = findIssueFilesByPath(app, activePath, issueId);
-		if (activeFiles.length === 0) {
-			throw new Error(`Issue not found: ${issueId}`);
+		if (!acquireOperationLock(dashboard.id, issueId)) {
+			new Notice(`Operation already in progress for ${issueId}`);
+			return;
 		}
 
-		const file = activeFiles[0];
-		let content = await app.vault.read(file);
+		try {
+			const activePath = `${dashboard.rootPath}/Issues/Active`;
+			const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
-		content = content.replace(/^status:\s*active/m, 'status: archived');
-		await app.vault.modify(file, content);
+			await ensureFolderExists(archivePath);
 
-		const newPath = `${archivePath}/${file.name}`;
-		await app.vault.rename(file, newPath);
-		await plugin.dashboardWriter.moveIssueToArchive(dashboard, issueId);
+			const activeFiles = findIssueFilesByPath(app, activePath, issueId);
+			if (activeFiles.length === 0) {
+				throw new Error(`Issue not found: ${issueId}`);
+			}
 
-		new Notice(`Archived: ${issueId}`);
+			const file = activeFiles[0];
+			let content = await app.vault.read(file);
+
+			content = content.replace(/^status:\s*active/m, 'status: archived');
+			await app.vault.modify(file, content);
+
+			const newPath = `${archivePath}/${file.name}`;
+			await app.vault.rename(file, newPath);
+			await plugin.dashboardWriter.moveIssueToArchive(dashboard, issueId);
+
+			new Notice(`Archived: ${issueId}`);
+		} finally {
+			releaseOperationLock(dashboard.id, issueId);
+		}
 	};
 
 	const unarchiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
-		const activePath = `${dashboard.rootPath}/Issues/Active`;
-		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
-
-		await ensureFolderExists(activePath);
-
-		const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
-		if (archiveFiles.length === 0) {
-			throw new Error(`Issue not found: ${issueId}`);
+		if (!acquireOperationLock(dashboard.id, issueId)) {
+			new Notice(`Operation already in progress for ${issueId}`);
+			return;
 		}
 
-		const file = archiveFiles[0];
-		let content = await app.vault.read(file);
+		try {
+			const activePath = `${dashboard.rootPath}/Issues/Active`;
+			const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
-		content = content.replace(/^status:\s*archived/m, 'status: active');
-		await app.vault.modify(file, content);
+			await ensureFolderExists(activePath);
 
-		const newPath = `${activePath}/${file.name}`;
-		await app.vault.rename(file, newPath);
-		await plugin.dashboardWriter.moveIssueToActive(dashboard, issueId);
+			const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
+			if (archiveFiles.length === 0) {
+				throw new Error(`Issue not found: ${issueId}`);
+			}
 
-		new Notice(`Unarchived: ${issueId}`);
+			const file = archiveFiles[0];
+			let content = await app.vault.read(file);
+
+			content = content.replace(/^status:\s*archived/m, 'status: active');
+			await app.vault.modify(file, content);
+
+			const newPath = `${activePath}/${file.name}`;
+			await app.vault.rename(file, newPath);
+			await plugin.dashboardWriter.moveIssueToActive(dashboard, issueId);
+
+			new Notice(`Unarchived: ${issueId}`);
+		} finally {
+			releaseOperationLock(dashboard.id, issueId);
+		}
 	};
 
 	const deleteIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {

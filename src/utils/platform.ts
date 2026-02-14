@@ -1,4 +1,4 @@
-import { Platform } from 'obsidian';
+import { Notice, Platform } from 'obsidian';
 
 export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
@@ -26,19 +26,25 @@ export function createPlatformService(): PlatformService {
 			if (tabColor !== undefined && isValidHexColor(tabColor)) {
 				spawnArguments.push('--tabColor', tabColor);
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			spawn('wt', spawnArguments, { shell: false, cwd: folderPath });
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			spawn('wt', spawnArguments, { shell: false, cwd: folderPath }).on('error', () => {
+				new Notice('Could not open Windows Terminal — is it installed?');
+			});
 		} else if (Platform.isMacOS) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			spawn('open', ['-a', 'Terminal', folderPath], { shell: false });
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+			spawn('open', ['-a', 'Terminal', folderPath], { shell: false }).on('error', () => {
+				new Notice('Could not open Terminal');
+			});
 		} else {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 			const terminalProcess = spawn('x-terminal-emulator', ['--working-directory', folderPath], { shell: false });
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			terminalProcess.on('error', () => {
 				// Fallback to xterm if x-terminal-emulator is not available
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				spawn('xterm', [], { shell: false, cwd: folderPath });
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+				spawn('xterm', [], { shell: false, cwd: folderPath }).on('error', () => {
+					new Notice('Could not open terminal — no terminal emulator found');
+				});
 			});
 		}
 	};
@@ -46,8 +52,10 @@ export function createPlatformService(): PlatformService {
 	const openVSCode = (folderPath: string): void => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
 		const { spawn } = require('child_process');
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		spawn('code', [folderPath], { shell: false, cwd: folderPath });
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+		spawn('code', [folderPath], { shell: false, cwd: folderPath }).on('error', () => {
+			new Notice('Could not open VS Code — is it installed and in PATH?');
+		});
 	};
 
 	const pickFolder = async (defaultPath?: string): Promise<string | undefined> => {

@@ -1,4 +1,4 @@
-import { App, TFile, Notice } from 'obsidian';
+import { App, TAbstractFile, TFile, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, Issue, Priority, IssueStatus, PRIORITY_ORDER } from '../types';
 import {
@@ -36,6 +36,14 @@ export function createDashboardWriter(
 	app: App,
 	plugin: TasksDashboardPlugin
 ): DashboardWriterInstance {
+	const resolveFileByPath = (path: string): TFile | undefined => {
+		const abstractFile: TAbstractFile | null = app.vault.getAbstractFileByPath(path);
+		if (abstractFile instanceof TFile) {
+			return abstractFile;
+		}
+		return undefined;
+	};
+
 	interface IssueBlockParams {
 		id: string;
 		name: string;
@@ -118,12 +126,15 @@ show tree
 
 	const addIssueToDashboard = async (dashboard: DashboardConfig, issue: Issue): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		let file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		let file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			const content = initializeDashboardStructure(dashboard.id);
 			await app.vault.create(dashboardPath, content);
-			file = app.vault.getAbstractFileByPath(dashboardPath) as TFile;
+			file = resolveFileByPath(dashboardPath);
+			if (file === undefined) {
+				throw new Error(`Failed to create dashboard file at ${dashboardPath}`);
+			}
 		}
 
 		let content = await app.vault.read(file);
@@ -146,9 +157,9 @@ show tree
 
 	const moveIssueToArchive = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -176,9 +187,9 @@ show tree
 
 	const moveIssueToActive = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -209,9 +220,9 @@ show tree
 		issueId: string
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -231,9 +242,9 @@ show tree
 		direction: 'up' | 'down'
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -281,9 +292,9 @@ show tree
 		position: 'top' | 'bottom'
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -327,9 +338,9 @@ show tree
 
 	const sortByPriority = async (dashboard: DashboardConfig): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -363,9 +374,9 @@ show tree
 		noticeMessage: string
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -410,9 +421,9 @@ show tree
 		direction: SortDirection
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -460,9 +471,9 @@ show tree
 		direction: SortDirection
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
-		const file = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const file = resolveFileByPath(dashboardPath);
 
-		if (file === null) {
+		if (file === undefined) {
 			return;
 		}
 
@@ -674,9 +685,9 @@ show tree
 
 		let notesContent = '';
 		const dashboardPath = getDashboardPath(dashboard);
-		const existingFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		const existingFile = resolveFileByPath(dashboardPath);
 
-		if (existingFile !== null) {
+		if (existingFile !== undefined) {
 			const existingContent = await app.vault.read(existingFile);
 
 			// Try multiple extraction strategies for Notes content
@@ -741,7 +752,7 @@ ${MARKERS.ARCHIVE_START}
 - Click "Sort by Priority" to auto-organize
 - Add tasks in issue notes using \`- [ ] Task name\``;
 
-		if (existingFile !== null) {
+		if (existingFile !== undefined) {
 			await app.vault.modify(existingFile, newContent);
 		} else {
 			await app.vault.create(dashboardPath, newContent);

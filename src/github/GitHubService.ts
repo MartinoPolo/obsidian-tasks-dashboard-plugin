@@ -1,4 +1,4 @@
-import { requestUrl, RequestUrlResponse } from 'obsidian';
+import { Notice, requestUrl, RequestUrlResponse } from 'obsidian';
 import {
 	GitHubAuth,
 	GitHubIssueMetadata,
@@ -56,6 +56,19 @@ export interface GitHubServiceInstance {
 	clearCacheForUrl: (url: string) => void;
 	isAuthenticated: () => boolean;
 	getRateLimit: () => GitHubRateLimit | undefined;
+}
+
+export type GitHubApiErrorKind = 'auth' | 'not-found' | 'rate-limit' | 'network';
+
+export class GitHubApiError extends Error {
+	constructor(
+		public readonly kind: GitHubApiErrorKind,
+		public readonly statusCode: number | undefined,
+		message: string
+	) {
+		super(message);
+		this.name = 'GitHubApiError';
+	}
 }
 
 const CACHE_TTL = 5 * 60 * 1000;
@@ -155,6 +168,26 @@ export function createGitHubService(): GitHubServiceInstance {
 		cache.delete(cacheKeyPrefix);
 	};
 
+	const classifyApiError = (error: unknown): GitHubApiError => {
+		const errorWithStatus = error as { status?: number; message?: string };
+		const status = errorWithStatus.status;
+		const message = errorWithStatus.message ?? String(error);
+
+		if (status === 401 || status === 403) {
+			const isRateLimit = status === 403 && message.includes('rate limit');
+			if (isRateLimit) {
+				return new GitHubApiError('rate-limit', status, 'GitHub API rate limit exceeded');
+			}
+			return new GitHubApiError('auth', status, 'GitHub authentication failed — check your token');
+		}
+
+		if (status === 404) {
+			return new GitHubApiError('not-found', status, 'GitHub resource not found');
+		}
+
+		return new GitHubApiError('network', status, `GitHub API request failed: ${message}`);
+	};
+
 	const apiRequest = async <T>(endpoint: string): Promise<T | undefined> => {
 		try {
 			const response: RequestUrlResponse = await requestUrl({
@@ -164,7 +197,18 @@ export function createGitHubService(): GitHubServiceInstance {
 			parseRateLimitHeaders(response.headers);
 			return response.json as T;
 		} catch (error) {
-			console.error('GitHub API error:', error);
+			const apiError = classifyApiError(error);
+			console.error('GitHub API error:', apiError.kind, apiError.message);
+
+			if (apiError.kind === 'auth') {
+				new Notice('GitHub: authentication failed — check your token in settings');
+			} else if (apiError.kind === 'rate-limit') {
+				new Notice('GitHub: API rate limit exceeded — try again later');
+			} else if (apiError.kind === 'network') {
+				new Notice('GitHub: request failed — check your connection');
+			}
+			// 'not-found' is not surfaced — callers handle undefined return
+
 			return undefined;
 		}
 	};

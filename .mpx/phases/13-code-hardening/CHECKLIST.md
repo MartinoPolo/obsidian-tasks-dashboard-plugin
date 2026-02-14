@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 28/72
+## Progress: 41/72
 
 ## Group A: Security Fixes
 
@@ -106,37 +106,37 @@ Every keystroke in issue file triggers cache invalidation + dashboard refresh. N
 
 **File:** `src/dashboard/DashboardWriter.ts` (multiple locations)
 
-- [ ] Replace all `as TFile | null` casts with `instanceof TFile` guards
-- [ ] Return early or throw descriptive error when not TFile
-- [ ] Verify `pnpm build` passes
+- [x] Replace all `as TFile | null` casts with `instanceof TFile` guards
+- [x] Return early or throw descriptive error when not TFile
+- [x] Verify `pnpm build` passes
 
 ### C2. Add typed error propagation to GitHubService
 `apiRequest()` catches all errors, logs to console, returns `undefined`. Callers can't distinguish network failure from 404 from auth error.
 
 **File:** `src/github/GitHubService.ts:150-162`
 
-- [ ] Return `{ data, error }` result type or throw typed errors
-- [ ] Surface auth failures and network errors to user via `Notice`
-- [ ] Verify `pnpm build` passes
+- [x] Return `{ data, error }` result type or throw typed errors
+- [x] Surface auth failures and network errors to user via `Notice`
+- [x] Verify `pnpm build` passes
 
 ### C3. Add operation locking for archive/unarchive
 Modify content → move file → update dashboard. Rapid clicks can interleave operations on same issue.
 
 **File:** `src/issues/IssueManager.ts:238-284`
 
-- [ ] Add per-issue operation lock (Map<string, boolean> or Set)
-- [ ] Skip operation if lock held, show notice
-- [ ] Release lock in finally block
-- [ ] Verify `pnpm build` passes
+- [x] Add per-issue operation lock (Map<string, boolean> or Set)
+- [x] Skip operation if lock held, show notice
+- [x] Release lock in finally block
+- [x] Verify `pnpm build` passes
 
 ### C4. Add error handling to exec()/spawn() calls in platform.ts
 Shell commands fail silently if terminal/VS Code not installed. No user feedback.
 
 **File:** `src/utils/platform.ts:25-39`
 
-- [ ] Add error callback to spawn calls
-- [ ] Show `Notice` on failure (e.g., "Could not open terminal")
-- [ ] Verify `pnpm build` passes
+- [x] Add error callback to spawn calls
+- [x] Show `Notice` on failure (e.g., "Could not open terminal")
+- [x] Verify `pnpm build` passes
 
 ### C5. Validate loadData() shape before type assertion
 `loadData()` returns `unknown`, immediately cast to `Partial<TasksDashboardSettings>` without validation.
