@@ -522,6 +522,10 @@
 	color: white;
 }
 
+.tdc-prompt-btn-browse {
+	margin-top: 8px;
+}
+
 .tdc-delete-message {
 	color: var(--text-muted);
 	margin: 8px 0 12px 0;
