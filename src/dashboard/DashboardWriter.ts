@@ -512,19 +512,24 @@ show tree
 		githubLinks: string[];
 	}
 
+	const FORBIDDEN_PROTO_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 	const parseYamlFrontmatter = (content: string): Record<string, string> => {
 		const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 		if (frontmatterMatch === null) {
 			return {};
 		}
 
-		const result: Record<string, string> = {};
+		const result: Record<string, string> = Object.create(null) as Record<string, string>;
 		const lines = frontmatterMatch[1].split('\n');
 
 		for (const line of lines) {
 			const colonIndex = line.indexOf(':');
 			if (colonIndex !== -1) {
 				const key = line.substring(0, colonIndex).trim();
+				if (FORBIDDEN_PROTO_KEYS.has(key)) {
+					continue;
+				}
 				const value = line.substring(colonIndex + 1).trim();
 				result[key] = value;
 			}

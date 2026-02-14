@@ -190,7 +190,7 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private isGitHubUrl(text: string): boolean {
-		return /github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+/.test(text);
+		return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/.test(text.trim());
 	}
 
 	private async loadRecentIssues(): Promise<void> {

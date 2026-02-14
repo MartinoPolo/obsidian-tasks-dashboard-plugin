@@ -11,7 +11,7 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
 
-## Progress: 1/24
+## Progress: 10/24
 
 ## Group A: Security Fixes
 
@@ -30,18 +30,18 @@ Manual YAML parsing sets `result[key] = value` without key validation. `__proto_
 
 **File:** `src/dashboard/DashboardWriter.ts:515-534`
 
-- [ ] Use `Object.create(null)` instead of `{}` for result object
-- [ ] Skip `__proto__`, `constructor`, `prototype` keys
-- [ ] Verify `pnpm build` passes
+- [x] Use `Object.create(null)` instead of `{}` for result object
+- [x] Skip `__proto__`, `constructor`, `prototype` keys
+- [x] Verify `pnpm build` passes
 
 ### A3. Tighten GitHub URL validation
 Missing protocol check — `javascript:github.com/x/y/issues/1` would match current regex.
 
 **File:** `src/modals/GitHubSearchModal.ts:192-194`
 
-- [ ] Require `^https?://` prefix in GitHub URL validation regex
-- [ ] Add `$` anchor to prevent partial matches
-- [ ] Verify `pnpm build` passes
+- [x] Require `^https?://` prefix in GitHub URL validation regex
+- [x] Add `$` anchor to prevent partial matches
+- [x] Verify `pnpm build` passes
 
 ## Group B: Performance Improvements
 
