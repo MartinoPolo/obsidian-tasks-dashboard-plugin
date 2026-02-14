@@ -416,9 +416,11 @@ show tree
 		return isNaN(timestamp) ? 0 : timestamp;
 	};
 
-	const sortByCreatedDate = async (
+	const sortByDateField = async (
 		dashboard: DashboardConfig,
-		direction: SortDirection
+		direction: SortDirection,
+		getTimestamp: (issue: { id: string; filePath: string }) => Promise<number>,
+		noticeLabel: string
 	): Promise<void> => {
 		const dashboardPath = getDashboardPath(dashboard);
 		const file = resolveFileByPath(dashboardPath);
@@ -434,12 +436,12 @@ show tree
 			return;
 		}
 
-		const issueTimestamps = new Map<string, number>();
-		const createdTimestamps = await Promise.all(
-			parsed.activeIssues.map((issue) => readCreatedDateForIssue(issue.filePath))
+		const timestamps = await Promise.all(
+			parsed.activeIssues.map((issue) => getTimestamp(issue))
 		);
+		const issueTimestamps = new Map<string, number>();
 		for (const [index, issue] of parsed.activeIssues.entries()) {
-			issueTimestamps.set(issue.id, createdTimestamps[index]);
+			issueTimestamps.set(issue.id, timestamps[index]);
 		}
 
 		const sortedIssues = [...parsed.activeIssues].sort((a, b) => {
@@ -458,10 +460,18 @@ show tree
 			return blocks[originalIndex];
 		});
 
+		await rebuildActiveSectionWithSortedBlocks(dashboard, sortedBlocks, noticeLabel);
+	};
+
+	const sortByCreatedDate = async (
+		dashboard: DashboardConfig,
+		direction: SortDirection
+	): Promise<void> => {
 		const label = direction === 'newest' ? 'newest first' : 'oldest first';
-		await rebuildActiveSectionWithSortedBlocks(
+		await sortByDateField(
 			dashboard,
-			sortedBlocks,
+			direction,
+			(issue) => readCreatedDateForIssue(issue.filePath),
 			`Issues sorted by created date (${label})`
 		);
 	};
@@ -470,47 +480,14 @@ show tree
 		dashboard: DashboardConfig,
 		direction: SortDirection
 	): Promise<void> => {
-		const dashboardPath = getDashboardPath(dashboard);
-		const file = resolveFileByPath(dashboardPath);
-
-		if (file === undefined) {
-			return;
-		}
-
-		const content = await app.vault.read(file);
-		const parsed = parseDashboard(content);
-
-		if (parsed.activeIssues.length < 2) {
-			return;
-		}
-
-		const issueModifiedTimes = new Map<string, number>();
-		for (const issue of parsed.activeIssues) {
-			const issueFile = app.vault.getAbstractFileByPath(issue.filePath);
-			const modifiedTime = issueFile instanceof TFile ? issueFile.stat.mtime : 0;
-			issueModifiedTimes.set(issue.id, modifiedTime);
-		}
-
-		const sortedIssues = [...parsed.activeIssues].sort((a, b) => {
-			const timeA = issueModifiedTimes.get(a.id) ?? 0;
-			const timeB = issueModifiedTimes.get(b.id) ?? 0;
-			return direction === 'newest' ? timeB - timeA : timeA - timeB;
-		});
-
-		const blocks: string[] = [];
-		for (const issue of parsed.activeIssues) {
-			blocks.push(content.substring(issue.startIndex, issue.endIndex));
-		}
-
-		const sortedBlocks = sortedIssues.map((issue) => {
-			const originalIndex = parsed.activeIssues.findIndex((i) => i.id === issue.id);
-			return blocks[originalIndex];
-		});
-
 		const label = direction === 'newest' ? 'recently edited' : 'least recently edited';
-		await rebuildActiveSectionWithSortedBlocks(
+		await sortByDateField(
 			dashboard,
-			sortedBlocks,
+			direction,
+			async (issue) => {
+				const issueFile = app.vault.getAbstractFileByPath(issue.filePath);
+				return issueFile instanceof TFile ? issueFile.stat.mtime : 0;
+			},
 			`Issues sorted by ${label}`
 		);
 	};
@@ -637,12 +614,42 @@ show tree
 		isArchived
 	});
 
-	const rebuildDashboardFromFiles = async (dashboard: DashboardConfig): Promise<number> => {
-		// Clear GitHub cache so cards re-fetch fresh data after rebuild
-		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
-			plugin.githubService.clearCache();
+	const extractNotesSection = (existingContent: string): string => {
+		const notesMarker = '%% TASKS-DASHBOARD:NOTES %%';
+		const notesHeader = '# Notes';
+		const archiveHeader = '# Archive';
+
+		const notesMarkerIndex = existingContent.indexOf(notesMarker);
+		const notesHeaderIndex = existingContent.indexOf(notesHeader);
+		const archiveIndex = existingContent.indexOf(archiveHeader);
+
+		if (archiveIndex === -1) {
+			return '';
 		}
 
+		let startIndex = -1;
+
+		// Prefer marker-based extraction if marker exists
+		if (notesMarkerIndex !== -1 && notesMarkerIndex < archiveIndex) {
+			startIndex = notesMarkerIndex + notesMarker.length;
+		} else if (notesHeaderIndex !== -1 && notesHeaderIndex < archiveIndex) {
+			// Fall back to header-based extraction
+			startIndex = notesHeaderIndex + notesHeader.length;
+		}
+
+		if (startIndex === -1) {
+			return '';
+		}
+
+		const rawContent = existingContent.substring(startIndex, archiveIndex);
+		// Remove leading marker if present (when using header-based extraction)
+		const cleanedContent = rawContent.replace(/^\s*%% TASKS-DASHBOARD:NOTES %%\s*/, '');
+		return cleanedContent.trim();
+	};
+
+	const scanIssueFilesForRebuilding = async (
+		dashboard: DashboardConfig
+	): Promise<{ activeIssues: ParsedIssueFile[]; archivedIssues: ParsedIssueFile[] }> => {
 		const activePath = `${dashboard.rootPath}/Issues/Active`;
 		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
 
@@ -683,41 +690,24 @@ show tree
 		activeIssues.sort(sortByCreatedAndPriority);
 		archivedIssues.sort(sortByCreatedAndPriority);
 
+		return { activeIssues, archivedIssues };
+	};
+
+	const rebuildDashboardFromFiles = async (dashboard: DashboardConfig): Promise<number> => {
+		// Clear GitHub cache so cards re-fetch fresh data after rebuild
+		if (dashboard.githubEnabled && plugin.githubService.isAuthenticated()) {
+			plugin.githubService.clearCache();
+		}
+
+		const { activeIssues, archivedIssues } = await scanIssueFilesForRebuilding(dashboard);
+
 		let notesContent = '';
 		const dashboardPath = getDashboardPath(dashboard);
 		const existingFile = resolveFileByPath(dashboardPath);
 
 		if (existingFile !== undefined) {
 			const existingContent = await app.vault.read(existingFile);
-
-			// Try multiple extraction strategies for Notes content
-			const notesMarker = '%% TASKS-DASHBOARD:NOTES %%';
-			const notesHeader = '# Notes';
-			const archiveHeader = '# Archive';
-
-			const notesMarkerIndex = existingContent.indexOf(notesMarker);
-			const notesHeaderIndex = existingContent.indexOf(notesHeader);
-			const archiveIndex = existingContent.indexOf(archiveHeader);
-
-			if (archiveIndex !== -1) {
-				let startIndex = -1;
-
-				// Prefer marker-based extraction if marker exists
-				if (notesMarkerIndex !== -1 && notesMarkerIndex < archiveIndex) {
-					startIndex = notesMarkerIndex + notesMarker.length;
-				} else if (notesHeaderIndex !== -1 && notesHeaderIndex < archiveIndex) {
-					// Fall back to header-based extraction
-					startIndex = notesHeaderIndex + notesHeader.length;
-				}
-
-				if (startIndex !== -1) {
-					const rawContent = existingContent.substring(startIndex, archiveIndex);
-					// Remove leading marker if present (when using header-based extraction)
-					const cleanedContent = rawContent.replace(/^\s*%% TASKS-DASHBOARD:NOTES %%\s*/, '');
-					// Preserve internal whitespace but trim edges
-					notesContent = cleanedContent.trim();
-				}
-			}
+			notesContent = extractNotesSection(existingContent);
 		}
 
 		let newContent = `# Active Issues

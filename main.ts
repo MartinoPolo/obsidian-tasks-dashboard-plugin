@@ -29,6 +29,8 @@ import {
 import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 
+const CURSOR_POSITION_DELAY_MS = 50;
+
 export default class TasksDashboardPlugin extends Plugin {
 	// The ! approach is idiomatic for Obsidian plugins where initialization happens in onload() rather than the constructor.
 	settings!: TasksDashboardSettings;
@@ -92,7 +94,7 @@ export default class TasksDashboardPlugin extends Plugin {
 								const cursorPosition = this.findTasksSectionEnd(editor);
 								editor.setCursor(cursorPosition);
 							}
-						}, 50);
+						}, CURSOR_POSITION_DELAY_MS);
 					}
 				})
 			);

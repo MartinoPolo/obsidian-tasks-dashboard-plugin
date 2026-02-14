@@ -1,6 +1,6 @@
 # Phase 13: Code Hardening — Checklist
 
-**Status:** Not Started
+**Status:** Complete
 **Dependencies:** Phase 12 (refactoring complete, stable file structure)
 
 ## Objective
@@ -10,8 +10,11 @@ Address security vulnerabilities, performance bottlenecks, error handling gaps, 
 - Execution order: Security (Group A) first, then Performance (B), Error Handling (C), Code Quality (D)
 - Each task ends with `pnpm build` passing
 - No functional behavior changes unless fixing a bug/vulnerability
+- D1: Also extracted `updateDashboardWithGitHubLink` for the dashboard-side update logic, keeping `addGitHubLink` as thin orchestrator
+- D3: `sortByDateField` takes async `getTimestamp` callback — allows `sortByEditedDate` to use sync stat.mtime wrapped in async, keeping the unified interface
+- D4: Renamed `CACHE_TTL` to `CACHE_TTL_MS` for clarity; `.substr(2, 9)` became `.substring(2, 11)` (equivalent behavior)
 
-## Progress: 54/72
+## Progress: 72/72
 
 ## Group A: Security Fixes
 
@@ -182,45 +185,45 @@ If `loadSettings()` or service creation fails, plugin initialization fails silen
 
 **File:** `src/issues/IssueManager.ts:392-559`
 
-- [ ] Extract `migrateOldGitHubFormat(content)` for legacy format handling
-- [ ] Extract `updateFrontmatterWithGitHubLink(content, link, metadata)` for YAML manipulation
-- [ ] Extract `updateBodyWithGitHubLink(content, link, metadata, dashboardId)` for body section
-- [ ] Verify `pnpm build` passes
+- [x] Extract `migrateOldGitHubFormat(content)` for legacy format handling
+- [x] Extract `updateFrontmatterWithGitHubLink(content, link, metadata)` for YAML manipulation
+- [x] Extract `updateBodyWithGitHubLink(content, link, metadata, dashboardId)` for body section
+- [x] Verify `pnpm build` passes
 
 ### D2. Split rebuildDashboardFromFiles into sub-functions
 123 lines in a single function. Multiple responsibilities: parse, extract notes, scan files, rebuild.
 
 **File:** `src/dashboard/DashboardWriter.ts:622-745`
 
-- [ ] Extract `extractNotesSection(content, parsed)` for notes preservation
-- [ ] Extract `scanIssueFilesForRebuilding(app, dashboard)` for file scanning
-- [ ] Keep orchestrator function thin
-- [ ] Verify `pnpm build` passes
+- [x] Extract `extractNotesSection(content, parsed)` for notes preservation
+- [x] Extract `scanIssueFilesForRebuilding(app, dashboard)` for file scanning
+- [x] Keep orchestrator function thin
+- [x] Verify `pnpm build` passes
 
 ### D3. Unify duplicate sort logic
 `sortByCreatedDate` and `sortByEditedDate` share 90% logic — differ only in timestamp source.
 
 **File:** `src/dashboard/DashboardWriter.ts:408-503`
 
-- [ ] Extract `sortByDateField(dashboard, direction, getTimestamp)` generic
-- [ ] Make `sortByCreatedDate`/`sortByEditedDate` thin wrappers
-- [ ] Verify `pnpm build` passes
+- [x] Extract `sortByDateField(dashboard, direction, getTimestamp)` generic
+- [x] Make `sortByCreatedDate`/`sortByEditedDate` thin wrappers
+- [x] Verify `pnpm build` passes
 
 ### D4. Extract magic numbers to named constants
 Hardcoded values scattered: truncation (60/100/200), API limits (20/50/100), debounce (100/300ms), slug length (50), cache TTL.
 
 **Files:** DashboardRenderer.ts, GitHubService.ts, GitHubSearchModal.ts, slugify.ts, main.ts
 
-- [ ] Create constants at top of each file (not a shared constants file — keep locality)
-- [ ] Replace all magic numbers with named constants
-- [ ] Verify `pnpm build` passes
+- [x] Create constants at top of each file (not a shared constants file — keep locality)
+- [x] Replace all magic numbers with named constants
+- [x] Verify `pnpm build` passes
 
 ### D5. Minor convention fixes
 Small violations of project conventions found across codebase.
 
 **Files:** GitHubSearchModal.ts:305, slugify.ts:11, DashboardParser.ts:62
 
-- [ ] Replace `.forEach()` with `for...of` in GitHubSearchModal.ts
-- [ ] Replace deprecated `.substr()` with `.substring()` in slugify.ts
-- [ ] Replace `exec()` in while loop with `matchAll()` in DashboardParser.ts (prevents infinite loop risk)
-- [ ] Verify `pnpm build` passes
+- [x] Replace `.forEach()` with `for...of` in GitHubSearchModal.ts
+- [x] Replace deprecated `.substr()` with `.substring()` in slugify.ts
+- [x] Replace `exec()` in while loop with `matchAll()` in DashboardParser.ts (prevents infinite loop risk)
+- [x] Verify `pnpm build` passes

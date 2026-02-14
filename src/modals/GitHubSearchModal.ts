@@ -3,6 +3,11 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
 import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
 
+const SEARCH_DEBOUNCE_MS = 300;
+const MAX_COMBINED_RESULTS = 20;
+const RECENT_ISSUES_LIMIT = 10;
+const TITLE_TRUNCATION_LENGTH = 50;
+
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
 
 export class GitHubSearchModal extends Modal {
@@ -135,7 +140,7 @@ export class GitHubSearchModal extends Modal {
 
 		this.searchTimeout = setTimeout(() => {
 			void this.performSearch(query);
-		}, 300);
+		}, SEARCH_DEBOUNCE_MS);
 	}
 
 	private handleKeydown(e: KeyboardEvent): void {
@@ -198,7 +203,7 @@ export class GitHubSearchModal extends Modal {
 		this.selectedIndex = -1;
 
 		const repo = this.getRepoForCurrentScope();
-		const results = await this.plugin.githubService.getRecentIssues(repo, 10);
+		const results = await this.plugin.githubService.getRecentIssues(repo, RECENT_ISSUES_LIMIT);
 
 		this.currentResults = results;
 		this.renderResults(results, 'Recent Issues');
@@ -236,7 +241,7 @@ export class GitHubSearchModal extends Modal {
 
 			const combined = [...issueResults.items, ...prResults.items]
 				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-				.slice(0, 20);
+				.slice(0, MAX_COMBINED_RESULTS);
 
 			this.currentResults = combined;
 			this.renderResults(combined, `Search Results (${combined.length})`);
@@ -302,9 +307,9 @@ export class GitHubSearchModal extends Modal {
 			});
 
 			row.addEventListener('mouseenter', () => {
-				list.querySelectorAll('.tdc-gh-result-item').forEach((el) => {
+				for (const el of Array.from(list.querySelectorAll('.tdc-gh-result-item'))) {
 					el.removeClass('tdc-gh-selected');
-				});
+				}
 				row.addClass('tdc-gh-selected');
 				this.selectedIndex = index;
 			});
@@ -319,7 +324,7 @@ export class GitHubSearchModal extends Modal {
 
 			row.createSpan({
 				cls: 'tdc-gh-result-title',
-				text: truncateText(item.title, 50)
+				text: truncateText(item.title, TITLE_TRUNCATION_LENGTH)
 			});
 
 			row.createSpan({

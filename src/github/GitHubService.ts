@@ -71,9 +71,12 @@ export class GitHubApiError extends Error {
 	}
 }
 
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_SIZE = 200;
 const API_BASE = 'https://api.github.com';
+const SEARCH_RESULTS_PER_PAGE = 20;
+const FALLBACK_SEARCH_PER_PAGE = 50;
+const USER_REPOS_PER_PAGE = 100;
 
 export function createGitHubService(): GitHubServiceInstance {
 	let auth: GitHubAuth = { method: 'none' };
@@ -134,7 +137,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		if (entry === undefined) {
 			return undefined;
 		}
-		if (Date.now() - entry.timestamp > CACHE_TTL) {
+		if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
 			cache.delete(key);
 			return undefined;
 		}
@@ -391,7 +394,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const data = await apiRequest<GitHubSearchApiResponse>(
-			`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=20&sort=updated`
+			`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${SEARCH_RESULTS_PER_PAGE}&sort=updated`
 		);
 
 		if (data === undefined) {
@@ -458,7 +461,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const data = await apiRequest<GitHubRepoApiResponse[]>(
-			'/user/repos?sort=pushed&per_page=100&type=all'
+			`/user/repos?sort=pushed&per_page=${USER_REPOS_PER_PAGE}&type=all`
 		);
 		if (data === undefined) {
 			return [];
@@ -580,7 +583,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			// Fallback: global search + client-side owner filter
 			const searchQuery = `${query} ${typeQualifier}`;
 			const data = await apiRequest<GitHubSearchApiResponse>(
-				`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=50&sort=updated`
+				`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${FALLBACK_SEARCH_PER_PAGE}&sort=updated`
 			);
 
 			if (data === undefined) {
@@ -605,7 +608,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			const results = await Promise.all(
 				searchQueries.map((searchQuery) =>
 					apiRequest<GitHubSearchApiResponse>(
-						`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=20&sort=updated`
+						`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${SEARCH_RESULTS_PER_PAGE}&sort=updated`
 					)
 				)
 			);

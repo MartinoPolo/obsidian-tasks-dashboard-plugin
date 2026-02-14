@@ -57,9 +57,8 @@ export function parseIssuesInRange(content: string, start: number, end: number):
 	const issues: ParsedIssue[] = [];
 	const section = content.substring(start, end);
 	const issueRegex = /%% ISSUE:([\w-]+):START %%([\s\S]*?)%% ISSUE:\1:END %%/g;
-	let match;
 
-	while ((match = issueRegex.exec(section)) !== null) {
+	for (const match of section.matchAll(issueRegex)) {
 		const issueContent = match[2];
 		const nameMatch = issueContent.match(/name:\s*(.+)/);
 		const pathMatch = issueContent.match(/path:\s*(.+)/);
@@ -71,8 +70,8 @@ export function parseIssuesInRange(content: string, start: number, end: number):
 				name: nameMatch[1].trim(),
 				priority: (priorityMatch ? priorityMatch[1].trim() : 'medium') as Priority,
 				filePath: pathMatch[1].trim(),
-				startIndex: start + match.index,
-				endIndex: start + match.index + match[0].length
+				startIndex: start + match.index!,
+				endIndex: start + match.index! + match[0].length
 			});
 		}
 	}

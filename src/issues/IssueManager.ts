@@ -422,6 +422,180 @@ priority: ${issue.priority}`;
 		new Notice(`Renamed: ${oldIssueId} → ${newIssueId}`);
 	};
 
+	const migrateOldGitHubFormat = (content: string, frontmatterSection: string): string => {
+		const oldGithubMatch = frontmatterSection.match(/^github:\s*\n((?:\s+\w+:.*\n?)*)/m);
+		if (oldGithubMatch === null) {
+			return content;
+		}
+
+		const oldUrlMatch = oldGithubMatch[0].match(/url:\s*"?([^"\n]+)"?/);
+		const oldUrl = oldUrlMatch !== null ? oldUrlMatch[1].trim() : undefined;
+
+		// Remove old github: block
+		let migrated = content.replace(oldGithubMatch[0], '');
+
+		let githubLinksFrontmatter = '\ngithub_links:';
+		if (oldUrl !== undefined) {
+			githubLinksFrontmatter += `\n  - url: "${oldUrl}"`;
+			const oldNumberMatch = oldGithubMatch[0].match(/number:\s*(\d+)/);
+			const oldStateMatch = oldGithubMatch[0].match(/state:\s*"?([^"\n]+)"?/);
+			const oldTitleMatch = oldGithubMatch[0].match(/title:\s*"([^"]+)"/);
+			const oldLabelsMatch = oldGithubMatch[0].match(/labels:\s*\[([^\]]*)\]/);
+			const oldFetchedMatch = oldGithubMatch[0].match(/lastFetched:\s*"([^"]+)"/);
+			if (oldNumberMatch !== null) {
+				githubLinksFrontmatter += `\n    number: ${oldNumberMatch[1]}`;
+			}
+			if (oldStateMatch !== null) {
+				githubLinksFrontmatter += `\n    state: "${oldStateMatch[1]}"`;
+			}
+			if (oldTitleMatch !== null) {
+				githubLinksFrontmatter += `\n    title: "${oldTitleMatch[1]}"`;
+			}
+			if (oldLabelsMatch !== null) {
+				githubLinksFrontmatter += `\n    labels: [${oldLabelsMatch[1]}]`;
+			}
+			if (oldFetchedMatch !== null) {
+				githubLinksFrontmatter += `\n    lastFetched: "${oldFetchedMatch[1]}"`;
+			}
+		}
+
+		const newCloseIndex = migrated.indexOf('---', migrated.indexOf('---') + 3);
+		migrated =
+			migrated.slice(0, newCloseIndex) +
+			githubLinksFrontmatter +
+			'\n' +
+			migrated.slice(newCloseIndex);
+
+		return migrated;
+	};
+
+	const updateFrontmatterWithGitHubLink = (
+		content: string,
+		githubUrl: string,
+		storedMetadata: GitHubStoredMetadata | undefined
+	): string => {
+		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+		if (frontmatterCloseIndex === -1) {
+			return content;
+		}
+
+		const frontmatterSection = content.slice(0, frontmatterCloseIndex);
+		const hasGithubLinks = frontmatterSection.includes('github_links:');
+		const hasOldGithub =
+			frontmatterSection.match(/^github:\s*$/m) !== null ||
+			frontmatterSection.match(/^github:\s*\n\s+url:/m) !== null;
+
+		if (hasGithubLinks) {
+			let newEntry = `\n  - url: "${githubUrl}"`;
+			if (storedMetadata !== undefined) {
+				newEntry += buildGitHubMetadataYaml(storedMetadata);
+			}
+			return (
+				content.slice(0, frontmatterCloseIndex) +
+				newEntry +
+				'\n' +
+				content.slice(frontmatterCloseIndex)
+			);
+		}
+
+		if (hasOldGithub) {
+			let migrated = migrateOldGitHubFormat(content, frontmatterSection);
+			// Now append the new link to the migrated github_links
+			const migratedCloseIndex = migrated.indexOf('---', migrated.indexOf('---') + 3);
+			let newEntry = `\n  - url: "${githubUrl}"`;
+			if (storedMetadata !== undefined) {
+				newEntry += buildGitHubMetadataYaml(storedMetadata);
+			}
+			migrated =
+				migrated.slice(0, migratedCloseIndex) +
+				newEntry +
+				'\n' +
+				migrated.slice(migratedCloseIndex);
+			return migrated;
+		}
+
+		// No existing github data — create fresh github_links
+		let githubLinksFrontmatter = `\ngithub_links:\n  - url: "${githubUrl}"`;
+		if (storedMetadata !== undefined) {
+			githubLinksFrontmatter += buildGitHubMetadataYaml(storedMetadata);
+		}
+		return (
+			content.slice(0, frontmatterCloseIndex) +
+			githubLinksFrontmatter +
+			'\n' +
+			content.slice(frontmatterCloseIndex)
+		);
+	};
+
+	const updateBodyWithGitHubLink = (
+		content: string,
+		githubUrl: string,
+		storedMetadata: GitHubStoredMetadata | undefined,
+		dashboardId: string
+	): string => {
+		const linkText = formatGitHubLinkText(githubUrl, storedMetadata);
+		const githubBlock =
+			`[${linkText}](${githubUrl})\n\n` +
+			'```tasks-dashboard-github\n' +
+			`url: ${githubUrl}\n` +
+			`dashboard: ${dashboardId}\n` +
+			'```\n';
+
+		const tasksSeparatorIndex = content.indexOf('\n---\n## Tasks');
+		if (tasksSeparatorIndex !== -1) {
+			return (
+				content.slice(0, tasksSeparatorIndex) +
+				'\n' +
+				githubBlock +
+				content.slice(tasksSeparatorIndex)
+			);
+		}
+		return content;
+	};
+
+	const updateDashboardWithGitHubLink = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		githubUrl: string
+	): Promise<void> => {
+		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+
+		if (dashboardFile === null) {
+			return;
+		}
+
+		let dashboardContent = await app.vault.read(dashboardFile);
+		const startMarker = `%% ISSUE:${issueId}:START %%`;
+		const endMarker = `%% ISSUE:${issueId}:END %%`;
+		const startIndex = dashboardContent.indexOf(startMarker);
+		const endIndex = dashboardContent.indexOf(endMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return;
+		}
+
+		const blockEnd = endIndex + endMarker.length;
+		let block = dashboardContent.substring(startIndex, blockEnd);
+
+		// Migrate any old `github:` line to `github_link:` while we're here
+		block = block.replace(/^github: (.+)$/m, 'github_link: $1');
+
+		// Insert github_link: url before the closing ``` of tasks-dashboard-controls
+		const controlsBlockEnd = block.indexOf('```\n');
+		if (controlsBlockEnd !== -1) {
+			block =
+				block.slice(0, controlsBlockEnd) +
+				`github_link: ${githubUrl}\n` +
+				block.slice(controlsBlockEnd);
+		}
+
+		dashboardContent =
+			dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
+		await app.vault.modify(dashboardFile, dashboardContent);
+	};
+
 	const addGitHubLink = async (
 		dashboard: DashboardConfig,
 		issueId: string,
@@ -449,144 +623,11 @@ priority: ${issue.priority}`;
 			};
 		}
 
-		// Migrate old single `github:` to `github_links:` if needed, then append new link
-		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
-		if (frontmatterCloseIndex !== -1) {
-			const frontmatterSection = content.slice(0, frontmatterCloseIndex);
-			const hasGithubLinks = frontmatterSection.includes('github_links:');
-			const hasOldGithub =
-				frontmatterSection.match(/^github:\s*$/m) !== null ||
-				frontmatterSection.match(/^github:\s*\n\s+url:/m) !== null;
-
-			if (hasGithubLinks) {
-				// Append new entry to existing github_links array
-				let newEntry = `\n  - url: "${githubUrl}"`;
-				if (storedMetadata !== undefined) {
-					newEntry += buildGitHubMetadataYaml(storedMetadata);
-				}
-				// Insert before the closing ---
-				content =
-					content.slice(0, frontmatterCloseIndex) +
-					newEntry +
-					'\n' +
-					content.slice(frontmatterCloseIndex);
-			} else if (hasOldGithub) {
-				// Migrate old github: block to github_links: array and add new entry
-				// Extract old github block from frontmatter
-				const oldGithubMatch = frontmatterSection.match(/^github:\s*\n((?:\s+\w+:.*\n?)*)/m);
-				if (oldGithubMatch !== null) {
-					const oldUrlMatch = oldGithubMatch[0].match(/url:\s*"?([^"\n]+)"?/);
-					const oldUrl = oldUrlMatch !== null ? oldUrlMatch[1].trim() : undefined;
-
-					// Remove old github: block from content
-					content = content.replace(oldGithubMatch[0], '');
-
-					// Build new github_links section with old + new
-					let githubLinksFrontmatter = '\ngithub_links:';
-					if (oldUrl !== undefined) {
-						githubLinksFrontmatter += `\n  - url: "${oldUrl}"`;
-						// Re-extract old metadata fields
-						const oldNumberMatch = oldGithubMatch[0].match(/number:\s*(\d+)/);
-						const oldStateMatch = oldGithubMatch[0].match(/state:\s*"?([^"\n]+)"?/);
-						const oldTitleMatch = oldGithubMatch[0].match(/title:\s*"([^"]+)"/);
-						const oldLabelsMatch = oldGithubMatch[0].match(/labels:\s*\[([^\]]*)\]/);
-						const oldFetchedMatch = oldGithubMatch[0].match(/lastFetched:\s*"([^"]+)"/);
-						if (oldNumberMatch !== null) {
-							githubLinksFrontmatter += `\n    number: ${oldNumberMatch[1]}`;
-						}
-						if (oldStateMatch !== null) {
-							githubLinksFrontmatter += `\n    state: "${oldStateMatch[1]}"`;
-						}
-						if (oldTitleMatch !== null) {
-							githubLinksFrontmatter += `\n    title: "${oldTitleMatch[1]}"`;
-						}
-						if (oldLabelsMatch !== null) {
-							githubLinksFrontmatter += `\n    labels: [${oldLabelsMatch[1]}]`;
-						}
-						if (oldFetchedMatch !== null) {
-							githubLinksFrontmatter += `\n    lastFetched: "${oldFetchedMatch[1]}"`;
-						}
-					}
-					// Add new entry
-					githubLinksFrontmatter += `\n  - url: "${githubUrl}"`;
-					if (storedMetadata !== undefined) {
-						githubLinksFrontmatter += buildGitHubMetadataYaml(storedMetadata);
-					}
-
-					const newCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
-					content =
-						content.slice(0, newCloseIndex) +
-						githubLinksFrontmatter +
-						'\n' +
-						content.slice(newCloseIndex);
-				}
-			} else {
-				// No existing github data — create fresh github_links
-				let githubLinksFrontmatter = `\ngithub_links:\n  - url: "${githubUrl}"`;
-				if (storedMetadata !== undefined) {
-					githubLinksFrontmatter += buildGitHubMetadataYaml(storedMetadata);
-				}
-				content =
-					content.slice(0, frontmatterCloseIndex) +
-					githubLinksFrontmatter +
-					'\n' +
-					content.slice(frontmatterCloseIndex);
-			}
-		}
-
-		// Add markdown link and github code block before the --- separator (before ## Tasks)
-		const linkText = formatGitHubLinkText(githubUrl, storedMetadata);
-		const githubBlock =
-			`[${linkText}](${githubUrl})\n\n` +
-			'```tasks-dashboard-github\n' +
-			`url: ${githubUrl}\n` +
-			`dashboard: ${dashboard.id}\n` +
-			'```\n';
-
-		const tasksSeparatorIndex = content.indexOf('\n---\n## Tasks');
-		if (tasksSeparatorIndex !== -1) {
-			content =
-				content.slice(0, tasksSeparatorIndex) +
-				'\n' +
-				githubBlock +
-				content.slice(tasksSeparatorIndex);
-		}
+		content = updateFrontmatterWithGitHubLink(content, githubUrl, storedMetadata);
+		content = updateBodyWithGitHubLink(content, githubUrl, storedMetadata, dashboard.id);
 
 		await app.vault.modify(file, content);
-
-		// Update dashboard entry to include github_link: url
-		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
-		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
-
-		if (dashboardFile !== null) {
-			let dashboardContent = await app.vault.read(dashboardFile);
-			const startMarker = `%% ISSUE:${issueId}:START %%`;
-			const endMarker = `%% ISSUE:${issueId}:END %%`;
-			const startIndex = dashboardContent.indexOf(startMarker);
-			const endIndex = dashboardContent.indexOf(endMarker);
-
-			if (startIndex !== -1 && endIndex !== -1) {
-				const blockEnd = endIndex + endMarker.length;
-				let block = dashboardContent.substring(startIndex, blockEnd);
-
-				// Also migrate any old `github:` line to `github_link:` while we're here
-				block = block.replace(/^github: (.+)$/m, 'github_link: $1');
-
-				// Insert github_link: url before the closing ``` of tasks-dashboard-controls
-				const controlsBlockEnd = block.indexOf('```\n');
-				if (controlsBlockEnd !== -1) {
-					block =
-						block.slice(0, controlsBlockEnd) +
-						`github_link: ${githubUrl}\n` +
-						block.slice(controlsBlockEnd);
-				}
-
-				dashboardContent =
-					dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
-				await app.vault.modify(dashboardFile, dashboardContent);
-			}
-		}
+		await updateDashboardWithGitHubLink(dashboard, issueId, githubUrl);
 
 		new Notice(`GitHub link added to ${issueId}`);
 	};

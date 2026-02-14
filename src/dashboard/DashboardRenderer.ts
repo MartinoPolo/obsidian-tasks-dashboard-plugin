@@ -8,6 +8,8 @@ import { isGitHubRepoUrl, parseGitHubRepoName } from '../utils/github-url';
 import { ICONS, renderIssueActionButtons } from './header-actions';
 import { renderSortControls } from './sort-controls';
 
+const REACTIVE_RENDER_DEBOUNCE_MS = 100;
+
 interface ControlParams {
 	issue: string;
 	name: string;
@@ -60,7 +62,7 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 							this.containerEl.createEl('span', { text: 'Failed to render', cls: 'tdc-error' });
 						});
 					}
-				}, 100);
+				}, REACTIVE_RENDER_DEBOUNCE_MS);
 			})
 		);
 	}
