@@ -25,21 +25,35 @@ obsidian-tasks-dashboard-plugin/
 │   ├── dashboard/            # Dashboard parsing, writing, rendering
 │   │   ├── DashboardParser.ts
 │   │   ├── DashboardWriter.ts
-│   │   └── DashboardRenderer.ts
+│   │   ├── DashboardRenderer.ts
+│   │   ├── header-actions.ts
+│   │   └── sort-controls.ts
 │   ├── github/               # GitHub API integration
 │   │   ├── GitHubService.ts
-│   │   └── GitHubCardRenderer.ts
+│   │   ├── GitHubCardRenderer.ts
+│   │   └── github-api-types.ts
 │   ├── issues/               # Issue management & progress tracking
 │   │   ├── IssueManager.ts
 │   │   └── ProgressTracker.ts
 │   ├── modals/               # UI modals
-│   │   ├── IssueModal.ts
-│   │   └── GitHubSearchModal.ts
+│   │   ├── issue-creation-modal.ts
+│   │   ├── GitHubSearchModal.ts
+│   │   ├── github-links-modal.ts
+│   │   ├── FolderPathModal.ts
+│   │   ├── RepositoryPickerModal.ts
+│   │   ├── rename-issue-modal.ts
+│   │   ├── delete-confirmation-modal.ts
+│   │   └── modal-helpers.ts
 │   ├── settings.ts           # Plugin settings UI
 │   ├── types.ts              # TypeScript interfaces & types
 │   └── utils/                # Utilities
 │       ├── slugify.ts
-│       └── priorities.ts
+│       ├── priorities.ts
+│       ├── platform.ts
+│       ├── github.ts
+│       ├── github-url.ts
+│       ├── github-helpers.ts
+│       └── dashboard-path.ts
 ├── styles.css                # Plugin styles
 ├── manifest.json             # Obsidian manifest
 ├── package.json
@@ -146,8 +160,8 @@ Show GitHub card/metadata in the issue note file, not just dashboard.
 #### 6b. Add GitHub Issue/PR After Creation
 Button to add GitHub issue and/or PR to an existing dashboard issue.
 
-#### 6c. Repository Picker + Search Scope
-Choose repo from a list instead of typing full name. Show suggestions from user's repos. Replace "Search all repositories" checkbox with a dropdown scope selector: **Linked repository** (default when dashboard has `githubRepo`), **My repositories** (default otherwise — searches personal + org repos via parallel queries), **All GitHub** (opt-in global search). Fetch `/user` and `/user/orgs` for scope filtering with caching. Cap parallel org queries at 5; fall back to global search + client-side filter for more.
+#### 6c. Repository Picker (Settings) + Search Scope
+Repository picker modal in dashboard settings to choose repo from a list (not during issue creation — creation uses the search modal). Show suggestions from user's repos. Replace "Search all repositories" checkbox with a dropdown scope selector: **Linked repository** (default when dashboard has `githubRepo`), **My repositories** (default otherwise — searches personal + org repos via parallel queries), **All GitHub** (opt-in global search). Fetch `/user` and `/user/orgs` for scope filtering with caching. Cap parallel org queries at 5; fall back to global search + client-side filter for more.
 
 #### 6d. No-GitHub Mode
 Per-dashboard option to disable GitHub integration. Skip the GitHub link prompt during creation.
@@ -312,6 +326,44 @@ Eliminate ~800 lines of duplicated code across 15 files. Pure refactoring — no
 - No functional changes — behavior identical pre/post refactoring
 - 10 new utility/module files created
 - DashboardRenderer.ts reduced from 989 to ~500 lines
+
+### 19. Code Hardening
+Address security vulnerabilities, performance bottlenecks, error handling gaps, and code quality issues from full codebase review. No new features.
+
+#### Security
+- Fix command injection in `platform.ts` — replace `exec()` with `spawn()` + `shell:false`
+- Fix prototype pollution in YAML frontmatter parser — use `Object.create(null)`, skip dangerous keys
+- Tighten GitHub URL validation — require `https?://` protocol prefix
+
+#### Performance
+- Parallelize GitHub card rendering (sequential await → `Promise.all`)
+- Parallelize file reads during sort operations
+- Fix memory leak from dropdown event listeners accumulating on re-render
+- Render progress bars async with placeholder (don't block render)
+- LRU cache with size cap for GitHub API cache
+- Debounce vault modify event handler (500ms)
+
+#### Error Handling
+- Add `instanceof TFile` guards on all `getAbstractFileByPath` calls
+- Typed error propagation from GitHub API (not swallowed `undefined`)
+- Operation locking for archive/unarchive to prevent race conditions
+- Error handling for terminal/VS Code spawn failures with user notice
+- Validate `loadData()` shape before type assertion
+- Handle swallowed promise rejections in render with `.catch()`
+- Try/catch in plugin `onload()` with user notice
+- Replace deprecated `electron.remote` with current Obsidian/Electron API
+
+#### Code Quality
+- Split `addGitHubLink` (167 lines, 5-level nesting) into focused sub-functions
+- Split `rebuildDashboardFromFiles` (123 lines) into sub-functions
+- Unify `sortByCreatedDate`/`sortByEditedDate` (90% shared logic)
+- Extract magic numbers to named constants
+- Minor convention fixes: `forEach` → `for...of`, `.substr()` → `.substring()`, `exec` loop → `matchAll`
+
+#### Acceptance Criteria
+- `pnpm build` passes after each task group
+- No functional behavior changes unless fixing a vulnerability
+- All security issues addressed before merge
 
 ## Technical Constraints
 - Must integrate with existing factory function patterns

@@ -20,7 +20,7 @@
 
 ## Active Issue File Behavior
 
-- [x] Auto-position cursor at end of file when opening any active issue file
+- [x] Smart cursor positioning at end of ## Tasks section (falls back to end of file)
 
 ## Issue Note Format
 
@@ -51,12 +51,22 @@
 
 - [x] Add Issue button (opens issue creation flow)
 - [x] Sort by Priority button
+- [x] Sort by date created/edited (newest/oldest)
+- [x] Collapse/expand all issues button
+- [x] Rebuild dashboard button (refreshes from files + GitHub cards)
 
 ### Per-Issue Controls
 
 - [x] Square buttons with consistent SVG icons and high-contrast hover
-- [x] Archive button (trash icon)
+- [x] Archive button (archive icon, separate from delete)
+- [x] Delete button (trash icon) with confirmation dialog
 - [x] Move up/down buttons (arrow icons)
+- [x] Move to top/bottom buttons
+- [x] Collapse/expand toggle per issue (state persisted)
+- [x] Rename button with modal (migrates state: collapsed, colors, folders)
+- [x] Per-issue color picker (native `<input type="color">`, persisted to `issueColors`)
+- [x] GitHub quick-open button (opens linked URL, faded when no link — click prompts to add)
+- [x] Folder/terminal/VS Code buttons (per-issue, independent from global)
 - [x] Progress indicator with priority-colored progress bar
 - [x] Priority indicated by colored left border (low=green, medium=yellow, high=red, top=purple)
 
@@ -82,12 +92,18 @@
 ## GitHub Integration
 
 - [x] Per-vault GitHub authentication using Personal Access Tokens
-- [x] GitHub Display Mode setting (Minimal/Compact/Full)
-- [x] Per-dashboard GitHub repository linking for filtered suggestions
-- [x] GitHub search modal with recent issues and real-time search
-- [x] Toggle between linked repo and all accessible repos
-- [x] Embedded GitHub info cards on dashboard showing issue/PR metadata
+- [x] GitHub Display Mode setting (Minimal/Compact/Full) — switching updates existing cards
+- [x] Per-dashboard GitHub repository linking via repository picker modal (settings only)
+- [x] Per-dashboard no-GitHub mode toggle (skips GitHub link during creation)
+- [x] GitHub search modal with recent issues, real-time search, scope selector (linked repo/my repos/all GitHub)
+- [x] Enter key in search confirms without selecting first suggestion
+- [x] Multiple GitHub issues/PRs per dashboard issue (add via button, not re-prompted at creation)
+- [x] Link whole GitHub repositories to issues (not just issues/PRs)
+- [x] Embedded GitHub info cards on dashboard and in issue notes
+- [x] Show issue number and title in link text (not generic text)
 - [x] Manual refresh button to update GitHub data
+- [x] GitHub quick-open button per issue (opens linked URL in browser)
+- [x] Rate limit display in settings
 - [x] Support for both issues and pull requests
 - [x] Display issue number, status, labels, assignees, and description
 
@@ -106,6 +122,31 @@
 - [x] VS Code button styled with brand color (#007ACC)
 - [x] Per-dashboard toggle for folder/terminal button visibility
 - [x] Issue folder assignment is independent — does not affect other issues or global
+
+## Code Hardening
+
+- [ ] Fix command injection in platform.ts — replace exec() with spawn() + shell:false
+- [ ] Fix prototype pollution in YAML frontmatter parser
+- [ ] Tighten GitHub URL validation with protocol check
+- [ ] Parallelize GitHub card rendering (Promise.all)
+- [ ] Parallelize file reads during sort operations
+- [ ] Fix memory leak — dropdown event listener accumulation
+- [ ] Async progress bar rendering with placeholder
+- [ ] LRU cache with size cap for GitHub API cache
+- [ ] Debounce vault modify event handler
+- [ ] Add TFile type guards on getAbstractFileByPath calls
+- [ ] Typed error propagation from GitHub API
+- [ ] Operation locking for archive/unarchive race conditions
+- [ ] Error handling for spawn() failures with user notice
+- [ ] Validate loadData() shape before type assertion
+- [ ] Handle swallowed promise rejections in render
+- [ ] Try/catch in plugin onload() with user notice
+- [ ] Replace deprecated electron.remote
+- [ ] Split addGitHubLink (167 lines) into sub-functions
+- [ ] Split rebuildDashboardFromFiles (123 lines) into sub-functions
+- [ ] Unify duplicate sortByCreatedDate/sortByEditedDate logic
+- [ ] Extract magic numbers to named constants
+- [ ] Minor convention fixes (forEach→for...of, substr→substring, exec loop→matchAll)
 
 ## Code Quality
 

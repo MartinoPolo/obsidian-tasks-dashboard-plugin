@@ -64,6 +64,8 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 - `DashboardParser.ts` - Pure functions to parse Dashboard.md using `%% ISSUE:id:START/END %%` markers
 - `DashboardWriter.ts` - Factory function creates writer instance to modify Dashboard.md (add/archive/reorder issues)
 - `DashboardRenderer.ts` - Factory function creates renderer instance for interactive HTML code blocks, includes GitHub card rendering, folder/terminal/VS Code buttons
+- `header-actions.ts` - Render header controls (add issue, refresh, folder/terminal/VS Code buttons)
+- `sort-controls.ts` - Render sort UI controls and dropdown
 
 **Issues** (`src/issues/`):
 - `IssueManager.ts` - Factory function creates manager instance to create/archive issue files with YAML frontmatter
@@ -72,14 +74,26 @@ Obsidian plugin for task dashboards with issue tracking. Uses custom markdown co
 **GitHub** (`src/github/`):
 - `GitHubService.ts` - Factory function creates GitHub API client with caching, handles auth validation, issue/PR fetching, and search
 - `GitHubCardRenderer.ts` - Factory function creates renderer for GitHub metadata cards (minimal/compact/full modes)
+- `github-api-types.ts` - TypeScript interfaces for GitHub API responses
 
 **Modals** (`src/modals/`):
-- `IssueModal.ts` - Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
+- `issue-creation-modal.ts` - Three-step flow classes (Obsidian-required): Name → Priority → GitHub link
 - `GitHubSearchModal.ts` - Rich search modal for finding GitHub issues/PRs when authenticated
 - `FolderPathModal.ts` - Folder path input modal with optional `issueId` for per-issue vs global storage
+- `github-links-modal.ts` - Modal to manage GitHub links for issues
+- `rename-issue-modal.ts` - Rename issue dialog
+- `delete-confirmation-modal.ts` - Confirm deletion action
+- `RepositoryPickerModal.ts` - Select GitHub repository (settings only)
+- `modal-helpers.ts` - Shared modal utility functions
 
 **Utilities** (`src/utils/`):
 - `platform.ts` - Factory function creates platform service for file explorer, terminal, VS Code, and folder picker
+- `github-url.ts` - Parse/extract GitHub URLs (shared across modules)
+- `github-helpers.ts` - GitHub display helpers (state, truncate, date, contrast)
+- `github.ts` - Re-export GitHub utilities
+- `dashboard-path.ts` - Dashboard path resolution
+- `slugify.ts` - Convert strings to slug format (issue IDs)
+- `priorities.ts` - Priority level constants
 
 **Types** (`src/types.ts`): Priority levels, GitHub types, settings interfaces. `issueFolders` stores per-issue folders keyed by `dashboardId:issueId`.
 

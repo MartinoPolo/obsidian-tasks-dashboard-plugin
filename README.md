@@ -65,14 +65,19 @@ The dashboard has four sections:
 ```
 ### Dashboard Buttons
 - **Add Issue**: Opens the issue creation flow
-- **Sort**: Organizes all issues by priority level
+- **Sort**: Organizes all issues by priority (or date created/edited)
+- **Collapse/Expand All**: Toggle visibility of all issue details
+- **Rebuild**: Refresh dashboard from issue files
 
 ### Issue Controls
 Each issue entry includes:
 - Link to the issue note with priority-colored left border
 - Progress indicator (configurable display mode)
-- ↑ ↓ buttons to reorder
-- Archive button (trash icon)
+- Collapse/expand toggle for issue details
+- ↑ ↓ buttons to reorder, move to top/bottom
+- Archive button and delete button (with confirmation)
+- Per-issue color picker, rename, GitHub quick-open
+- Folder/terminal/VS Code buttons (when folder assigned)
 - Embedded tasks query
 ### Issue Notes
 Created issues contain:
@@ -82,11 +87,14 @@ Created issues contain:
 - GitHub link (if provided)
 - Blank task ready for input
 
-**Auto-cursor**: When you open any active issue file, the cursor automatically jumps to the end of the file, so you can immediately start adding tasks.
+**Auto-cursor**: When you open any active issue file, the cursor automatically positions at the end of the ## Tasks section for quick task entry.
 ### Managing Issues
-- **Archive**: Click the trash icon to archive an issue
-- **Reorder**: Use ↑ and ↓ buttons to change issue order
-- **Sort**: Use "Sort" button to organize all issues by priority
+- **Archive**: Click the archive icon to move issue to Archive section
+- **Delete**: Click the trash icon to permanently delete (with confirmation)
+- **Rename**: Right-click issue header or use rename button
+- **Reorder**: Use ↑ ↓ buttons or move to top/bottom
+- **Sort**: Sort by priority, date created, or date edited
+- **Collapse**: Toggle individual issues or collapse/expand all
 
 ## GitHub Integration
 Link your issues to GitHub issues and pull requests for enhanced tracking.
