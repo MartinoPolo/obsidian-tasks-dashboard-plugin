@@ -36,25 +36,28 @@ export function createDashboardWriter(
 	app: App,
 	plugin: TasksDashboardPlugin
 ): DashboardWriterInstance {
-	const buildGithubLinkLines = (issue: Issue): string => {
-		const links = issue.githubLinks ?? [];
-		// Backward compat: fall back to single githubLink if githubLinks not set
-		if (links.length === 0 && issue.githubLink !== undefined && issue.githubLink !== '') {
-			return `github_link: ${issue.githubLink}\n`;
-		}
-		return links.map((url) => `github_link: ${url}\n`).join('');
-	};
+	interface IssueBlockParams {
+		id: string;
+		name: string;
+		filePath: string;
+		dashboardId: string;
+		priority: Priority;
+		githubLinks: string[];
+		isArchived: boolean;
+	}
 
-	const buildIssueEntry = (issue: Issue, dashboard: DashboardConfig): string => {
-		const relativePath = `Issues/Active/${issue.id}`;
-		const githubLines = buildGithubLinkLines(issue);
-		return `%% ISSUE:${issue.id}:START %%
+	const buildIssueMarkdownBlock = (params: IssueBlockParams): string => {
+		const relativePath = params.isArchived
+			? `Issues/Archive/${params.id}`
+			: `Issues/Active/${params.id}`;
+		const githubLines = params.githubLinks.map((url) => `github_link: ${url}\n`).join('');
+		return `%% ISSUE:${params.id}:START %%
 \`\`\`tasks-dashboard-controls
-issue: ${issue.id}
-name: ${issue.name}
-path: ${issue.filePath}
-dashboard: ${dashboard.id}
-priority: ${issue.priority}
+issue: ${params.id}
+name: ${params.name}
+path: ${params.filePath}
+dashboard: ${params.dashboardId}
+priority: ${params.priority}
 ${githubLines}\`\`\`
 \`\`\`tasks
 path includes ${relativePath}
@@ -67,7 +70,50 @@ hide tags
 show tree
 \`\`\`
 ---
-%% ISSUE:${issue.id}:END %%`;
+%% ISSUE:${params.id}:END %%`;
+	};
+
+	const issueToBlockParams = (issue: Issue, dashboard: DashboardConfig): IssueBlockParams => {
+		const links = issue.githubLinks ?? [];
+		// Backward compat: fall back to single githubLink if githubLinks not set
+		const githubLinks =
+			links.length === 0 && issue.githubLink !== undefined && issue.githubLink !== ''
+				? [issue.githubLink]
+				: links;
+		return {
+			id: issue.id,
+			name: issue.name,
+			filePath: issue.filePath,
+			dashboardId: dashboard.id,
+			priority: issue.priority,
+			githubLinks,
+			isArchived: false
+		};
+	};
+
+	const extractAndRemoveIssueBlock = (
+		content: string,
+		issueId: string
+	): { block: string; cleanedContent: string } | undefined => {
+		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
+		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
+		const startIndex = content.indexOf(issueStartMarker);
+		const endIndex = content.indexOf(issueEndMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return undefined;
+		}
+
+		const block = content.substring(startIndex, endIndex + issueEndMarker.length);
+		let cleanedContent = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
+
+		// Remove trailing separator if present right after where the block was
+		const separatorAfter = cleanedContent.indexOf('---\n', startIndex);
+		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
+			cleanedContent = cleanedContent.slice(0, startIndex) + cleanedContent.slice(separatorAfter + 4);
+		}
+
+		return { block, cleanedContent };
 	};
 
 	const addIssueToDashboard = async (dashboard: DashboardConfig, issue: Issue): Promise<void> => {
@@ -86,7 +132,7 @@ show tree
 			content = initializeDashboardStructure(dashboard.id);
 		}
 
-		const issueEntry = buildIssueEntry(issue, dashboard);
+		const issueEntry = buildIssueMarkdownBlock(issueToBlockParams(issue, dashboard));
 		const activeEndMarker = MARKERS.ACTIVE_END;
 		const insertIndex = content.indexOf(activeEndMarker);
 
@@ -106,37 +152,26 @@ show tree
 			return;
 		}
 
-		let content = await app.vault.read(file);
-		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
-		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
-		const startIndex = content.indexOf(issueStartMarker);
-		const endIndex = content.indexOf(issueEndMarker);
+		const content = await app.vault.read(file);
+		const result = extractAndRemoveIssueBlock(content, issueId);
 
-		if (startIndex === -1 || endIndex === -1) {
+		if (result === undefined) {
 			return;
 		}
 
-		const issueBlock = content.substring(startIndex, endIndex + issueEndMarker.length);
-		content = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
-
-		const separatorAfter = content.indexOf('---\n', startIndex);
-		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
-			content = content.slice(0, startIndex) + content.slice(separatorAfter + 4);
-		}
-
-		const archiveEnd = MARKERS.ARCHIVE_END;
-		const archiveInsertIndex = content.indexOf(archiveEnd);
+		let cleanedContent = result.cleanedContent;
+		const archiveInsertIndex = cleanedContent.indexOf(MARKERS.ARCHIVE_END);
 
 		if (archiveInsertIndex !== -1) {
-			const updatedBlock = issueBlock.replace(/Issues\/Active/g, 'Issues/Archive');
-			content =
-				content.slice(0, archiveInsertIndex) +
+			const updatedBlock = result.block.replace(/Issues\/Active/g, 'Issues/Archive');
+			cleanedContent =
+				cleanedContent.slice(0, archiveInsertIndex) +
 				updatedBlock +
 				'\n---\n' +
-				content.slice(archiveInsertIndex);
+				cleanedContent.slice(archiveInsertIndex);
 		}
 
-		await app.vault.modify(file, content);
+		await app.vault.modify(file, cleanedContent);
 	};
 
 	const moveIssueToActive = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
@@ -147,37 +182,26 @@ show tree
 			return;
 		}
 
-		let content = await app.vault.read(file);
-		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
-		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
-		const startIndex = content.indexOf(issueStartMarker);
-		const endIndex = content.indexOf(issueEndMarker);
+		const content = await app.vault.read(file);
+		const result = extractAndRemoveIssueBlock(content, issueId);
 
-		if (startIndex === -1 || endIndex === -1) {
+		if (result === undefined) {
 			return;
 		}
 
-		const issueBlock = content.substring(startIndex, endIndex + issueEndMarker.length);
-		content = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
-
-		const separatorAfter = content.indexOf('---\n', startIndex);
-		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
-			content = content.slice(0, startIndex) + content.slice(separatorAfter + 4);
-		}
-
-		const activeEnd = MARKERS.ACTIVE_END;
-		const activeInsertIndex = content.indexOf(activeEnd);
+		let cleanedContent = result.cleanedContent;
+		const activeInsertIndex = cleanedContent.indexOf(MARKERS.ACTIVE_END);
 
 		if (activeInsertIndex !== -1) {
-			const updatedBlock = issueBlock.replace(/Issues\/Archive/g, 'Issues/Active');
-			content =
-				content.slice(0, activeInsertIndex) +
+			const updatedBlock = result.block.replace(/Issues\/Archive/g, 'Issues/Active');
+			cleanedContent =
+				cleanedContent.slice(0, activeInsertIndex) +
 				updatedBlock +
 				'\n---\n' +
-				content.slice(activeInsertIndex);
+				cleanedContent.slice(activeInsertIndex);
 		}
 
-		await app.vault.modify(file, content);
+		await app.vault.modify(file, cleanedContent);
 	};
 
 	const removeIssueFromDashboard = async (
@@ -191,25 +215,14 @@ show tree
 			return;
 		}
 
-		let content = await app.vault.read(file);
-		const issueStartMarker = `%% ISSUE:${issueId}:START %%`;
-		const issueEndMarker = `%% ISSUE:${issueId}:END %%`;
-		const startIndex = content.indexOf(issueStartMarker);
-		const endIndex = content.indexOf(issueEndMarker);
+		const content = await app.vault.read(file);
+		const result = extractAndRemoveIssueBlock(content, issueId);
 
-		if (startIndex === -1 || endIndex === -1) {
+		if (result === undefined) {
 			return;
 		}
 
-		content = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
-
-		// Remove trailing separator if present right after where the block was
-		const separatorAfter = content.indexOf('---\n', startIndex);
-		if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {
-			content = content.slice(0, startIndex) + content.slice(separatorAfter + 4);
-		}
-
-		await app.vault.modify(file, content);
+		await app.vault.modify(file, result.cleanedContent);
 	};
 
 	const moveIssue = async (
@@ -320,7 +333,7 @@ show tree
 			return;
 		}
 
-		let content = await app.vault.read(file);
+		const content = await app.vault.read(file);
 		const parsed = parseDashboard(content);
 
 		if (parsed.activeIssues.length < 2) {
@@ -333,8 +346,7 @@ show tree
 
 		const blocks: string[] = [];
 		for (const issue of parsed.activeIssues) {
-			const block = content.substring(issue.startIndex, issue.endIndex);
-			blocks.push(block);
+			blocks.push(content.substring(issue.startIndex, issue.endIndex));
 		}
 
 		const sortedBlocks = sortedIssues.map((issue) => {
@@ -342,20 +354,7 @@ show tree
 			return blocks[originalIndex];
 		});
 
-		const activeStartMarker = MARKERS.ACTIVE_START;
-		const activeEndMarker = MARKERS.ACTIVE_END;
-		const activeStart = content.indexOf(activeStartMarker) + activeStartMarker.length;
-		const activeEnd = content.indexOf(activeEndMarker);
-
-		const beforeActive = content.slice(0, activeStart);
-		const afterActive = content.slice(activeEnd);
-		const sortBlock = '```tasks-dashboard-sort\ndashboard: ' + dashboard.id + '\n```\n';
-		const cleanedBlocks = sortedBlocks.map((block) => block.trim());
-		const newActiveSection = '\n' + sortBlock + cleanedBlocks.join('\n\n') + '\n';
-
-		content = beforeActive + newActiveSection + afterActive;
-		await app.vault.modify(file, content);
-		new Notice('Issues sorted by priority');
+		await rebuildActiveSectionWithSortedBlocks(dashboard, sortedBlocks, 'Issues sorted by priority');
 	};
 
 	const rebuildActiveSectionWithSortedBlocks = async (
@@ -606,36 +605,19 @@ show tree
 		};
 	};
 
-	const buildIssueBlock = (
+	const parsedIssueFileToBlockParams = (
 		issueFile: ParsedIssueFile,
 		isArchived: boolean,
 		dashboard: DashboardConfig
-	): string => {
-		const relativePath = isArchived
-			? `Issues/Archive/${issueFile.id}`
-			: `Issues/Active/${issueFile.id}`;
-		const githubLines = issueFile.githubLinks.map((url) => `github_link: ${url}\n`).join('');
-		return `%% ISSUE:${issueFile.id}:START %%
-\`\`\`tasks-dashboard-controls
-issue: ${issueFile.id}
-name: ${issueFile.name}
-path: ${issueFile.filePath}
-dashboard: ${dashboard.id}
-priority: ${issueFile.priority}
-${githubLines}\`\`\`
-\`\`\`tasks
-path includes ${relativePath}
-not done
-limit 10
-sort by priority
-short mode
-hide task count
-hide tags
-show tree
-\`\`\`
----
-%% ISSUE:${issueFile.id}:END %%`;
-	};
+	): IssueBlockParams => ({
+		id: issueFile.id,
+		name: issueFile.name,
+		filePath: issueFile.filePath,
+		dashboardId: dashboard.id,
+		priority: issueFile.priority,
+		githubLinks: issueFile.githubLinks,
+		isArchived
+	});
 
 	const rebuildDashboardFromFiles = async (dashboard: DashboardConfig): Promise<number> => {
 		// Clear GitHub cache so cards re-fetch fresh data after rebuild
@@ -728,7 +710,7 @@ dashboard: ${dashboard.id}
 `;
 
 		for (const issue of activeIssues) {
-			newContent += buildIssueBlock(issue, false, dashboard) + '\n';
+			newContent += buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, false, dashboard)) + '\n';
 		}
 
 		// Build Notes section with proper formatting
@@ -741,7 +723,7 @@ ${MARKERS.ARCHIVE_START}
 `;
 
 		for (const issue of archivedIssues) {
-			newContent += buildIssueBlock(issue, true, dashboard) + '\n';
+			newContent += buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, true, dashboard)) + '\n';
 		}
 
 		newContent += `${MARKERS.ARCHIVE_END}

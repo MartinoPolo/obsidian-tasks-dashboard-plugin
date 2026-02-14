@@ -59,11 +59,11 @@ Deduplicate YAML metadata building and file search patterns.
 
 Deduplicate block extraction, move operations, and issue block builders.
 
-- [ ] Extract `extractAndRemoveIssueBlock(content, issueId)` → `{ block, cleanedContent } | undefined` — shared extract-block + cleanup-separator pattern used by `moveIssueToArchive`, `moveIssueToActive`, `removeIssueFromDashboard`
-- [ ] Rewrite `moveIssueToArchive`, `moveIssueToActive`, `removeIssueFromDashboard` using `extractAndRemoveIssueBlock`
-- [ ] Unify `buildIssueEntry` + `buildIssueBlock` → single `buildIssueMarkdownBlock(params)` with common interface accepting both `Issue` and `ParsedIssueFile` data
-- [ ] Make `sortByPriority` delegate to `rebuildActiveSectionWithSortedBlocks` instead of duplicating rebuild logic
-- [ ] Verify `pnpm build` passes
+- [x] Extract `extractAndRemoveIssueBlock(content, issueId)` → `{ block, cleanedContent } | undefined` — shared extract-block + cleanup-separator pattern used by `moveIssueToArchive`, `moveIssueToActive`, `removeIssueFromDashboard`
+- [x] Rewrite `moveIssueToArchive`, `moveIssueToActive`, `removeIssueFromDashboard` using `extractAndRemoveIssueBlock`
+- [x] Unify `buildIssueEntry` + `buildIssueBlock` → single `buildIssueMarkdownBlock(params)` with common interface accepting both `Issue` and `ParsedIssueFile` data
+- [x] Make `sortByPriority` delegate to `rebuildActiveSectionWithSortedBlocks` instead of duplicating rebuild logic
+- [x] Verify `pnpm build` passes
 
 ## Group 4: DashboardRenderer — Extract Header Actions + Sort Controls (~220 lines saved)
 
@@ -115,4 +115,4 @@ Final deduplication pass.
 - [ ] No functional changes — behavior identical to pre-refactoring
 
 ---
-Progress: 23/40 tasks complete
+Progress: 28/40 tasks complete
