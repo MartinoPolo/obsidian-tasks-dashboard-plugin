@@ -2,6 +2,10 @@ import { App, Modal } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
 import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
+import {
+	createPromptShortcutButton,
+	setupPromptModal
+} from './modal-helpers';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MAX_COMBINED_RESULTS = 20;
@@ -42,14 +46,9 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	onOpen(): void {
-		const { contentEl, modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal', 'tdc-github-search-modal');
-		contentEl.empty();
-
-		contentEl.createEl('div', {
-			cls: 'tdc-prompt-title',
-			text: 'GitHub Issue/PR (optional)'
+		const { contentEl } = this;
+		setupPromptModal(this, 'GitHub Issue/PR (optional)', {
+			additionalModalClasses: ['tdc-github-search-modal']
 		});
 
 		const searchContainer = contentEl.createDiv({ cls: 'tdc-gh-search-container' });
@@ -88,22 +87,26 @@ export class GitHubSearchModal extends Modal {
 
 		const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
 
-		const skipBtn = btnContainer.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-secondary'
-		});
-		skipBtn.innerHTML = 'Skip <kbd>Esc</kbd>';
-		skipBtn.addEventListener('click', () => {
-			this.close();
-			this.onSelect(undefined);
-		});
+		void createPromptShortcutButton(
+			btnContainer,
+			'Skip',
+			'Esc',
+			'tdc-prompt-btn-secondary',
+			() => {
+				this.close();
+				this.onSelect(undefined);
+			}
+		);
 
-		const selectBtn = btnContainer.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-confirm'
-		});
-		selectBtn.innerHTML = 'Select <kbd>↵</kbd>';
-		selectBtn.addEventListener('click', () => {
-			this.selectCurrent();
-		});
+		void createPromptShortcutButton(
+			btnContainer,
+			'Select',
+			'↵',
+			'tdc-prompt-btn-confirm',
+			() => {
+				this.selectCurrent();
+			}
+		);
 
 		this.setupEventListeners();
 		this.searchInput.focus();

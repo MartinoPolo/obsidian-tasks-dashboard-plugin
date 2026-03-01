@@ -11,15 +11,23 @@ const PROMPT_INPUT_CLASS = 'tdc-prompt-input';
 
 interface PromptButtonOptions {
 	label: string;
-	shortcut: string;
+	shortcut?: string;
 	className: string;
 	onClick: () => void;
 }
 
-const applyPromptModalClasses = (modal: Modal): void => {
+interface PromptModalSetupOptions {
+	additionalModalClasses?: string[];
+}
+
+const applyPromptModalClasses = (
+	modal: Modal,
+	options: PromptModalSetupOptions | undefined
+): void => {
 	const { modalEl, containerEl } = modal;
 	containerEl.addClass(TOP_MODAL_CLASS);
-	modalEl.addClass(PROMPT_MODAL_CLASS);
+	const additionalModalClasses = options?.additionalModalClasses ?? [];
+	modalEl.addClass(PROMPT_MODAL_CLASS, ...additionalModalClasses);
 };
 
 const createPromptTitle = (contentEl: HTMLElement, titleText: string): void => {
@@ -40,13 +48,15 @@ const createPromptButton = (
 		cls: `${PROMPT_BUTTON_CLASS} ${options.className}`,
 		text: options.label
 	});
-	createShortcutHint(buttonEl, options.shortcut);
+	if (options.shortcut !== undefined) {
+		createShortcutHint(buttonEl, options.shortcut);
+	}
 	buttonEl.addEventListener('click', options.onClick);
 	return buttonEl;
 };
 
-const bindEnterKeyHandler = (inputEl: HTMLInputElement, onEnter: () => void): void => {
-	inputEl.addEventListener('keydown', (event: KeyboardEvent) => {
+export const registerEnterShortcut = (elementEl: HTMLElement, onEnter: () => void): void => {
+	elementEl.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.key !== 'Enter') {
 			return;
 		}
@@ -56,14 +66,40 @@ const bindEnterKeyHandler = (inputEl: HTMLInputElement, onEnter: () => void): vo
 	});
 };
 
-/**
- * Apply standard prompt modal classes and create title element.
- * Shared by NamePromptModal, DeleteConfirmationModal, GithubPromptModal, RenameIssueModal.
- */
-export function setupPromptModal(modal: Modal, titleText: string): void {
+export function setupPromptModal(
+	modal: Modal,
+	titleText: string,
+	options?: PromptModalSetupOptions
+): void {
 	const { contentEl } = modal;
-	applyPromptModalClasses(modal);
+	applyPromptModalClasses(modal, options);
 	createPromptTitle(contentEl, titleText);
+}
+
+export function createPromptShortcutButton(
+	containerEl: HTMLElement,
+	label: string,
+	shortcut: string,
+	className: string,
+	onClick: () => void
+): HTMLButtonElement {
+	return createPromptButton(containerEl, {
+		label,
+		shortcut,
+		className,
+		onClick
+	});
+}
+
+export function focusFirstSuggestModalItem(inputEl: HTMLInputElement): void {
+	setTimeout(() => {
+		const arrowDownEvent = new KeyboardEvent('keydown', {
+			key: 'ArrowDown',
+			code: 'ArrowDown',
+			bubbles: true
+		});
+		inputEl.dispatchEvent(arrowDownEvent);
+	}, 0);
 }
 
 /**
@@ -107,6 +143,6 @@ export function createInputWithEnterHandler(
 		attr: { placeholder }
 	});
 	input.focus();
-	bindEnterKeyHandler(input, onEnter);
+	registerEnterShortcut(input, onEnter);
 	return input;
 }

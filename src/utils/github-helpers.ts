@@ -32,6 +32,10 @@ function resolveIssueVisualState(metadata: GitHubIssueMetadata): IssueVisualStat
 	return metadata.state === 'open' ? 'open' : 'closed';
 }
 
+function getIssueStatePresentation(metadata: GitHubIssueMetadata): StatePresentation {
+	return STATE_PRESENTATIONS[resolveIssueVisualState(metadata)];
+}
+
 function pluralize(value: number, unit: string): string {
 	return `${value} ${unit}${value > 1 ? 's' : ''} ago`;
 }
@@ -54,14 +58,14 @@ function normalizeHexColor(hexColor: string): string {
  * Example: 'merged', 'draft', 'open', 'closed'
  */
 export function getStateClass(metadata: GitHubIssueMetadata): string {
-	return STATE_PRESENTATIONS[resolveIssueVisualState(metadata)].className;
+	return getIssueStatePresentation(metadata).className;
 }
 
 /**
  * Returns the display text for a GitHub issue/PR state.
  */
 export function getStateText(metadata: GitHubIssueMetadata): string {
-	return STATE_PRESENTATIONS[resolveIssueVisualState(metadata)].text;
+	return getIssueStatePresentation(metadata).text;
 }
 
 export function truncateText(text: string, maxLength: number): string {

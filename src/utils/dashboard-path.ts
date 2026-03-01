@@ -2,8 +2,12 @@ import type { DashboardConfig } from '../types';
 
 const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
 
+function isNonEmptyString(value: string | undefined): value is string {
+	return value !== undefined && value !== '';
+}
+
 function getDashboardFilename(dashboardFilename: string | undefined): string {
-	if (dashboardFilename === undefined || dashboardFilename === '') {
+	if (!isNonEmptyString(dashboardFilename)) {
 		return DEFAULT_DASHBOARD_FILENAME;
 	}
 
@@ -15,7 +19,7 @@ function removeMarkdownExtension(filename: string): string {
 }
 
 function getPathSegments(path: string | undefined): string[] {
-	if (path === undefined || path === '') {
+	if (!isNonEmptyString(path)) {
 		return [];
 	}
 
@@ -36,7 +40,7 @@ export function getDashboardDisplayName(dashboard: DashboardConfig): string {
 	const filename = removeMarkdownExtension(getDashboardFilename(dashboard.dashboardFilename));
 	const parentFolder = getLastPathSegment(dashboard.rootPath);
 
-	if (parentFolder !== undefined && parentFolder !== '') {
+	if (isNonEmptyString(parentFolder)) {
 		return `${parentFolder}/${filename}`;
 	}
 

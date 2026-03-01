@@ -6,7 +6,8 @@ import { RepositoryPickerModal } from './RepositoryPickerModal';
 import {
 	setupPromptModal,
 	createConfirmCancelButtons,
-	createInputWithEnterHandler
+	createInputWithEnterHandler,
+	focusFirstSuggestModalItem
 } from './modal-helpers';
 
 interface CreateIssueRequest {
@@ -128,14 +129,7 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	onOpen() {
 		// SuggestModal.onOpen may return a promise
 		void Promise.resolve(super.onOpen());
-		setTimeout(() => {
-			const event = new KeyboardEvent('keydown', {
-				key: 'ArrowDown',
-				code: 'ArrowDown',
-				bubbles: true
-			});
-			this.inputEl.dispatchEvent(event);
-		}, 0);
+		focusFirstSuggestModalItem(this.inputEl);
 	}
 
 	getSuggestions(): Priority[] {

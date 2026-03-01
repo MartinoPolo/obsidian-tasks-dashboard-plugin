@@ -1,4 +1,9 @@
-import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubDisplayMode } from '../types';
+import {
+	GitHubIssueMetadata,
+	GitHubRepoMetadata,
+	GitHubDisplayMode,
+	GitHubLabel
+} from '../types';
 import { parseGitHubUrlInfo } from '../utils/github';
 import {
 	getStateClass,
@@ -88,12 +93,7 @@ function renderCardActions(
 	}
 }
 
-interface LabelData {
-	name: string;
-	color: string;
-}
-
-function renderLabels(container: HTMLElement, labels: LabelData[], maxCount?: number): void {
+function renderLabels(container: HTMLElement, labels: GitHubLabel[], maxCount?: number): void {
 	if (labels.length === 0) {
 		return;
 	}
@@ -212,6 +212,12 @@ function formatStarCount(count: number): string {
 		return `${(count / 1000).toFixed(1)}k`;
 	}
 	return count.toString();
+}
+
+function renderRepoIconStat(parent: HTMLElement, iconSvg: string, valueText: string): void {
+	const statSpan = parent.createSpan({ cls: 'tdc-gh-repo-stat' });
+	statSpan.innerHTML = iconSvg;
+	statSpan.createSpan({ text: valueText });
 }
 
 type RenderByMode<TMetadata> = {
@@ -350,15 +356,11 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		const statsContainer = container.createDiv({ cls: 'tdc-gh-repo-stats' });
 
 		if (metadata.stars > 0) {
-			const starSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			starSpan.innerHTML = ICONS.star;
-			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
+			renderRepoIconStat(statsContainer, ICONS.star, formatStarCount(metadata.stars));
 		}
 
 		if (metadata.forksCount > 0) {
-			const forkSpan = statsContainer.createSpan({ cls: 'tdc-gh-repo-stat' });
-			forkSpan.innerHTML = ICONS.fork;
-			forkSpan.createSpan({ text: metadata.forksCount.toString() });
+			renderRepoIconStat(statsContainer, ICONS.fork, metadata.forksCount.toString());
 		}
 
 		if (metadata.language !== '') {

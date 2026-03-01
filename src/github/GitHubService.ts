@@ -1,13 +1,9 @@
-import { Notice, requestUrl, RequestUrlResponse } from 'obsidian';
 import {
-	GitHubAuth,
 	GitHubIssueMetadata,
-	GitHubLabel,
-	GitHubRateLimit,
 	GitHubRepoMetadata,
 	GitHubRepository
 } from '../types';
-import { parseGitHubUrl, ParsedGitHubUrl } from '../utils/github-url';
+import { parseGitHubUrl } from '../utils/github-url';
 import {
 	GitHubIssueApiResponse,
 	GitHubOrgApiResponse,
@@ -17,186 +13,55 @@ import {
 	GitHubSearchApiResponse,
 	GitHubUserApiResponse
 } from './github-api-types';
+import {
+	CACHE_TTL_MS,
+	FALLBACK_SEARCH_PER_PAGE,
+	MAX_CACHE_SIZE,
+	MAX_PARALLEL_ORG_QUERIES,
+	SEARCH_RESULTS_PER_PAGE,
+	USER_REPOS_PER_PAGE
+} from './github-service-constants';
+import { createGitHubCacheStore } from './github-service-cache';
+import {
+	mapIssueResponse,
+	mapPullRequestResponse,
+	mapSearchItems
+} from './github-service-mappers';
+import { createGitHubRequestClient } from './github-service-request';
+import {
+	buildIssueSearchEndpoint,
+	createEmptySearchResult,
+	getIssueCacheKey,
+	uniqueByUrl
+} from './github-service-search-helpers';
+import { GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
 
-interface CacheEntry<T> {
-	data: T;
-	timestamp: number;
-}
-
-interface GitHubSearchResult {
-	items: GitHubIssueMetadata[];
-	totalCount: number;
-}
-
-type GitHubIssueState = GitHubIssueMetadata['state'];
-
-export interface GitHubServiceInstance {
-	setAuth: (auth: GitHubAuth) => void;
-	validateToken: () => Promise<{ valid: boolean; username?: string; error?: string }>;
-	getIssue: (
-		owner: string,
-		repo: string,
-		number: number
-	) => Promise<GitHubIssueMetadata | undefined>;
-	getPullRequest: (
-		owner: string,
-		repo: string,
-		number: number
-	) => Promise<GitHubIssueMetadata | undefined>;
-	searchIssues: (query: string, repo?: string) => Promise<GitHubSearchResult>;
-	searchPullRequests: (query: string, repo?: string) => Promise<GitHubSearchResult>;
-	searchIssuesInMyRepos: (query: string) => Promise<GitHubSearchResult>;
-	searchPullRequestsInMyRepos: (query: string) => Promise<GitHubSearchResult>;
-	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
-	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
-	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
-	getUserRepositories: () => Promise<GitHubRepository[]>;
-	getRepository: (owner: string, repo: string) => Promise<GitHubRepoMetadata | undefined>;
-	getAuthenticatedUser: () => Promise<string | undefined>;
-	getUserOrganizations: () => Promise<string[]>;
-	clearCache: () => void;
-	clearCacheForUrl: (url: string) => void;
-	isAuthenticated: () => boolean;
-	getRateLimit: () => GitHubRateLimit | undefined;
-}
-
-export type GitHubApiErrorKind = 'auth' | 'not-found' | 'rate-limit' | 'network';
-
-export class GitHubApiError extends Error {
-	constructor(
-		public readonly kind: GitHubApiErrorKind,
-		public readonly statusCode: number | undefined,
-		message: string
-	) {
-		super(message);
-		this.name = 'GitHubApiError';
-	}
-}
-
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const MAX_CACHE_SIZE = 200;
-const API_BASE = 'https://api.github.com';
-const SEARCH_RESULTS_PER_PAGE = 20;
-const FALLBACK_SEARCH_PER_PAGE = 50;
-const USER_REPOS_PER_PAGE = 100;
+export { GitHubApiError } from './github-service-types';
+export type { GitHubApiErrorKind, GitHubServiceInstance } from './github-service-types';
 
 export function createGitHubService(): GitHubServiceInstance {
-	let auth: GitHubAuth = { method: 'none' };
-	let rateLimit: GitHubRateLimit | undefined;
-	const cache = new Map<string, CacheEntry<unknown>>();
+	const requestClient = createGitHubRequestClient();
+	const cacheStore = createGitHubCacheStore(CACHE_TTL_MS, MAX_CACHE_SIZE);
 
-	const createEmptySearchResult = (): GitHubSearchResult => {
-		return { items: [], totalCount: 0 };
+	const clearCache = (): void => {
+		cacheStore.clear();
 	};
 
-	const normalizeIssueState = (state: string): GitHubIssueState => {
-		return state === 'closed' ? 'closed' : 'open';
-	};
-
-	const extractErrorDetails = (
-		error: unknown
-	): { status: number | undefined; message: string } => {
-		const fallbackMessage = error instanceof Error ? error.message : 'Unknown error';
-
-		if (typeof error !== 'object' || error === null) {
-			return { status: undefined, message: fallbackMessage };
-		}
-
-		const errorRecord = error as Record<string, unknown>;
-		const status = typeof errorRecord.status === 'number' ? errorRecord.status : undefined;
-		const message =
-			typeof errorRecord.message === 'string' ? errorRecord.message : fallbackMessage;
-
-		return { status, message };
-	};
-
-	const parseRateLimitHeaders = (headers: Record<string, string>): void => {
-		if (
-			!('x-ratelimit-limit' in headers) ||
-			!('x-ratelimit-remaining' in headers) ||
-			!('x-ratelimit-reset' in headers)
-		) {
-			return;
-		}
-
-		const parsedLimit = parseInt(headers['x-ratelimit-limit'], 10);
-		const parsedRemaining = parseInt(headers['x-ratelimit-remaining'], 10);
-		const parsedReset = parseInt(headers['x-ratelimit-reset'], 10);
-
-		if (isNaN(parsedLimit) || isNaN(parsedRemaining) || isNaN(parsedReset)) {
-			return;
-		}
-
-		rateLimit = {
-			limit: parsedLimit,
-			remaining: parsedRemaining,
-			resetTimestamp: parsedReset
-		};
-	};
-
-	const getRateLimit = (): GitHubRateLimit | undefined => {
-		return rateLimit;
-	};
-
-	const setAuth = (newAuth: GitHubAuth): void => {
-		auth = newAuth;
-		cache.clear();
-		rateLimit = undefined;
+	const setAuth: GitHubServiceInstance['setAuth'] = (newAuth): void => {
+		requestClient.setAuth(newAuth);
+		cacheStore.clear();
 	};
 
 	const isAuthenticated = (): boolean => {
-		return auth.method === 'pat' && auth.token !== undefined && auth.token !== '';
+		return requestClient.isAuthenticated();
 	};
 
-	const getHeaders = (): Record<string, string> => {
-		const headers: Record<string, string> = {
-			Accept: 'application/vnd.github.v3+json',
-			'User-Agent': 'Obsidian-Tasks-Dashboard'
-		};
-		if (auth.method === 'pat' && auth.token !== undefined) {
-			headers['Authorization'] = `Bearer ${auth.token}`;
-		}
-		return headers;
+	const getRateLimit = () => {
+		return requestClient.getRateLimit();
 	};
 
-	const getCached = <T>(key: string): T | undefined => {
-		const entry = cache.get(key) as CacheEntry<T> | undefined;
-		if (entry === undefined) {
-			return undefined;
-		}
-		if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-			cache.delete(key);
-			return undefined;
-		}
-		// Move to end of Map iteration order (LRU: most recently accessed last)
-		cache.delete(key);
-		cache.set(key, entry);
-		return entry.data;
-	};
-
-	const setCache = <T>(key: string, data: T): void => {
-		if (cache.size >= MAX_CACHE_SIZE) {
-			const oldest = cache.keys().next();
-			if (oldest.done === false) {
-				cache.delete(oldest.value);
-			}
-		}
-		cache.set(key, { data, timestamp: Date.now() });
-	};
-
-	const getOrLoadCached = async <T>(key: string, load: () => Promise<T>): Promise<T> => {
-		const cached = getCached<T>(key);
-		if (cached !== undefined) {
-			return cached;
-		}
-
-		const loaded = await load();
-		setCache(key, loaded);
-		return loaded;
-	};
-
-	const clearCache = (): void => {
-		cache.clear();
+	const validateToken: GitHubServiceInstance['validateToken'] = async () => {
+		return requestClient.validateToken();
 	};
 
 	const clearCacheForUrl = (url: string): void => {
@@ -208,185 +73,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			parsed.type === 'pull'
 				? `pr:${parsed.owner}/${parsed.repo}#${parsed.number}`
 				: `issue:${parsed.owner}/${parsed.repo}#${parsed.number}`;
-		cache.delete(cacheKeyPrefix);
-	};
-
-	const classifyApiError = (error: unknown): GitHubApiError => {
-		const { status, message } = extractErrorDetails(error);
-
-		if (status === 401 || status === 403) {
-			const isRateLimit = status === 403 && message.includes('rate limit');
-			if (isRateLimit) {
-				return new GitHubApiError('rate-limit', status, 'GitHub API rate limit exceeded');
-			}
-			return new GitHubApiError(
-				'auth',
-				status,
-				'GitHub authentication failed — check your token'
-			);
-		}
-
-		if (status === 404) {
-			return new GitHubApiError('not-found', status, 'GitHub resource not found');
-		}
-
-		return new GitHubApiError('network', status, `GitHub API request failed: ${message}`);
-	};
-
-	const apiRequest = async <T>(endpoint: string): Promise<T | undefined> => {
-		try {
-			const response: RequestUrlResponse = await requestUrl({
-				url: `${API_BASE}${endpoint}`,
-				headers: getHeaders()
-			});
-			parseRateLimitHeaders(response.headers);
-			return response.json as T;
-		} catch (error) {
-			const apiError = classifyApiError(error);
-			console.error('GitHub API error:', apiError.kind, apiError.message);
-
-			if (apiError.kind === 'auth') {
-				new Notice('GitHub: authentication failed — check your token in settings');
-			} else if (apiError.kind === 'rate-limit') {
-				new Notice('GitHub: API rate limit exceeded — try again later');
-			} else if (apiError.kind === 'network') {
-				new Notice('GitHub: request failed — check your connection');
-			}
-			// 'not-found' is not surfaced — callers handle undefined return
-
-			return undefined;
-		}
-	};
-
-	const validateToken = async (): Promise<{
-		valid: boolean;
-		username?: string;
-		error?: string;
-	}> => {
-		if (!isAuthenticated()) {
-			return { valid: false, error: 'No token configured' };
-		}
-		try {
-			const response = await requestUrl({
-				url: `${API_BASE}/user`,
-				headers: getHeaders()
-			});
-			parseRateLimitHeaders(response.headers);
-			const data = response.json as { login: string };
-			return { valid: true, username: data.login };
-		} catch (error) {
-			const { status } = extractErrorDetails(error);
-			if (status === 401) {
-				return { valid: false, error: 'Invalid or expired token' };
-			}
-			return { valid: false, error: 'Failed to validate token' };
-		}
-	};
-
-	const mapLabels = (labels: Array<string | { name: string; color?: string }>): GitHubLabel[] => {
-		return labels.map((label): GitHubLabel => {
-			if (typeof label === 'string') {
-				return { name: label, color: '888888' };
-			}
-			return {
-				name: label.name,
-				color: label.color !== undefined && label.color !== '' ? label.color : '888888'
-			};
-		});
-	};
-
-	const parseRepoFromUrl = (repositoryUrl: string): { owner: string; repoName: string } => {
-		const repoMatch = repositoryUrl.match(/repos\/([^/]+)\/([^/]+)$/);
-		return repoMatch
-			? { owner: repoMatch[1], repoName: repoMatch[2] }
-			: { owner: '', repoName: '' };
-	};
-
-	const mapIssueResponse = (
-		data: GitHubIssueApiResponse,
-		owner: string,
-		repo: string
-	): GitHubIssueMetadata => {
-		const isPR = data.pull_request !== undefined;
-		let prStatus: 'merged' | 'draft' | 'open' | 'closed' | undefined;
-
-		if (isPR) {
-			if (data.state === 'closed' && data.pull_request?.merged_at !== undefined) {
-				prStatus = 'merged';
-			} else if (data.draft === true) {
-				prStatus = 'draft';
-			} else if (data.state === 'closed') {
-				prStatus = 'closed';
-			} else {
-				prStatus = 'open';
-			}
-		}
-
-		return {
-			number: data.number,
-			title: data.title,
-			state: normalizeIssueState(data.state),
-			labels: mapLabels(data.labels),
-			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
-			body: data.body !== null ? data.body : undefined,
-			createdAt: data.created_at,
-			updatedAt: data.updated_at,
-			repository: `${owner}/${repo}`,
-			url: data.html_url,
-			isPR,
-			prStatus
-		};
-	};
-
-	const mapPullRequestResponse = (
-		data: GitHubPullRequestApiResponse,
-		owner: string,
-		repo: string
-	): GitHubIssueMetadata => {
-		const prStatus: NonNullable<GitHubIssueMetadata['prStatus']> = data.merged
-			? 'merged'
-			: data.draft
-				? 'draft'
-				: data.state === 'closed'
-					? 'closed'
-					: 'open';
-
-		return {
-			number: data.number,
-			title: data.title,
-			state: normalizeIssueState(data.state),
-			labels: mapLabels(data.labels),
-			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
-			body: data.body !== null ? data.body : undefined,
-			createdAt: data.created_at,
-			updatedAt: data.updated_at,
-			repository: `${owner}/${repo}`,
-			url: data.html_url,
-			isPR: true,
-			prStatus
-		};
-	};
-
-	const mapSearchItems = (items: GitHubIssueApiResponse[]): GitHubIssueMetadata[] => {
-		return items.map((item) => {
-			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
-			return mapIssueResponse(item, owner, repoName);
-		});
-	};
-
-	const uniqueByUrl = (items: GitHubIssueMetadata[]): GitHubIssueMetadata[] => {
-		const seenUrls = new Set<string>();
-		const uniqueItems: GitHubIssueMetadata[] = [];
-
-		for (const item of items) {
-			if (seenUrls.has(item.url)) {
-				continue;
-			}
-			seenUrls.add(item.url);
-			uniqueItems.push(item);
-		}
-
-		return uniqueItems;
+		cacheStore.delete(cacheKeyPrefix);
 	};
 
 	const getIssue = async (
@@ -394,22 +81,17 @@ export function createGitHubService(): GitHubServiceInstance {
 		repo: string,
 		number: number
 	): Promise<GitHubIssueMetadata | undefined> => {
-		const cacheKey = `issue:${owner}/${repo}#${number}`;
-		const cached = getCached<GitHubIssueMetadata>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		const cacheKey = getIssueCacheKey('issue', owner, repo, number);
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubIssueApiResponse>(
+				`/repos/${owner}/${repo}/issues/${number}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
 
-		const data = await apiRequest<GitHubIssueApiResponse>(
-			`/repos/${owner}/${repo}/issues/${number}`
-		);
-		if (data === undefined) {
-			return undefined;
-		}
-
-		const metadata = mapIssueResponse(data, owner, repo);
-		setCache(cacheKey, metadata);
-		return metadata;
+			return mapIssueResponse(data, owner, repo);
+		});
 	};
 
 	const getPullRequest = async (
@@ -417,22 +99,17 @@ export function createGitHubService(): GitHubServiceInstance {
 		repo: string,
 		number: number
 	): Promise<GitHubIssueMetadata | undefined> => {
-		const cacheKey = `pr:${owner}/${repo}#${number}`;
-		const cached = getCached<GitHubIssueMetadata>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		const cacheKey = getIssueCacheKey('pr', owner, repo, number);
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubPullRequestApiResponse>(
+				`/repos/${owner}/${repo}/pulls/${number}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
 
-		const data = await apiRequest<GitHubPullRequestApiResponse>(
-			`/repos/${owner}/${repo}/pulls/${number}`
-		);
-		if (data === undefined) {
-			return undefined;
-		}
-
-		const metadata = mapPullRequestResponse(data, owner, repo);
-		setCache(cacheKey, metadata);
-		return metadata;
+			return mapPullRequestResponse(data, owner, repo);
+		});
 	};
 
 	const getMetadataFromUrl = async (url: string): Promise<GitHubIssueMetadata | undefined> => {
@@ -463,13 +140,13 @@ export function createGitHubService(): GitHubServiceInstance {
 		searchQuery = `${searchQuery} is:${type}`;
 
 		const cacheKey = `search:${type === 'issue' ? 'issues' : 'pr'}:${searchQuery}`;
-		const cached = getCached<GitHubSearchResult>(cacheKey);
+		const cached = cacheStore.get<GitHubSearchResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
 		}
 
-		const data = await apiRequest<GitHubSearchApiResponse>(
-			`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${SEARCH_RESULTS_PER_PAGE}&sort=updated`
+		const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
+			buildIssueSearchEndpoint(searchQuery, SEARCH_RESULTS_PER_PAGE)
 		);
 
 		if (data === undefined) {
@@ -479,7 +156,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		const items = mapSearchItems(data.items);
 
 		const result = { items, totalCount: data.total_count };
-		setCache(cacheKey, result);
+		cacheStore.set(cacheKey, result);
 		return result;
 	};
 
@@ -501,13 +178,13 @@ export function createGitHubService(): GitHubServiceInstance {
 
 		if (repo !== undefined && repo !== '') {
 			const cacheKey = `recent:${repo}:${limit}`;
-			const cached = getCached<GitHubIssueMetadata[]>(cacheKey);
+			const cached = cacheStore.get<GitHubIssueMetadata[]>(cacheKey);
 			if (cached !== undefined) {
 				return cached;
 			}
 
 			const [owner, repoName] = repo.split('/');
-			const data = await apiRequest<GitHubIssueApiResponse[]>(
+			const data = await requestClient.apiRequest<GitHubIssueApiResponse[]>(
 				`/repos/${owner}/${repoName}/issues?state=all&per_page=${limit}&sort=updated`
 			);
 
@@ -516,7 +193,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			}
 
 			const items = data.map((item) => mapIssueResponse(item, owner, repoName));
-			setCache(cacheKey, items);
+			cacheStore.set(cacheKey, items);
 			return items;
 		}
 
@@ -530,8 +207,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = 'user:repos';
-		return getOrLoadCached(cacheKey, async () => {
-			const data = await apiRequest<GitHubRepoApiResponse[]>(
+		return cacheStore.getOrLoad(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubRepoApiResponse[]>(
 				`/user/repos?sort=pushed&per_page=${USER_REPOS_PER_PAGE}&type=all`
 			);
 			if (data === undefined) {
@@ -551,32 +228,30 @@ export function createGitHubService(): GitHubServiceInstance {
 		repo: string
 	): Promise<GitHubRepoMetadata | undefined> => {
 		const cacheKey = `repo:${owner}/${repo}`;
-		const cached = getCached<GitHubRepoMetadata>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubRepoDetailApiResponse>(
+				`/repos/${owner}/${repo}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
 
-		const data = await apiRequest<GitHubRepoDetailApiResponse>(`/repos/${owner}/${repo}`);
-		if (data === undefined) {
-			return undefined;
-		}
+			const metadata: GitHubRepoMetadata = {
+				fullName: data.full_name,
+				owner,
+				repo,
+				description: data.description ?? '',
+				url: data.html_url,
+				stars: data.stargazers_count,
+				language: data.language ?? '',
+				forksCount: data.forks_count,
+				openIssuesCount: data.open_issues_count,
+				isPrivate: data.private,
+				updatedAt: data.updated_at
+			};
 
-		const metadata: GitHubRepoMetadata = {
-			fullName: data.full_name,
-			owner,
-			repo,
-			description: data.description ?? '',
-			url: data.html_url,
-			stars: data.stargazers_count,
-			language: data.language ?? '',
-			forksCount: data.forks_count,
-			openIssuesCount: data.open_issues_count,
-			isPrivate: data.private,
-			updatedAt: data.updated_at
-		};
-
-		setCache(cacheKey, metadata);
-		return metadata;
+			return metadata;
+		});
 	};
 
 	const getAuthenticatedUser = async (): Promise<string | undefined> => {
@@ -585,18 +260,14 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = 'user:profile';
-		const cached = getCached<string>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubUserApiResponse>('/user');
+			if (data === undefined) {
+				return undefined;
+			}
 
-		const data = await apiRequest<GitHubUserApiResponse>('/user');
-		if (data === undefined) {
-			return undefined;
-		}
-
-		setCache(cacheKey, data.login);
-		return data.login;
+			return data.login;
+		});
 	};
 
 	const getUserOrganizations = async (): Promise<string[]> => {
@@ -605,8 +276,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = 'user:orgs';
-		return getOrLoadCached(cacheKey, async () => {
-			const data = await apiRequest<GitHubOrgApiResponse[]>('/user/orgs');
+		return cacheStore.getOrLoad(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubOrgApiResponse[]>('/user/orgs');
 			if (data === undefined) {
 				return [];
 			}
@@ -614,8 +285,6 @@ export function createGitHubService(): GitHubServiceInstance {
 			return data.map((org) => org.login);
 		});
 	};
-
-	const MAX_PARALLEL_ORG_QUERIES = 5;
 
 	const searchInMyRepos = async (
 		query: string,
@@ -626,7 +295,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = `search:my-repos:${issueType}:${query}`;
-		const cached = getCached<GitHubSearchResult>(cacheKey);
+		const cached = cacheStore.get<GitHubSearchResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
 		}
@@ -646,8 +315,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		if (organizations.length > MAX_PARALLEL_ORG_QUERIES) {
 			// Fallback: global search + client-side owner filter
 			const searchQuery = `${query} ${typeQualifier}`;
-			const data = await apiRequest<GitHubSearchApiResponse>(
-				`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${FALLBACK_SEARCH_PER_PAGE}&sort=updated`
+			const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
+				buildIssueSearchEndpoint(searchQuery, FALLBACK_SEARCH_PER_PAGE)
 			);
 
 			if (data === undefined) {
@@ -668,8 +337,8 @@ export function createGitHubService(): GitHubServiceInstance {
 
 			const results = await Promise.all(
 				searchQueries.map((searchQuery) =>
-					apiRequest<GitHubSearchApiResponse>(
-						`/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${SEARCH_RESULTS_PER_PAGE}&sort=updated`
+					requestClient.apiRequest<GitHubSearchApiResponse>(
+						buildIssueSearchEndpoint(searchQuery, SEARCH_RESULTS_PER_PAGE)
 					)
 				)
 			);
@@ -689,7 +358,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		allItems.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
 		const result = { items: allItems, totalCount: allItems.length };
-		setCache(cacheKey, result);
+		cacheStore.set(cacheKey, result);
 		return result;
 	};
 

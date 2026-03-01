@@ -1,4 +1,6 @@
 import { Priority } from '../types';
+import { DASHBOARD_MARKERS } from './dashboard-markers';
+import { parsePriority } from './priority-utils';
 
 interface SectionRange {
 	start: number;
@@ -24,17 +26,16 @@ export interface ParsedDashboard {
 }
 
 export const MARKERS = {
-	ACTIVE_START: '%% TASKS-DASHBOARD:ACTIVE:START %%',
-	ACTIVE_END: '%% TASKS-DASHBOARD:ACTIVE:END %%',
-	ARCHIVE_START: '%% TASKS-DASHBOARD:ARCHIVE:START %%',
-	ARCHIVE_END: '%% TASKS-DASHBOARD:ARCHIVE:END %%'
+	ACTIVE_START: DASHBOARD_MARKERS.ACTIVE_START,
+	ACTIVE_END: DASHBOARD_MARKERS.ACTIVE_END,
+	ARCHIVE_START: DASHBOARD_MARKERS.ARCHIVE_START,
+	ARCHIVE_END: DASHBOARD_MARKERS.ARCHIVE_END
 } as const;
 
 const ISSUE_BLOCK_REGEX = /%% ISSUE:([\w-]+):START %%([\s\S]*?)%% ISSUE:\1:END %%/g;
 const PRIORITY_REGEX = /priority:\s*(low|medium|high|top)/;
 const NAME_REGEX = /name:\s*(.+)/;
 const PATH_REGEX = /path:\s*(.+)/;
-const VALID_PRIORITIES: readonly Priority[] = ['low', 'medium', 'high', 'top'];
 
 const resolveSectionRange = (
 	startIndex: number,
@@ -57,22 +58,9 @@ const extractField = (issueContent: string, fieldRegex: RegExp): string | undefi
 	return match[1].trim();
 };
 
-const isPriority = (value: string): value is Priority => {
-	return (
-		value === VALID_PRIORITIES[0] ||
-		value === VALID_PRIORITIES[1] ||
-		value === VALID_PRIORITIES[2] ||
-		value === VALID_PRIORITIES[3]
-	);
-};
-
-const parsePriority = (issueContent: string): Priority => {
+const parseIssuePriority = (issueContent: string): Priority => {
 	const rawPriority = extractField(issueContent, PRIORITY_REGEX);
-	if (rawPriority === undefined) {
-		return 'medium';
-	}
-
-	return isPriority(rawPriority) ? rawPriority : 'medium';
+	return parsePriority(rawPriority);
 };
 
 export function parseDashboard(content: string): ParsedDashboard {
@@ -122,7 +110,7 @@ export function parseIssuesInRange(content: string, start: number, end: number):
 		issues.push({
 			id: issueId,
 			name,
-			priority: parsePriority(issueContent),
+			priority: parseIssuePriority(issueContent),
 			filePath,
 			startIndex: start + issueStartOffset,
 			endIndex: start + issueStartOffset + fullMatch.length

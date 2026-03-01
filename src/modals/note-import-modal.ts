@@ -1,6 +1,7 @@
 import { App, FuzzySuggestModal, Notice, SuggestModal, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, Priority } from '../types';
+import { focusFirstSuggestModalItem } from './modal-helpers';
 
 const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
 const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
@@ -40,17 +41,6 @@ const getErrorMessage = (error: unknown): string => {
 	}
 
 	return 'Unknown error';
-};
-
-const focusFirstPrioritySuggestion = (inputEl: HTMLInputElement): void => {
-	setTimeout(() => {
-		const arrowDownEvent = new KeyboardEvent('keydown', {
-			key: 'ArrowDown',
-			code: 'ArrowDown',
-			bubbles: true
-		});
-		inputEl.dispatchEvent(arrowDownEvent);
-	}, 0);
 };
 
 export class NoteImportModal extends FuzzySuggestModal<TFile> {
@@ -112,7 +102,7 @@ class ImportPriorityModal extends SuggestModal<Priority> {
 
 	override onOpen(): void {
 		void Promise.resolve(super.onOpen());
-		focusFirstPrioritySuggestion(this.inputEl);
+		focusFirstSuggestModalItem(this.inputEl);
 	}
 
 	override getSuggestions(): Priority[] {

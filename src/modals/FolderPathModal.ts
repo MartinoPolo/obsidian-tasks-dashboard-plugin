@@ -2,6 +2,11 @@ import { App, Modal, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig } from '../types';
 import { createPlatformService } from '../utils/platform';
+import {
+	createPromptShortcutButton,
+	registerEnterShortcut,
+	setupPromptModal
+} from './modal-helpers';
 
 export class FolderPathModal extends Modal {
 	private plugin: TasksDashboardPlugin;
@@ -79,11 +84,8 @@ export class FolderPathModal extends Modal {
 			input.select();
 		}
 
-		input.addEventListener('keydown', (event) => {
-			if (event.key === 'Enter') {
-				event.preventDefault();
-				this.confirm();
-			}
+		registerEnterShortcut(input, () => {
+			this.confirm();
 		});
 
 		return input;
@@ -119,13 +121,15 @@ export class FolderPathModal extends Modal {
 	private createActionButtons(contentEl: HTMLElement, currentValue: string | undefined): void {
 		const buttonsContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
 
-		const confirmButton = buttonsContainer.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-confirm'
-		});
-		confirmButton.innerHTML = 'Save <kbd>↵</kbd>';
-		confirmButton.addEventListener('click', () => {
+		void createPromptShortcutButton(
+			buttonsContainer,
+			'Save',
+			'↵',
+			'tdc-prompt-btn-confirm',
+			() => {
 			this.confirm();
-		});
+			}
+		);
 
 		if (currentValue !== undefined) {
 			const clearButton = buttonsContainer.createEl('button', {
@@ -138,24 +142,22 @@ export class FolderPathModal extends Modal {
 			});
 		}
 
-		const cancelButton = buttonsContainer.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-cancel'
-		});
-		cancelButton.innerHTML = 'Cancel <kbd>Esc</kbd>';
-		cancelButton.addEventListener('click', () => {
+		void createPromptShortcutButton(
+			buttonsContainer,
+			'Cancel',
+			'Esc',
+			'tdc-prompt-btn-cancel',
+			() => {
 			this.close();
-		});
+			}
+		);
 	}
 
 	onOpen() {
-		const { contentEl, modalEl, containerEl } = this;
+		const { contentEl } = this;
 		const currentValue = this.getCurrentValue();
 
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal');
-		contentEl.empty();
-
-		contentEl.createEl('div', { cls: 'tdc-prompt-title', text: this.getModalTitle() });
+		setupPromptModal(this, this.getModalTitle());
 		contentEl.createEl('p', {
 			text: 'Enter the absolute path to your project folder on disk.',
 			cls: 'setting-item-description'

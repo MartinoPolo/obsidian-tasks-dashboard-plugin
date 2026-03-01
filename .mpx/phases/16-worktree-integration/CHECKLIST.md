@@ -36,7 +36,7 @@ Add a worktree-enabled issue creation flow and lifecycle cleanup hooks while pre
 
 ### D. Worktree Setup Execution
 - [ ] Execute `C:\_MP_projects\mxp-claude-code\scripts\setup-worktree.sh` after collecting worktree-flow inputs.
-- [ ] Pass selected color to setup script through safe process args.
+- [ ] Pass selected name and color to setup script through safe process args.
 - [ ] Maintain injection-safe process launch (`spawn(..., { shell: false })`) and Windows Terminal compatibility.
 
 ### E. Archive/Delete Cleanup Prompt

@@ -1,0 +1,10 @@
+export const CACHE_TTL_MS = 5 * 60 * 1000;
+export const MAX_CACHE_SIZE = 200;
+export const API_BASE = 'https://api.github.com';
+export const API_ACCEPT_HEADER = 'application/vnd.github.v3+json';
+export const API_USER_AGENT = 'Obsidian-Tasks-Dashboard';
+export const SEARCH_RESULTS_PER_PAGE = 20;
+export const FALLBACK_SEARCH_PER_PAGE = 50;
+export const USER_REPOS_PER_PAGE = 100;
+export const DEFAULT_LABEL_COLOR = '888888';
+export const MAX_PARALLEL_ORG_QUERIES = 5;

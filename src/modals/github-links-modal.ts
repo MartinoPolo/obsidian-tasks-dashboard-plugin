@@ -1,7 +1,7 @@
 import { Modal } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
-import { setupPromptModal } from './modal-helpers';
+import { createPromptShortcutButton, setupPromptModal } from './modal-helpers';
 import { GitHubSearchModal } from './GitHubSearchModal';
 import { parseGitHubUrlInfo } from '../utils/github';
 import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
@@ -144,11 +144,7 @@ export class GitHubLinksModal extends Modal {
 			);
 		}
 
-		const closeBtn = btnContainer.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-cancel'
-		});
-		closeBtn.innerHTML = 'Close <kbd>Esc</kbd>';
-		closeBtn.addEventListener('click', () => {
+		void createPromptShortcutButton(btnContainer, 'Close', 'Esc', 'tdc-prompt-btn-cancel', () => {
 			this.close();
 		});
 	}

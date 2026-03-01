@@ -1,5 +1,9 @@
 import { App, Modal } from 'obsidian';
-import { setupPromptModal } from './modal-helpers';
+import {
+	createPromptShortcutButton,
+	registerEnterShortcut,
+	setupPromptModal
+} from './modal-helpers';
 
 export class DeleteConfirmationModal extends Modal {
 	private issueName: string;
@@ -17,18 +21,20 @@ export class DeleteConfirmationModal extends Modal {
 		this.renderMessage();
 
 		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
-		this.createButton(
+		void createPromptShortcutButton(
 			btnContainer,
-			'tdc-prompt-btn tdc-prompt-btn-cancel',
-			'Cancel <kbd>Esc</kbd>',
+			'Cancel',
+			'Esc',
+			'tdc-prompt-btn-cancel',
 			() => {
 				this.close();
 			}
 		);
-		this.createButton(
+		void createPromptShortcutButton(
 			btnContainer,
-			'tdc-prompt-btn tdc-prompt-btn-delete',
-			'Delete <kbd>↵</kbd>',
+			'Delete',
+			'↵',
+			'tdc-prompt-btn-delete',
 			() => {
 				this.confirmDelete();
 			}
@@ -48,31 +54,13 @@ export class DeleteConfirmationModal extends Modal {
 		});
 	}
 
-	private createButton(
-		containerEl: HTMLElement,
-		className: string,
-		labelHtml: string,
-		onClick: () => void
-	) {
-		const button = containerEl.createEl('button', {
-			cls: className
-		});
-		button.innerHTML = labelHtml;
-		button.addEventListener('click', onClick);
-	}
-
 	private confirmDelete() {
 		this.close();
 		this.onConfirm();
 	}
 
 	private registerEnterKeyConfirmation() {
-		this.contentEl.addEventListener('keydown', (event) => {
-			if (event.key !== 'Enter') {
-				return;
-			}
-
-			event.preventDefault();
+		registerEnterShortcut(this.contentEl, () => {
 			this.confirmDelete();
 		});
 	}
