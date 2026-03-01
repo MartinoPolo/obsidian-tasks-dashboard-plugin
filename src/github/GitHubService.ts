@@ -93,7 +93,9 @@ export function createGitHubService(): GitHubServiceInstance {
 		return state === 'closed' ? 'closed' : 'open';
 	};
 
-	const extractErrorDetails = (error: unknown): { status: number | undefined; message: string } => {
+	const extractErrorDetails = (
+		error: unknown
+	): { status: number | undefined; message: string } => {
 		const fallbackMessage = error instanceof Error ? error.message : 'Unknown error';
 
 		if (typeof error !== 'object' || error === null) {
@@ -217,7 +219,11 @@ export function createGitHubService(): GitHubServiceInstance {
 			if (isRateLimit) {
 				return new GitHubApiError('rate-limit', status, 'GitHub API rate limit exceeded');
 			}
-			return new GitHubApiError('auth', status, 'GitHub authentication failed — check your token');
+			return new GitHubApiError(
+				'auth',
+				status,
+				'GitHub authentication failed — check your token'
+			);
 		}
 
 		if (status === 404) {
@@ -291,7 +297,9 @@ export function createGitHubService(): GitHubServiceInstance {
 
 	const parseRepoFromUrl = (repositoryUrl: string): { owner: string; repoName: string } => {
 		const repoMatch = repositoryUrl.match(/repos\/([^/]+)\/([^/]+)$/);
-		return repoMatch ? { owner: repoMatch[1], repoName: repoMatch[2] } : { owner: '', repoName: '' };
+		return repoMatch
+			? { owner: repoMatch[1], repoName: repoMatch[2] }
+			: { owner: '', repoName: '' };
 	};
 
 	const mapIssueResponse = (
@@ -479,7 +487,10 @@ export function createGitHubService(): GitHubServiceInstance {
 		return searchItems(query, repo, 'issue');
 	};
 
-	const searchPullRequests = async (query: string, repo?: string): Promise<GitHubSearchResult> => {
+	const searchPullRequests = async (
+		query: string,
+		repo?: string
+	): Promise<GitHubSearchResult> => {
 		return searchItems(query, repo, 'pr');
 	};
 
@@ -644,15 +655,16 @@ export function createGitHubService(): GitHubServiceInstance {
 			}
 
 			const allowedOwners = new Set([username, ...organizations]);
-			allItems = mapSearchItems(data.items)
-				.filter((item) => {
-					const owner = item.repository.split('/')[0];
-					return allowedOwners.has(owner);
-				});
+			allItems = mapSearchItems(data.items).filter((item) => {
+				const owner = item.repository.split('/')[0];
+				return allowedOwners.has(owner);
+			});
 		} else {
 			// Parallel queries: user:{login} + org:{orgName} for each
 			const qualifiers = [`user:${username}`, ...organizations.map((org) => `org:${org}`)];
-			const searchQueries = qualifiers.map((qualifier) => `${qualifier} ${query} ${typeQualifier}`);
+			const searchQueries = qualifiers.map(
+				(qualifier) => `${qualifier} ${query} ${typeQualifier}`
+			);
 
 			const results = await Promise.all(
 				searchQueries.map((searchQuery) =>

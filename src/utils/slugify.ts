@@ -25,7 +25,9 @@ export function slugify(name: string): string {
 
 export function generateId(): string {
 	const timePart = Date.now().toString(BASE_36_RADIX);
-	const randomPart = Math.random().toString(BASE_36_RADIX).substring(RANDOM_SEGMENT_START, RANDOM_SEGMENT_END);
+	const randomPart = Math.random()
+		.toString(BASE_36_RADIX)
+		.substring(RANDOM_SEGMENT_START, RANDOM_SEGMENT_END);
 
 	return timePart + randomPart;
 }

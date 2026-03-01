@@ -317,7 +317,10 @@ priority: ${issue.priority}`;
 		}
 
 		let content = await app.vault.read(issueFile);
-		content = content.replace(new RegExp(`^status:\\s*${fromStatus}`, 'm'), `status: ${toStatus}`);
+		content = content.replace(
+			new RegExp(`^status:\\s*${fromStatus}`, 'm'),
+			`status: ${toStatus}`
+		);
 		await app.vault.modify(issueFile, content);
 
 		const destinationPath = `${getIssuePathByStatus(dashboard, toStatus)}/${issueFile.name}`;
@@ -357,7 +360,8 @@ priority: ${issue.priority}`;
 		let settingsChanged = false;
 
 		if (oldIssueId in plugin.settings.collapsedIssues) {
-			plugin.settings.collapsedIssues[newIssueId] = plugin.settings.collapsedIssues[oldIssueId];
+			plugin.settings.collapsedIssues[newIssueId] =
+				plugin.settings.collapsedIssues[oldIssueId];
 			delete plugin.settings.collapsedIssues[oldIssueId];
 			settingsChanged = true;
 		}
@@ -807,15 +811,16 @@ ${originalBody}`;
 
 			// Match the `- url: "{url}"` entry and its metadata children
 			const entryPattern = new RegExp(
-				`\\n  - url: "${escapeForRegExp(githubUrl)}"` +
-				`(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
+				`\\n  - url: "${escapeForRegExp(githubUrl)}"` + `(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
 				'g'
 			);
 			let cleanedFrontmatter = frontmatter.replace(entryPattern, '');
 
 			// If no entries remain under github_links:, remove the key entirely
-			if (cleanedFrontmatter.includes('github_links:') &&
-				!/github_links:\s*\n\s+-/.test(cleanedFrontmatter)) {
+			if (
+				cleanedFrontmatter.includes('github_links:') &&
+				!/github_links:\s*\n\s+-/.test(cleanedFrontmatter)
+			) {
 				cleanedFrontmatter = cleanedFrontmatter.replace(/\ngithub_links:\s*/, '');
 			}
 
@@ -841,5 +846,14 @@ ${originalBody}`;
 		new Notice(`GitHub link removed from ${issueId}`);
 	};
 
-	return { createIssue, importNoteAsIssue, archiveIssue, unarchiveIssue, deleteIssue, renameIssue, addGitHubLink, removeGitHubLink };
+	return {
+		createIssue,
+		importNoteAsIssue,
+		archiveIssue,
+		unarchiveIssue,
+		deleteIssue,
+		renameIssue,
+		addGitHubLink,
+		removeGitHubLink
+	};
 }

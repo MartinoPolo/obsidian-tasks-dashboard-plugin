@@ -1,11 +1,27 @@
-import { EventRef, MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
+import {
+	EventRef,
+	MarkdownPostProcessorContext,
+	MarkdownRenderChild,
+	Menu,
+	Notice
+} from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { Priority, IssueProgress, DashboardConfig } from '../types';
+import {
+	Priority,
+	IssueProgress,
+	DashboardConfig,
+	DashboardIssueActionLayout,
+	type IssueActionKey
+} from '../types';
 import { DeleteConfirmationModal } from '../modals/delete-confirmation-modal';
 import { RenameIssueModal } from '../modals/rename-issue-modal';
+import { FolderPathModal } from '../modals/FolderPathModal';
+import { GitHubSearchModal } from '../modals/GitHubSearchModal';
+import { GitHubLinksModal } from '../modals/github-links-modal';
 import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { isGitHubRepoUrl, parseGitHubRepoName } from '../utils/github-url';
-import { ICONS, renderIssueActionButtons } from './header-actions';
+import { createPlatformService } from '../utils/platform';
+import { ICONS, createActionButton, getButtonVisibility } from './header-actions';
 import { renderSortControls } from './sort-controls';
 import { deriveIssueSurfaceColors, getIsDarkTheme, sanitizeHexColor } from '../utils/color';
 
@@ -20,17 +36,52 @@ const ISSUE_CONTAINER_COLOR_VARIABLES = [
 	'--tdc-issue-checklist-border'
 ] as const;
 
+const ISSUE_ACTION_ORDER: readonly IssueActionKey[] = [
+	'folder',
+	'terminal',
+	'vscode',
+	'github',
+	'move-up',
+	'move-down',
+	'move-top',
+	'move-bottom',
+	'rename',
+	'color',
+	'archive',
+	'delete'
+];
+
+const DEFAULT_ROW1_ACTIONS: readonly IssueActionKey[] = [
+	'folder',
+	'terminal',
+	'vscode',
+	'github',
+	'move-up',
+	'move-down'
+];
+
+const HEADER_HOVER_TITLE_MIN_WIDTH = 200;
+
+interface IssueActionDescriptor {
+	key: IssueActionKey;
+	label: string;
+	iconKey: keyof typeof ICONS;
+	cssClass: string;
+	shouldRender: boolean;
+	faded: boolean;
+	onClick: () => void;
+	onContextMenu?: (event: MouseEvent) => void;
+}
+
+interface RuntimeIssueActionLayout {
+	row1: IssueActionKey[];
+	row2: IssueActionKey[];
+	hidden: IssueActionKey[];
+}
+
 interface ParsedKeyValueLine {
 	key: string;
 	value: string;
-}
-
-interface IconButtonConfig {
-	cls: string;
-	ariaLabel: string;
-	title?: string;
-	icon: string;
-	onClick: () => void;
 }
 
 interface WorkspaceCustomEventEmitter {
@@ -86,7 +137,10 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 					if (result instanceof Promise) {
 						result.catch((error: unknown) => {
 							console.error('Tasks Dashboard: reactive render failed', error);
-							this.containerEl.createEl('span', { text: 'Failed to render', cls: 'tdc-error' });
+							this.containerEl.createEl('span', {
+								text: 'Failed to render',
+								cls: 'tdc-error'
+							});
 						});
 					}
 				}, REACTIVE_RENDER_DEBOUNCE_MS);
@@ -97,6 +151,105 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const githubCardRenderer = createGitHubCardRenderer();
+	const platformService = createPlatformService();
+
+	const getDefaultRow2Actions = (): IssueActionKey[] => {
+		return ISSUE_ACTION_ORDER.filter((key) => !DEFAULT_ROW1_ACTIONS.includes(key));
+	};
+
+	const isIssueActionKey = (value: string): value is IssueActionKey => {
+		return (ISSUE_ACTION_ORDER as readonly string[]).includes(value);
+	};
+
+	const dedupeIssueActionKeys = (keys: IssueActionKey[]): IssueActionKey[] => {
+		const deduped: IssueActionKey[] = [];
+		for (const key of keys) {
+			if (!deduped.includes(key)) {
+				deduped.push(key);
+			}
+		}
+		return deduped;
+	};
+
+	const sanitizeLayoutKeys = (value: unknown): IssueActionKey[] => {
+		if (!Array.isArray(value)) {
+			return [];
+		}
+
+		const sanitized: IssueActionKey[] = [];
+		for (const item of value) {
+			if (typeof item !== 'string' || !isIssueActionKey(item)) {
+				continue;
+			}
+			sanitized.push(item);
+		}
+
+		return dedupeIssueActionKeys(sanitized);
+	};
+
+	const getIssueActionLayout = (dashboard: DashboardConfig): RuntimeIssueActionLayout => {
+		const rawLayout = dashboard.issueActionLayout;
+		const row1 = sanitizeLayoutKeys(rawLayout?.row1);
+		const row2 = sanitizeLayoutKeys(rawLayout?.row2);
+		const hidden = sanitizeLayoutKeys(rawLayout?.hidden);
+
+		const normalizedRow1 = row1.length > 0 ? row1 : [...DEFAULT_ROW1_ACTIONS];
+		const normalizedRow2 = row2.length > 0 ? row2 : getDefaultRow2Actions();
+
+		const usedKeys = new Set<IssueActionKey>();
+		const uniqueRow1: IssueActionKey[] = [];
+		for (const key of normalizedRow1) {
+			if (usedKeys.has(key)) {
+				continue;
+			}
+			usedKeys.add(key);
+			uniqueRow1.push(key);
+		}
+
+		const uniqueRow2: IssueActionKey[] = [];
+		for (const key of normalizedRow2) {
+			if (usedKeys.has(key)) {
+				continue;
+			}
+			usedKeys.add(key);
+			uniqueRow2.push(key);
+		}
+
+		for (const key of ISSUE_ACTION_ORDER) {
+			if (usedKeys.has(key)) {
+				continue;
+			}
+			uniqueRow2.push(key);
+			usedKeys.add(key);
+		}
+
+		const hiddenSet = new Set(hidden);
+
+		return {
+			row1: uniqueRow1,
+			row2: uniqueRow2,
+			hidden: ISSUE_ACTION_ORDER.filter((key) => hiddenSet.has(key))
+		};
+	};
+
+	const saveIssueActionLayout = (
+		dashboard: DashboardConfig,
+		layout: RuntimeIssueActionLayout,
+		options?: { triggerRefresh?: boolean }
+	): void => {
+		const shouldTriggerRefresh = options?.triggerRefresh ?? true;
+		const nextLayout: DashboardIssueActionLayout = {
+			row1: dedupeIssueActionKeys(layout.row1),
+			row2: dedupeIssueActionKeys(layout.row2),
+			hidden: dedupeIssueActionKeys(layout.hidden)
+		};
+		dashboard.issueActionLayout = nextLayout;
+		void plugin.saveSettings().then(() => {
+			if (shouldTriggerRefresh) {
+				plugin.triggerDashboardRefresh();
+			}
+		});
+	};
 
 	const parseSourceKeyValueLines = (source: string): ParsedKeyValueLine[] => {
 		const entries: ParsedKeyValueLine[] = [];
@@ -116,21 +269,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		event.preventDefault();
 		event.stopPropagation();
 		action();
-	};
-
-	const createIconButton = (container: HTMLElement, config: IconButtonConfig): HTMLButtonElement => {
-		const button = container.createEl('button', {
-			cls: config.cls,
-			attr: {
-				'aria-label': config.ariaLabel,
-				...(config.title !== undefined ? { title: config.title } : {})
-			}
-		});
-		button.innerHTML = config.icon;
-		button.addEventListener('click', (event) => {
-			stopEventAndRun(event, config.onClick);
-		});
-		return button;
 	};
 
 	const applyColorVariables = (
@@ -301,7 +439,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const applyIssueSurfaceStyles = (element: HTMLElement, mainColor: string | undefined): void => {
 		const controlBlock = resolveIssueControlBlock(element);
 		const normalizedColor =
-			mainColor !== undefined ? sanitizeHexColor(mainColor, ISSUE_SURFACE_COLOR_FALLBACK) : undefined;
+			mainColor !== undefined
+				? sanitizeHexColor(mainColor, ISSUE_SURFACE_COLOR_FALLBACK)
+				: undefined;
 		const derivedColors =
 			normalizedColor !== undefined
 				? deriveIssueSurfaceColors(normalizedColor, getIsDarkTheme())
@@ -337,8 +477,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			}
 			block.classList.add('tdc-issue-content-block');
 			if (derivedColors !== undefined) {
-				block.style.setProperty('--tdc-issue-checklist-bg', derivedColors.checklistBackground);
-				block.style.setProperty('--tdc-issue-checklist-border', derivedColors.checklistBorder);
+				block.style.setProperty(
+					'--tdc-issue-checklist-bg',
+					derivedColors.checklistBackground
+				);
+				block.style.setProperty(
+					'--tdc-issue-checklist-border',
+					derivedColors.checklistBorder
+				);
 			} else {
 				block.style.removeProperty('--tdc-issue-checklist-bg');
 				block.style.removeProperty('--tdc-issue-checklist-border');
@@ -346,11 +492,785 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 	};
 
-	const renderHeader = (
+	const isNonEmptyString = (value: string | undefined): value is string => {
+		return value !== undefined && value !== '';
+	};
+
+	const isGitHubUrl = (url: string): boolean => {
+		return /^https?:\/\/github\.com\//.test(url);
+	};
+
+	const openFirstGitHubLink = (links: string[]): boolean => {
+		const firstLink = links[0];
+		if (!isGitHubUrl(firstLink)) {
+			return false;
+		}
+
+		window.open(firstLink, '_blank');
+		return true;
+	};
+
+	const openMoveContextMenu = (
+		event: MouseEvent,
+		dashboard: DashboardConfig,
+		issueId: string,
+		direction: 'up' | 'down'
+	): void => {
+		const menu = new Menu();
+		if (direction === 'up') {
+			menu.addItem((item) => {
+				item.setTitle('Move up')
+					.setIcon('arrow-up')
+					.onClick(() => {
+						void plugin.dashboardWriter.moveIssue(dashboard, issueId, 'up');
+					});
+			});
+			menu.addItem((item) => {
+				item.setTitle('Move to top')
+					.setIcon('chevrons-up')
+					.onClick(() => {
+						void plugin.dashboardWriter.moveIssueToPosition(dashboard, issueId, 'top');
+					});
+			});
+		} else {
+			menu.addItem((item) => {
+				item.setTitle('Move down')
+					.setIcon('arrow-down')
+					.onClick(() => {
+						void plugin.dashboardWriter.moveIssue(dashboard, issueId, 'down');
+					});
+			});
+			menu.addItem((item) => {
+				item.setTitle('Move to bottom')
+					.setIcon('chevrons-down')
+					.onClick(() => {
+						void plugin.dashboardWriter.moveIssueToPosition(
+							dashboard,
+							issueId,
+							'bottom'
+						);
+					});
+			});
+		}
+
+		menu.showAtPosition({ x: event.clientX, y: event.clientY });
+	};
+
+	const buildIssueActionDescriptors = (
 		container: HTMLElement,
 		params: ControlParams,
 		dashboard: DashboardConfig
-	): void => {
+	): Map<IssueActionKey, IssueActionDescriptor> => {
+		const issueFolderKey = `${dashboard.id}:${params.issue}`;
+		const issueFolder = plugin.settings.issueFolders[issueFolderKey];
+		const hasIssueFolder = isNonEmptyString(issueFolder);
+		const visibility = getButtonVisibility(dashboard);
+		const isArchived = /\/Issues\/Archive(\/|$)/i.test(params.path);
+
+		const openIssueFolderModal = (): void => {
+			new FolderPathModal(plugin.app, plugin, dashboard, params.issue).open();
+		};
+
+		const descriptors = new Map<IssueActionKey, IssueActionDescriptor>();
+
+		descriptors.set('folder', {
+			key: 'folder',
+			label: hasIssueFolder ? 'Open issue folder' : 'Set issue folder',
+			iconKey: 'folder',
+			cssClass: 'tdc-btn-folder',
+			shouldRender: visibility.folder,
+			faded: !hasIssueFolder,
+			onClick: () => {
+				if (isNonEmptyString(issueFolder)) {
+					platformService.openInFileExplorer(issueFolder);
+					return;
+				}
+				openIssueFolderModal();
+			},
+			onContextMenu: hasIssueFolder
+				? () => {
+						openIssueFolderModal();
+					}
+				: undefined
+		});
+
+		descriptors.set('terminal', {
+			key: 'terminal',
+			label: hasIssueFolder ? 'Open terminal' : 'Set issue folder',
+			iconKey: 'terminal',
+			cssClass: 'tdc-btn-terminal',
+			shouldRender: visibility.terminal && (hasIssueFolder || !visibility.folder),
+			faded: !hasIssueFolder,
+			onClick: () => {
+				if (isNonEmptyString(issueFolder)) {
+					const issueColor = plugin.settings.issueColors[params.issue];
+					platformService.openTerminal(issueFolder, issueColor);
+					return;
+				}
+				openIssueFolderModal();
+			},
+			onContextMenu: () => {
+				openIssueFolderModal();
+			}
+		});
+
+		descriptors.set('vscode', {
+			key: 'vscode',
+			label: hasIssueFolder ? 'Open in VS Code' : 'Set issue folder',
+			iconKey: 'vscode',
+			cssClass: 'tdc-btn-vscode',
+			shouldRender: visibility.vscode && (hasIssueFolder || !visibility.folder),
+			faded: !hasIssueFolder,
+			onClick: () => {
+				if (isNonEmptyString(issueFolder)) {
+					platformService.openVSCode(issueFolder);
+					return;
+				}
+				openIssueFolderModal();
+			},
+			onContextMenu: () => {
+				openIssueFolderModal();
+			}
+		});
+
+		descriptors.set('github', {
+			key: 'github',
+			label: params.githubLinks.length > 0 ? 'Open GitHub link' : 'Add GitHub link',
+			iconKey: 'github',
+			cssClass: 'tdc-btn-github-quickopen',
+			shouldRender: visibility.github,
+			faded: params.githubLinks.length === 0,
+			onClick: () => {
+				const hasLinks = params.githubLinks.length > 0;
+				if (hasLinks) {
+					openFirstGitHubLink(params.githubLinks);
+					return;
+				}
+				if (!plugin.githubService.isAuthenticated()) {
+					new Notice('Configure GitHub token in settings to search for issues.');
+					return;
+				}
+				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
+					if (url === undefined) {
+						return;
+					}
+					void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
+				}).open();
+			},
+			onContextMenu:
+				params.githubLinks.length > 0
+					? () => {
+							new GitHubLinksModal(
+								plugin,
+								dashboard,
+								params.issue,
+								params.githubLinks
+							).open();
+						}
+					: undefined
+		});
+
+		descriptors.set('move-up', {
+			key: 'move-up',
+			label: 'Move up',
+			iconKey: 'up',
+			cssClass: 'tdc-btn-move',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
+			},
+			onContextMenu: (event) => {
+				openMoveContextMenu(event, dashboard, params.issue, 'up');
+			}
+		});
+
+		descriptors.set('move-down', {
+			key: 'move-down',
+			label: 'Move down',
+			iconKey: 'down',
+			cssClass: 'tdc-btn-move',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
+			},
+			onContextMenu: (event) => {
+				openMoveContextMenu(event, dashboard, params.issue, 'down');
+			}
+		});
+
+		descriptors.set('move-top', {
+			key: 'move-top',
+			label: 'Move to top',
+			iconKey: 'toTop',
+			cssClass: 'tdc-btn-move',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'top');
+			}
+		});
+
+		descriptors.set('move-bottom', {
+			key: 'move-bottom',
+			label: 'Move to bottom',
+			iconKey: 'toBottom',
+			cssClass: 'tdc-btn-move',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'bottom');
+			}
+		});
+
+		descriptors.set('rename', {
+			key: 'rename',
+			label: 'Rename',
+			iconKey: 'rename',
+			cssClass: 'tdc-btn-rename',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				new RenameIssueModal(
+					plugin.app,
+					plugin,
+					dashboard,
+					params.issue,
+					params.name
+				).open();
+			}
+		});
+
+		descriptors.set('color', {
+			key: 'color',
+			label: 'Header color',
+			iconKey: 'palette',
+			cssClass: 'tdc-btn-color',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				const colorInput = document.createElement('input');
+				colorInput.type = 'color';
+				colorInput.style.position = 'absolute';
+				colorInput.style.opacity = '0';
+				colorInput.style.pointerEvents = 'none';
+				colorInput.value =
+					plugin.settings.issueColors[params.issue] ?? ISSUE_SURFACE_COLOR_FALLBACK;
+				document.body.appendChild(colorInput);
+
+				const removeInput = (): void => {
+					colorInput.remove();
+				};
+
+				colorInput.addEventListener('input', () => {
+					applyIssueSurfaceStyles(container, colorInput.value);
+				});
+				colorInput.addEventListener(
+					'change',
+					() => {
+						plugin.settings.issueColors[params.issue] = colorInput.value;
+						void plugin.saveSettings();
+						applyIssueSurfaceStyles(container, colorInput.value);
+						removeInput();
+					},
+					{ once: true }
+				);
+				colorInput.addEventListener('blur', removeInput, { once: true });
+				colorInput.click();
+			}
+		});
+
+		descriptors.set('archive', {
+			key: 'archive',
+			label: isArchived ? 'Unarchive' : 'Archive',
+			iconKey: isArchived ? 'unarchive' : 'archive',
+			cssClass: 'tdc-btn-archive',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				if (isArchived) {
+					void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
+				} else {
+					void plugin.issueManager.archiveIssue(dashboard, params.issue);
+				}
+			}
+		});
+
+		descriptors.set('delete', {
+			key: 'delete',
+			label: 'Delete',
+			iconKey: 'trash',
+			cssClass: 'tdc-btn-delete',
+			shouldRender: true,
+			faded: false,
+			onClick: () => {
+				const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
+					void plugin.issueManager.deleteIssue(dashboard, params.issue);
+				});
+				modal.open();
+			}
+		});
+
+		return descriptors;
+	};
+
+	const createOverflowMenuPanel = (options: {
+		overflowButton: HTMLElement;
+		dashboard: DashboardConfig;
+		actions: Map<IssueActionKey, IssueActionDescriptor>;
+		layout: RuntimeIssueActionLayout;
+		getVisibleActionKeys: () => Set<IssueActionKey>;
+	}): () => void => {
+		let panel: HTMLElement | undefined;
+		let isOpen = false;
+		let inSettingsMode = false;
+		let hasAutoSavedLayoutChanges = false;
+		let isDisposed = false;
+
+		const draftLayout: RuntimeIssueActionLayout = {
+			row1: [],
+			row2: [],
+			hidden: []
+		};
+
+		const resetDraftLayout = (): void => {
+			draftLayout.row1 = [...options.layout.row1];
+			draftLayout.row2 = [...options.layout.row2];
+			draftLayout.hidden = [...options.layout.hidden];
+		};
+
+		resetDraftLayout();
+
+		const createPanel = (): HTMLElement => {
+			if (panel !== undefined) {
+				return panel;
+			}
+
+			const createdPanel = document.createElement('div');
+			createdPanel.className = 'tdc-overflow-panel tdc-overflow-panel-portal';
+			createdPanel.style.display = 'none';
+			document.body.appendChild(createdPanel);
+			panel = createdPanel;
+			return createdPanel;
+		};
+
+		const ensureActionPlacement = (): void => {
+			for (const key of ISSUE_ACTION_ORDER) {
+				const existsInRow1 = draftLayout.row1.includes(key);
+				const existsInRow2 = draftLayout.row2.includes(key);
+				if (!existsInRow1 && !existsInRow2) {
+					draftLayout.row2.push(key);
+				}
+			}
+			draftLayout.row1 = dedupeIssueActionKeys(draftLayout.row1);
+			draftLayout.row2 = dedupeIssueActionKeys(
+				draftLayout.row2.filter((key) => !draftLayout.row1.includes(key))
+			);
+			draftLayout.hidden = dedupeIssueActionKeys(draftLayout.hidden);
+		};
+
+		const persistDraftLayout = (): void => {
+			ensureActionPlacement();
+			saveIssueActionLayout(options.dashboard, draftLayout, { triggerRefresh: false });
+			options.layout.row1 = [...draftLayout.row1];
+			options.layout.row2 = [...draftLayout.row2];
+			options.layout.hidden = [...draftLayout.hidden];
+			hasAutoSavedLayoutChanges = true;
+		};
+
+		const positionPanel = (): void => {
+			if (!isOpen || panel === undefined) {
+				return;
+			}
+
+			if (!options.overflowButton.isConnected) {
+				closePanel();
+				return;
+			}
+
+			const triggerRect = options.overflowButton.getBoundingClientRect();
+			const viewportPadding = 8;
+			const panelWidth = Math.max(panel.offsetWidth, 280);
+			const panelHeight = panel.offsetHeight;
+			const maxLeft = window.innerWidth - panelWidth - viewportPadding;
+			const alignedLeft = triggerRect.right - panelWidth;
+			const left = Math.max(viewportPadding, Math.min(alignedLeft, maxLeft));
+
+			let top = triggerRect.bottom + 4;
+			const maxTop = window.innerHeight - panelHeight - viewportPadding;
+			if (top > maxTop) {
+				top = Math.max(viewportPadding, triggerRect.top - panelHeight - 4);
+			}
+
+			panel.style.left = `${left}px`;
+			panel.style.top = `${top}px`;
+		};
+
+		const closePanelOnOutsideClick = (event: MouseEvent): void => {
+			if (panel === undefined) {
+				closePanel();
+				return;
+			}
+
+			const target = event.target;
+			if (!(target instanceof Node)) {
+				closePanel();
+				return;
+			}
+
+			if (panel.contains(target) || options.overflowButton.contains(target)) {
+				return;
+			}
+
+			closePanel();
+		};
+
+		const closePanelOnEscape = (event: KeyboardEvent): void => {
+			if (event.key !== 'Escape') {
+				return;
+			}
+			event.preventDefault();
+			event.stopPropagation();
+			closePanel();
+		};
+
+		const closePanel = (): void => {
+			if (!isOpen && panel === undefined) {
+				return;
+			}
+
+			isOpen = false;
+			inSettingsMode = false;
+			resetDraftLayout();
+			if (panel !== undefined) {
+				panel.style.display = 'none';
+				panel.remove();
+				panel = undefined;
+			}
+
+			window.removeEventListener('scroll', positionPanel, true);
+			window.removeEventListener('resize', positionPanel);
+			window.removeEventListener('blur', closePanel);
+			document.removeEventListener('click', closePanelOnOutsideClick, true);
+			document.removeEventListener('keydown', closePanelOnEscape, true);
+
+			if (hasAutoSavedLayoutChanges) {
+				hasAutoSavedLayoutChanges = false;
+				plugin.triggerDashboardRefresh();
+			}
+		};
+
+		const renderActionsView = (): void => {
+			if (panel === undefined) {
+				return;
+			}
+			panel.empty();
+			const actionsContainer = panel.createDiv({ cls: 'tdc-overflow-actions' });
+			const visibleActionKeys = options.getVisibleActionKeys();
+			let hasOverflowActions = false;
+
+			for (const key of ISSUE_ACTION_ORDER) {
+				const descriptor = options.actions.get(key);
+				if (descriptor === undefined || !descriptor.shouldRender) {
+					continue;
+				}
+				if (visibleActionKeys.has(key)) {
+					continue;
+				}
+
+				hasOverflowActions = true;
+				createActionButton({
+					container: actionsContainer,
+					iconKey: descriptor.iconKey,
+					cssClass: `tdc-overflow-item ${descriptor.cssClass}`,
+					ariaLabel: descriptor.label,
+					faded: descriptor.faded,
+					labelText: descriptor.label,
+					onClick: (event) => {
+						event.preventDefault();
+						event.stopPropagation();
+						descriptor.onClick();
+						closePanel();
+					}
+				});
+			}
+
+			if (!hasOverflowActions) {
+				actionsContainer.createDiv({
+					cls: 'tdc-overflow-empty',
+					text: 'No hidden actions'
+				});
+			}
+
+			const settingsTrigger = panel.createEl('button', {
+				cls: 'tdc-btn tdc-overflow-settings-toggle',
+				text: 'Layout settings'
+			});
+			settingsTrigger.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				inSettingsMode = true;
+				renderSettingsView();
+			});
+		};
+
+		const renderSettingsRows = (container: HTMLElement, rowName: 'row1' | 'row2'): void => {
+			const getActionPosition = (
+				actionKey: IssueActionKey
+			): { row: 'row1' | 'row2'; index: number } | undefined => {
+				const row1Index = draftLayout.row1.indexOf(actionKey);
+				if (row1Index !== -1) {
+					return { row: 'row1', index: row1Index };
+				}
+
+				const row2Index = draftLayout.row2.indexOf(actionKey);
+				if (row2Index !== -1) {
+					return { row: 'row2', index: row2Index };
+				}
+
+				return undefined;
+			};
+
+			const canMoveAction = (
+				actionKey: IssueActionKey,
+				direction: 'up' | 'down'
+			): boolean => {
+				const position = getActionPosition(actionKey);
+				if (position === undefined) {
+					return false;
+				}
+
+				if (direction === 'up') {
+					if (position.row === 'row1') {
+						return position.index > 0;
+					}
+					return position.index >= 0;
+				}
+
+				if (position.row === 'row2') {
+					return position.index < draftLayout.row2.length - 1;
+				}
+				return position.index <= draftLayout.row1.length - 1;
+			};
+
+			const moveActionByOne = (actionKey: IssueActionKey, direction: 'up' | 'down'): void => {
+				const position = getActionPosition(actionKey);
+				if (position === undefined) {
+					return;
+				}
+
+				if (direction === 'up') {
+					if (position.row === 'row1') {
+						if (position.index === 0) {
+							return;
+						}
+						const previousKey = draftLayout.row1[position.index - 1];
+						draftLayout.row1[position.index - 1] = actionKey;
+						draftLayout.row1[position.index] = previousKey;
+						return;
+					}
+
+					if (position.index > 0) {
+						const previousKey = draftLayout.row2[position.index - 1];
+						draftLayout.row2[position.index - 1] = actionKey;
+						draftLayout.row2[position.index] = previousKey;
+						return;
+					}
+
+					draftLayout.row2.shift();
+					draftLayout.row1.push(actionKey);
+					return;
+				}
+
+				if (position.row === 'row2') {
+					if (position.index >= draftLayout.row2.length - 1) {
+						return;
+					}
+					const nextKey = draftLayout.row2[position.index + 1];
+					draftLayout.row2[position.index + 1] = actionKey;
+					draftLayout.row2[position.index] = nextKey;
+					return;
+				}
+
+				if (position.index < draftLayout.row1.length - 1) {
+					const nextKey = draftLayout.row1[position.index + 1];
+					draftLayout.row1[position.index + 1] = actionKey;
+					draftLayout.row1[position.index] = nextKey;
+					return;
+				}
+
+				draftLayout.row1.pop();
+				draftLayout.row2.unshift(actionKey);
+			};
+
+			for (const key of draftLayout[rowName]) {
+				const descriptor = options.actions.get(key);
+				if (descriptor === undefined) {
+					continue;
+				}
+
+				const actionRow = container.createDiv({ cls: 'tdc-overflow-settings-row' });
+				const actionInfo = actionRow.createDiv({
+					cls: 'tdc-overflow-settings-action-info'
+				});
+				const actionIcon = actionInfo.createSpan({
+					cls: 'tdc-overflow-settings-item-icon'
+				});
+				actionIcon.innerHTML = ICONS[descriptor.iconKey];
+				actionInfo.createSpan({ text: descriptor.label });
+
+				const actionButtons = actionRow.createDiv({ cls: 'tdc-overflow-settings-actions' });
+				const isVisible = !draftLayout.hidden.includes(key);
+				if (!isVisible) {
+					actionRow.classList.add('tdc-overflow-settings-row-hidden');
+				}
+				const canMoveUp = canMoveAction(key, 'up');
+				const canMoveDown = canMoveAction(key, 'down');
+				createActionButton({
+					container: actionButtons,
+					iconKey: isVisible ? 'eye' : 'eyeOff',
+					cssClass: 'tdc-overflow-settings-visibility',
+					ariaLabel: isVisible ? `Hide ${descriptor.label}` : `Show ${descriptor.label}`,
+					faded: false,
+					onClick: () => {
+						if (isVisible) {
+							draftLayout.hidden.push(key);
+						} else {
+							draftLayout.hidden = draftLayout.hidden.filter(
+								(hiddenKey) => hiddenKey !== key
+							);
+						}
+						draftLayout.hidden = dedupeIssueActionKeys(draftLayout.hidden);
+						persistDraftLayout();
+						renderSettingsView();
+					}
+				});
+
+				createActionButton({
+					container: actionButtons,
+					iconKey: 'up',
+					cssClass: 'tdc-overflow-settings-move',
+					ariaLabel: `Move ${descriptor.label} up`,
+					faded: !canMoveUp,
+					onClick: () => {
+						if (!canMoveUp) {
+							return;
+						}
+						moveActionByOne(key, 'up');
+						persistDraftLayout();
+						renderSettingsView();
+					}
+				});
+
+				createActionButton({
+					container: actionButtons,
+					iconKey: 'down',
+					cssClass: 'tdc-overflow-settings-move',
+					ariaLabel: `Move ${descriptor.label} down`,
+					faded: !canMoveDown,
+					onClick: () => {
+						if (!canMoveDown) {
+							return;
+						}
+						moveActionByOne(key, 'down');
+						persistDraftLayout();
+						renderSettingsView();
+					}
+				});
+			}
+		};
+
+		const renderSettingsView = (): void => {
+			if (panel === undefined) {
+				return;
+			}
+			panel.empty();
+			ensureActionPlacement();
+
+			const settingsContainer = panel.createDiv({ cls: 'tdc-overflow-settings' });
+			renderSettingsRows(settingsContainer, 'row1');
+			settingsContainer.createDiv({ cls: 'tdc-overflow-settings-divider' });
+			renderSettingsRows(settingsContainer, 'row2');
+		};
+
+		const renderPanel = (): void => {
+			if (inSettingsMode) {
+				renderSettingsView();
+				return;
+			}
+			renderActionsView();
+		};
+
+		const openPanel = (startInSettingsMode = false): void => {
+			if (isDisposed) {
+				return;
+			}
+			const overflowPanel = createPanel();
+			inSettingsMode = startInSettingsMode;
+			if (!startInSettingsMode) {
+				resetDraftLayout();
+			}
+			overflowPanel.style.display = 'block';
+			isOpen = true;
+			renderPanel();
+			requestAnimationFrame(positionPanel);
+
+			window.addEventListener('scroll', positionPanel, true);
+			window.addEventListener('resize', positionPanel);
+			window.addEventListener('blur', closePanel);
+			document.addEventListener('click', closePanelOnOutsideClick, true);
+			document.addEventListener('keydown', closePanelOnEscape, true);
+		};
+
+		const handleOverflowButtonClick = (event: MouseEvent): void => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (isOpen) {
+				closePanel();
+				return;
+			}
+			openPanel(false);
+		};
+
+		const handleOverflowButtonContextMenu = (event: MouseEvent): void => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (isOpen) {
+				inSettingsMode = true;
+				renderPanel();
+				requestAnimationFrame(positionPanel);
+				return;
+			}
+			openPanel(true);
+		};
+
+		options.overflowButton.addEventListener('click', handleOverflowButtonClick);
+		options.overflowButton.addEventListener('contextmenu', handleOverflowButtonContextMenu);
+
+		return () => {
+			if (isDisposed) {
+				return;
+			}
+			isDisposed = true;
+			closePanel();
+			options.overflowButton.removeEventListener('click', handleOverflowButtonClick);
+			options.overflowButton.removeEventListener(
+				'contextmenu',
+				handleOverflowButtonContextMenu
+			);
+		};
+	};
+
+	const renderHeader = (
+		container: HTMLElement,
+		params: ControlParams,
+		dashboard: DashboardConfig,
+		actions: Map<IssueActionKey, IssueActionDescriptor>,
+		layout: RuntimeIssueActionLayout,
+		getRow2VisibleActionKeys: () => Set<IssueActionKey>,
+		ctx: MarkdownPostProcessorContext
+	): Set<IssueActionKey> => {
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
 
 		const header = container.createDiv({
@@ -379,7 +1299,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 
 		const link = header.createEl('a', {
-			cls: 'internal-link',
+			cls: 'internal-link tdc-header-link',
 			text: params.name
 		});
 		link.setAttribute('href', params.path);
@@ -389,13 +1309,117 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			void plugin.app.workspace.openLinkText(params.path, '', false);
 		});
 
-		header.createDiv({ cls: 'tdc-header-spacer' });
+		const row1Container = header.createDiv({ cls: 'tdc-header-actions' });
+		const overflowWrapper = row1Container.createDiv({ cls: 'tdc-overflow-wrapper' });
 
-		const headerActions = header.createDiv({ cls: 'tdc-header-actions' });
-		renderIssueActionButtons(headerActions, {
-			issueId: params.issue,
-			githubLinks: params.githubLinks
-		}, dashboard, plugin);
+		const row1Buttons = new Map<IssueActionKey, HTMLElement>();
+		for (const key of layout.row1) {
+			if (layout.hidden.includes(key)) {
+				continue;
+			}
+			const descriptor = actions.get(key);
+			if (descriptor === undefined || !descriptor.shouldRender) {
+				continue;
+			}
+			const button = createActionButton({
+				container: row1Container,
+				iconKey: descriptor.iconKey,
+				cssClass: descriptor.cssClass,
+				ariaLabel: descriptor.label,
+				faded: descriptor.faded,
+				onClick: () => {
+					descriptor.onClick();
+				},
+				onContextMenu: descriptor.onContextMenu
+			});
+			button.classList.add('tdc-row1-action');
+			row1Container.insertBefore(button, overflowWrapper);
+			row1Buttons.set(key, button);
+		}
+
+		const overflowButton = createActionButton({
+			container: overflowWrapper,
+			iconKey: 'more',
+			cssClass: 'tdc-btn-overflow',
+			ariaLabel: 'More actions',
+			faded: false,
+			onClick: () => {
+				return;
+			}
+		});
+		overflowButton.classList.add('tdc-overflow-trigger');
+
+		const getVisibleActionKeys = (): Set<IssueActionKey> => {
+			const visible = new Set<IssueActionKey>();
+			for (const [key, button] of row1Buttons) {
+				if (!button.classList.contains('tdc-row1-hidden-width')) {
+					visible.add(key);
+				}
+			}
+			const isCardCollapsed = container.classList.contains('tdc-collapsed');
+			if (!isCardCollapsed) {
+				for (const row2Key of getRow2VisibleActionKeys()) {
+					visible.add(row2Key);
+				}
+			}
+			return visible;
+		};
+
+		const disposeOverflowMenuPanel = createOverflowMenuPanel({
+			overflowButton,
+			dashboard,
+			actions,
+			layout,
+			getVisibleActionKeys
+		});
+
+		const headerRenderChild = new MarkdownRenderChild(header);
+		headerRenderChild.register(() => {
+			disposeOverflowMenuPanel();
+		});
+		ctx.addChild(headerRenderChild);
+
+		const applyRow1PriorityLayout = (): void => {
+			if (header.classList.contains('tdc-issue-header-hover')) {
+				for (const button of row1Buttons.values()) {
+					button.classList.remove('tdc-row1-hidden-width');
+				}
+				return;
+			}
+
+			for (const button of row1Buttons.values()) {
+				button.classList.remove('tdc-row1-hidden-width');
+			}
+
+			const orderedVisibleKeys = layout.row1.filter((key) => row1Buttons.has(key));
+			for (const key of [...orderedVisibleKeys].reverse()) {
+				const titleIsTruncated = link.scrollWidth > link.clientWidth;
+				if (!titleIsTruncated) {
+					break;
+				}
+				const actionButton = row1Buttons.get(key);
+				if (actionButton === undefined) {
+					continue;
+				}
+				actionButton.classList.add('tdc-row1-hidden-width');
+			}
+		};
+
+		header.addEventListener('mouseenter', () => {
+			header.classList.add('tdc-issue-header-hover');
+			link.style.minWidth = `${HEADER_HOVER_TITLE_MIN_WIDTH}px`;
+			applyRow1PriorityLayout();
+		});
+
+		header.addEventListener('mouseleave', () => {
+			header.classList.remove('tdc-issue-header-hover');
+			link.style.removeProperty('min-width');
+			applyRow1PriorityLayout();
+		});
+
+		window.setTimeout(applyRow1PriorityLayout, 0);
+
+		return getVisibleActionKeys();
 	};
 
 	const renderProgressBar = (
@@ -419,123 +1443,37 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 	};
 
-	const renderButtons = (
+	const renderRow2Buttons = (
 		container: HTMLElement,
-		params: ControlParams,
-		dashboard: DashboardConfig
-	): void => {
-		const isArchived = /\/Issues\/Archive(\/|$)/i.test(params.path);
-		const archiveLabel = isArchived ? 'Unarchive' : 'Archive';
+		actions: Map<IssueActionKey, IssueActionDescriptor>,
+		layout: RuntimeIssueActionLayout
+	): Set<IssueActionKey> => {
 		const buttonContainer = container.createDiv({ cls: 'tdc-btn-group' });
+		const row2Visible = new Set<IssueActionKey>();
 
-		const moveButtons: IconButtonConfig[] = [
-			{
-				cls: 'tdc-btn tdc-btn-move',
-				ariaLabel: 'Move up',
-				icon: ICONS.up,
-				onClick: () => {
-					void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
-				}
-			},
-			{
-				cls: 'tdc-btn tdc-btn-move',
-				ariaLabel: 'Move down',
-				icon: ICONS.down,
-				onClick: () => {
-					void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
-				}
-			},
-			{
-				cls: 'tdc-btn tdc-btn-move',
-				ariaLabel: 'Move to top',
-				icon: ICONS.toTop,
-				onClick: () => {
-					void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'top');
-				}
-			},
-			{
-				cls: 'tdc-btn tdc-btn-move',
-				ariaLabel: 'Move to bottom',
-				icon: ICONS.toBottom,
-				onClick: () => {
-					void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'bottom');
-				}
+		for (const key of layout.row2) {
+			if (layout.hidden.includes(key)) {
+				continue;
 			}
-		];
-
-		for (const config of moveButtons) {
-			createIconButton(buttonContainer, config);
+			const descriptor = actions.get(key);
+			if (descriptor === undefined || !descriptor.shouldRender) {
+				continue;
+			}
+			createActionButton({
+				container: buttonContainer,
+				iconKey: descriptor.iconKey,
+				cssClass: descriptor.cssClass,
+				ariaLabel: descriptor.label,
+				faded: descriptor.faded,
+				onClick: () => {
+					descriptor.onClick();
+				},
+				onContextMenu: descriptor.onContextMenu
+			});
+			row2Visible.add(key);
 		}
 
-		createIconButton(buttonContainer, {
-			cls: 'tdc-btn tdc-btn-rename',
-			ariaLabel: 'Rename',
-			icon: ICONS.rename,
-			onClick: () => {
-				new RenameIssueModal(plugin.app, plugin, dashboard, params.issue, params.name).open();
-			}
-		});
-
-		createIconButton(buttonContainer, {
-			cls: 'tdc-btn tdc-btn-color',
-			ariaLabel: 'Header color',
-			icon: ICONS.palette,
-			onClick: () => {
-				const colorInput = document.createElement('input');
-				colorInput.type = 'color';
-				colorInput.style.position = 'absolute';
-				colorInput.style.opacity = '0';
-				colorInput.style.pointerEvents = 'none';
-				colorInput.value = plugin.settings.issueColors[params.issue] ?? ISSUE_SURFACE_COLOR_FALLBACK;
-				document.body.appendChild(colorInput);
-
-				const removeInput = (): void => {
-					colorInput.remove();
-				};
-
-				colorInput.addEventListener('input', () => {
-					applyIssueSurfaceStyles(container, colorInput.value);
-				});
-				colorInput.addEventListener(
-					'change',
-					() => {
-						plugin.settings.issueColors[params.issue] = colorInput.value;
-						void plugin.saveSettings();
-						applyIssueSurfaceStyles(container, colorInput.value);
-						removeInput();
-					},
-					{ once: true }
-				);
-				colorInput.addEventListener('blur', removeInput, { once: true });
-				colorInput.click();
-			}
-		});
-
-		createIconButton(buttonContainer, {
-			cls: 'tdc-btn tdc-btn-archive',
-			ariaLabel: archiveLabel,
-			title: archiveLabel,
-			icon: isArchived ? ICONS.unarchive : ICONS.archive,
-			onClick: () => {
-				if (isArchived) {
-					void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
-				} else {
-					void plugin.issueManager.archiveIssue(dashboard, params.issue);
-				}
-			}
-		});
-
-		createIconButton(buttonContainer, {
-			cls: 'tdc-btn tdc-btn-delete',
-			ariaLabel: 'Delete',
-			icon: ICONS.trash,
-			onClick: () => {
-				const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
-					void plugin.issueManager.deleteIssue(dashboard, params.issue);
-				});
-				modal.open();
-			}
-		});
+		return row2Visible;
 	};
 
 	const renderGitHubCardWithRefresh = async (
@@ -544,11 +1482,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		issueId?: string,
 		dashboard?: DashboardConfig
 	): Promise<void> => {
-		const onUnlink = (issueId !== undefined && dashboard !== undefined)
-			? (): void => {
-				void plugin.issueManager.removeGitHubLink(dashboard, issueId, githubUrl);
-			}
-			: undefined;
+		const onUnlink =
+			issueId !== undefined && dashboard !== undefined
+				? (): void => {
+						void plugin.issueManager.removeGitHubLink(dashboard, issueId, githubUrl);
+					}
+				: undefined;
 		const isRepo = isGitHubRepoUrl(githubUrl);
 
 		if (isRepo) {
@@ -626,12 +1565,24 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 		el.setAttribute('data-tdc-issue', params.issue);
 
-		renderHeader(container, params, dashboard);
+		const actionLayout = getIssueActionLayout(dashboard);
+		const issueActions = buildIssueActionDescriptors(container, params, dashboard);
+		let row2VisibleActionKeys = new Set<IssueActionKey>();
+
+		renderHeader(
+			container,
+			params,
+			dashboard,
+			issueActions,
+			actionLayout,
+			() => row2VisibleActionKeys,
+			_ctx
+		);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
 		const placeholderProgress: IssueProgress = { done: 0, total: 0, percentage: 0 };
 		renderProgressBar(controls, placeholderProgress, params.priority);
-		renderButtons(controls, params, dashboard);
+		row2VisibleActionKeys = renderRow2Buttons(controls, issueActions, actionLayout);
 		applyIssueSurfaceStyles(el, plugin.settings.issueColors[params.issue]);
 		window.setTimeout(() => {
 			applyIssueSurfaceStyles(el, plugin.settings.issueColors[params.issue]);
@@ -654,7 +1605,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			const cardContainers = params.githubLinks.map(() => container.createDiv());
 			await Promise.all(
 				params.githubLinks.map((githubUrl, index) =>
-					renderGitHubCardWithRefresh(cardContainers[index], githubUrl, params.issue, dashboard)
+					renderGitHubCardWithRefresh(
+						cardContainers[index],
+						githubUrl,
+						params.issue,
+						dashboard
+					)
 				)
 			);
 		}

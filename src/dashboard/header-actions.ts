@@ -25,6 +25,9 @@ export const ICONS = {
 	folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`,
 	terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
 	vscode: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>`,
+	eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>`,
+	eyeOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.76 10.76 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>`,
+	more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
 	fileInput: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h10"/><path d="M9 18l3-3-3-3"/></svg>`
 };
 
@@ -39,8 +42,8 @@ export function getButtonVisibility(dashboard: DashboardConfig): ButtonVisibilit
 	const showFolder = dashboard.showFolderButtons ?? true;
 	return {
 		folder: showFolder,
-		terminal: (dashboard.showTerminalButtons ?? true),
-		vscode: (dashboard.showVSCodeButtons ?? true),
+		terminal: dashboard.showTerminalButtons ?? true,
+		vscode: dashboard.showVSCodeButtons ?? true,
 		github: (dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled
 	};
 }
@@ -62,9 +65,10 @@ export function createActionButton(config: ActionButtonConfig): HTMLElement {
 		attr: { 'aria-label': config.ariaLabel }
 	});
 	const contextMenuHandler = config.onContextMenu;
-	button.innerHTML = config.labelText !== undefined
-		? ICONS[config.iconKey] + ' ' + config.labelText
-		: ICONS[config.iconKey];
+	button.innerHTML =
+		config.labelText !== undefined
+			? ICONS[config.iconKey] + ' ' + config.labelText
+			: ICONS[config.iconKey];
 	button.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -130,8 +134,8 @@ function renderFolderDependentActionButton(config: FolderDependentActionButtonCo
 		},
 		onContextMenu: shouldOpenFolderSelectorOnContextMenu
 			? () => {
-				config.onSelectFolder();
-			}
+					config.onSelectFolder();
+				}
 			: undefined
 	});
 }
@@ -243,7 +247,12 @@ export function renderIssueActionButtons(
 					if (url === undefined) {
 						return;
 					}
-					void plugin.issueManager.addGitHubLink(dashboard, params.issueId, url, metadata);
+					void plugin.issueManager.addGitHubLink(
+						dashboard,
+						params.issueId,
+						url,
+						metadata
+					);
 				}).open();
 			},
 			onContextMenu: () => {

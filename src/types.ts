@@ -4,6 +4,25 @@ export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-perc
 export type GitHubAuthMethod = 'none' | 'pat';
 export type GitHubDisplayMode = 'minimal' | 'compact' | 'full';
 export type GitHubSearchScope = 'linked' | 'my-repos' | 'all-github';
+export type IssueActionKey =
+	| 'folder'
+	| 'terminal'
+	| 'vscode'
+	| 'github'
+	| 'move-up'
+	| 'move-down'
+	| 'move-top'
+	| 'move-bottom'
+	| 'rename'
+	| 'color'
+	| 'archive'
+	| 'delete';
+
+export interface DashboardIssueActionLayout {
+	row1: IssueActionKey[];
+	row2: IssueActionKey[];
+	hidden: IssueActionKey[];
+}
 
 export interface GitHubAuth {
 	method: GitHubAuthMethod;
@@ -91,6 +110,7 @@ export interface DashboardConfig {
 	showFolderButtons?: boolean;
 	showTerminalButtons?: boolean;
 	showVSCodeButtons?: boolean;
+	issueActionLayout?: DashboardIssueActionLayout;
 }
 
 export interface TasksDashboardSettings {

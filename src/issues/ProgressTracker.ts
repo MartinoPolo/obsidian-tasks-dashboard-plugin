@@ -42,11 +42,14 @@ const countTasks = (content: string): IssueProgress => {
 	return {
 		done,
 		total,
-		percentage: calculatePercentage(done, total),
+		percentage: calculatePercentage(done, total)
 	};
 };
 
-const isCacheEntryFresh = (entry: ProgressCacheEntry | undefined, now: number): entry is ProgressCacheEntry => {
+const isCacheEntryFresh = (
+	entry: ProgressCacheEntry | undefined,
+	now: number
+): entry is ProgressCacheEntry => {
 	if (entry === undefined) {
 		return false;
 	}

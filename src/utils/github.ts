@@ -5,7 +5,10 @@ export interface ParsedGitHubUrlInfo {
 	number: number;
 }
 
-const PARSED_GITHUB_URL_TYPE_TO_INFO_TYPE: Record<ParsedGitHubUrl['type'], ParsedGitHubUrlInfo['type']> = {
+const PARSED_GITHUB_URL_TYPE_TO_INFO_TYPE: Record<
+	ParsedGitHubUrl['type'],
+	ParsedGitHubUrlInfo['type']
+> = {
 	issues: 'issue',
 	pull: 'pr'
 };

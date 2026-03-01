@@ -45,10 +45,7 @@ const createPromptButton = (
 	return buttonEl;
 };
 
-const bindEnterKeyHandler = (
-	inputEl: HTMLInputElement,
-	onEnter: () => void
-): void => {
+const bindEnterKeyHandler = (inputEl: HTMLInputElement, onEnter: () => void): void => {
 	inputEl.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.key !== 'Enter') {
 			return;

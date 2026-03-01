@@ -153,7 +153,11 @@
 	margin-bottom: 4px;
 	background: var(--background-primary-alt);
 	border-radius: 0 var(--tdc-border-radius) var(--tdc-border-radius) 0;
-	overflow: hidden;
+	overflow: visible;
+}
+
+.tdc-collapsed .tdc-issue-header {
+	margin-bottom: 0;
 }
 
 .tdc-issue-header.priority-low {
@@ -172,11 +176,13 @@
 	border-left-color: var(--tdc-priority-top);
 }
 
-.tdc-issue-header a {
+.tdc-issue-header a,
+.tdc-header-link {
 	font-size: 1.25em;
 	font-weight: 600;
 	color: var(--text-normal);
 	text-decoration: none;
+	flex: 1;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -191,6 +197,158 @@
 	display: flex;
 	gap: 4px;
 	flex-shrink: 0;
+	align-items: center;
+	position: relative;
+}
+
+.tdc-row1-hidden-width {
+	display: none !important;
+}
+
+.tdc-issue-header-hover {
+	overflow: visible;
+	scrollbar-width: thin;
+}
+
+.tdc-overflow-wrapper {
+	position: relative;
+	flex-shrink: 0;
+	z-index: 100;
+}
+
+.tdc-overflow-panel {
+	position: absolute;
+	right: 0;
+	top: calc(100% + 4px);
+	z-index: 10000;
+	min-width: 280px;
+	padding: 8px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	box-shadow: var(--shadow-s);
+	max-height: calc(100vh - 16px);
+	overflow-y: auto;
+	overflow-x: visible;
+}
+
+.tdc-overflow-panel.tdc-overflow-panel-portal {
+	position: fixed;
+	right: auto;
+	top: 0;
+	left: 0;
+	z-index: 10000;
+}
+
+.tdc-overflow-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.tdc-overflow-item {
+	justify-content: flex-start;
+	width: 100%;
+	padding: 6px 8px;
+	gap: 8px;
+}
+
+.tdc-overflow-empty {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	padding: 4px 2px;
+}
+
+.tdc-overflow-settings-toggle,
+.tdc-overflow-settings-save {
+	width: 100%;
+	padding: 6px 8px;
+}
+
+.tdc-overflow-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.tdc-overflow-settings-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tdc-overflow-settings-divider {
+	height: 1px;
+	background: var(--background-modifier-border);
+	margin: 2px 0;
+}
+
+.tdc-overflow-settings-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 8px;
+	align-items: center;
+}
+
+.tdc-overflow-settings-action-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.tdc-overflow-settings-row-hidden .tdc-overflow-settings-action-info {
+	color: var(--text-muted);
+	opacity: 0.5;
+}
+
+.tdc-overflow-settings-row-hidden .tdc-overflow-settings-item-icon {
+	opacity: 0.5;
+}
+
+.tdc-overflow-settings-action-info > span:last-child {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tdc-overflow-settings-item-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--tdc-btn-square-size);
+	height: var(--tdc-btn-square-size);
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.tdc-overflow-settings-item-icon svg {
+	width: var(--tdc-btn-icon-size);
+	height: var(--tdc-btn-icon-size);
+}
+
+.tdc-overflow-settings-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.tdc-overflow-settings-visibility,
+.tdc-overflow-settings-move {
+	width: var(--tdc-btn-square-size);
+	height: var(--tdc-btn-square-size);
+	padding: 0;
+}
+
+.tdc-overflow-settings-move {
+	font-size: 1em;
+}
+
+.tdc-overflow-settings-footer {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
 }
 
 .tdc-issue-header a:hover {
@@ -325,9 +483,10 @@
 }
 
 .tdc-btn-action-secondary:hover {
-	background: var(--background-modifier-border);
+	background: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
 	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .tdc-btn-action-secondary.tdc-btn-faded {

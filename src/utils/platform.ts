@@ -19,7 +19,10 @@ interface FolderDialogResult {
 }
 
 interface RemoteDialogApi {
-	showOpenDialog: (options: { properties: string[]; defaultPath?: string }) => Promise<FolderDialogResult>;
+	showOpenDialog: (options: {
+		properties: string[];
+		defaultPath?: string;
+	}) => Promise<FolderDialogResult>;
 }
 
 export interface PlatformService {
@@ -41,7 +44,10 @@ export function createPlatformService(): PlatformService {
 		return loadedModule;
 	};
 
-	const getRequiredFunction = (moduleValue: unknown, functionName: string): ((...args: unknown[]) => unknown) => {
+	const getRequiredFunction = (
+		moduleValue: unknown,
+		functionName: string
+	): ((...args: unknown[]) => unknown) => {
 		if (!isObjectRecord(moduleValue)) {
 			throw new Error('Invalid module value');
 		}
@@ -116,7 +122,11 @@ export function createPlatformService(): PlatformService {
 		const childProcessModule = loadModule('child_process');
 		const spawnFunction = getRequiredFunction(childProcessModule, 'spawn');
 
-		return (command: string, args?: string[], options?: Record<string, unknown>): ChildProcessApi => {
+		return (
+			command: string,
+			args?: string[],
+			options?: Record<string, unknown>
+		): ChildProcessApi => {
 			const spawnedProcess = spawnFunction(command, args, options);
 			return toChildProcessApi(spawnedProcess);
 		};
@@ -155,7 +165,10 @@ export function createPlatformService(): PlatformService {
 
 		const showOpenDialogFunction = getRequiredFunction(dialogCandidate, 'showOpenDialog');
 		return {
-			showOpenDialog: async (options: { properties: string[]; defaultPath?: string }): Promise<FolderDialogResult> => {
+			showOpenDialog: async (options: {
+				properties: string[];
+				defaultPath?: string;
+			}): Promise<FolderDialogResult> => {
 				const dialogResult = await showOpenDialogFunction(options);
 				if (!isFolderDialogResult(dialogResult)) {
 					throw new Error('Invalid folder dialog result');
@@ -191,9 +204,16 @@ export function createPlatformService(): PlatformService {
 				'Could not open Windows Terminal — is it installed?'
 			);
 		} else if (Platform.isMacOS) {
-			notifyOnSpawnError(spawn('open', ['-a', 'Terminal', folderPath], { shell: false }), 'Could not open Terminal');
+			notifyOnSpawnError(
+				spawn('open', ['-a', 'Terminal', folderPath], { shell: false }),
+				'Could not open Terminal'
+			);
 		} else {
-			const terminalProcess = spawn('x-terminal-emulator', ['--working-directory', folderPath], { shell: false });
+			const terminalProcess = spawn(
+				'x-terminal-emulator',
+				['--working-directory', folderPath],
+				{ shell: false }
+			);
 			terminalProcess.on('error', () => {
 				// Fallback to xterm if x-terminal-emulator is not available
 				notifyOnSpawnError(
@@ -206,7 +226,12 @@ export function createPlatformService(): PlatformService {
 
 	const openVSCode = (folderPath: string): void => {
 		const spawn = getSpawn();
-		const child = spawn('code', [folderPath], { shell: process.platform === 'win32', cwd: folderPath, detached: true, stdio: 'ignore' });
+		const child = spawn('code', [folderPath], {
+			shell: process.platform === 'win32',
+			cwd: folderPath,
+			detached: true,
+			stdio: 'ignore'
+		});
 		child.unref();
 		notifyOnSpawnError(child, 'Could not open VS Code — is it installed and in PATH?');
 	};

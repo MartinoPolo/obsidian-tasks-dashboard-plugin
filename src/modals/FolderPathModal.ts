@@ -63,7 +63,10 @@ export class FolderPathModal extends Modal {
 		this.close();
 	}
 
-	private createInput(contentEl: HTMLElement, currentValue: string | undefined): HTMLInputElement {
+	private createInput(
+		contentEl: HTMLElement,
+		currentValue: string | undefined
+	): HTMLInputElement {
 		const input = contentEl.createEl('input', {
 			type: 'text',
 			cls: 'tdc-prompt-input',
@@ -104,7 +107,9 @@ export class FolderPathModal extends Modal {
 
 		const platformService = createPlatformService();
 		const inputValue = this.input.value.trim();
-		const folderPath = await platformService.pickFolder(inputValue !== '' ? inputValue : undefined);
+		const folderPath = await platformService.pickFolder(
+			inputValue !== '' ? inputValue : undefined
+		);
 		if (folderPath !== undefined) {
 			this.input.value = folderPath;
 			this.input.focus();

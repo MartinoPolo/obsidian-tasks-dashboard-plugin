@@ -89,6 +89,10 @@ const escapeRegExp = (value: string): string => {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
+const removeLegacyIssueSeparator = (issueBlock: string): string => {
+	return issueBlock.replace(/\n---\n(?=%% ISSUE:[\w-]+:END %%)/g, '\n');
+};
+
 const buildIssueMarkdownBlock = (params: IssueBlockParams): string => {
 	const relativePath = buildIssueRelativePath(params.id, params.isArchived);
 	const githubLines = params.githubLinks.map((url) => `github_link: ${url}\n`).join('');
@@ -111,7 +115,6 @@ hide task count
 hide tags
 show tree
 \`\`\`
----
 ${buildIssueMarkerEnd(params.id)}`;
 };
 
@@ -354,12 +357,14 @@ export function createDashboardWriter(
 
 		const fromPath = `${ISSUE_SECTION_ROOT}/${pathFromFolder}`;
 		const toPath = `${ISSUE_SECTION_ROOT}/${pathToFolder}`;
-		const updatedBlock = result.block.replace(new RegExp(escapeRegExp(fromPath), 'g'), toPath);
+		const updatedBlock = removeLegacyIssueSeparator(
+			result.block.replace(new RegExp(escapeRegExp(fromPath), 'g'), toPath)
+		);
 
 		const inserted = insertBeforeMarker(
 			result.cleanedContent,
 			targetSectionEndMarker,
-			`${updatedBlock}\n---\n`
+			`${updatedBlock}\n`
 		);
 		if (inserted === undefined) {
 			return;
@@ -417,9 +422,9 @@ export function createDashboardWriter(
 		const activeStart = activeStartIndex + MARKERS.ACTIVE_START.length;
 		const beforeActive = content.slice(0, activeStart);
 		const afterActive = content.slice(activeEndIndex);
-		const cleanedBlocks = sortedIssueBlocks.map((block) => block.trim());
-		const newActiveSection =
-			'\n' + buildSortBlock(dashboard.id) + cleanedBlocks.join('\n\n') + '\n';
+		const cleanedBlocks = sortedIssueBlocks.map((block) => removeLegacyIssueSeparator(block).trim());
+		const blocksSection = cleanedBlocks.length > 0 ? `${cleanedBlocks.join('\n')}\n` : '';
+		const newActiveSection = `\n${buildSortBlock(dashboard.id)}${blocksSection}`;
 
 		await app.vault.modify(file, beforeActive + newActiveSection + afterActive);
 		new Notice(noticeMessage);

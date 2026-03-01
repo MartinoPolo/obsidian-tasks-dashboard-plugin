@@ -4,13 +4,19 @@ import type { DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/issue-creation-modal';
 import { NoteImportModal } from '../modals/note-import-modal';
 import { parseDashboard } from './DashboardParser';
-import { ICONS, renderGlobalActionButtons } from './header-actions';
+import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
 
 type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
 type SortOption = { label: string; action: () => void };
+interface DashboardActionConfig {
+	iconKey: keyof typeof ICONS;
+	label: string;
+	cssClass: string;
+	onClick: () => void;
+}
 
-const ACTION_BUTTON_CLASS = 'tdc-btn tdc-btn-action';
-const SECONDARY_ACTION_BUTTON_CLASS = 'tdc-btn tdc-btn-action tdc-btn-action-secondary';
+const PRIMARY_ACTION_BUTTON_CLASS = 'tdc-btn-action';
+const SECONDARY_ACTION_BUTTON_CLASS = 'tdc-btn-action tdc-btn-action-secondary';
 
 function setIssueCollapsedState(
 	plugin: TasksDashboardPlugin,
@@ -33,20 +39,26 @@ function findDashboardElement(element: HTMLElement): Element | null {
 	);
 }
 
-function createActionButton(
+function renderDashboardActionButtons(
 	container: HTMLElement,
-	icon: string,
-	label: string,
-	onClick: () => void,
-	cls = ACTION_BUTTON_CLASS
-): HTMLButtonElement {
-	const button = container.createEl('button', { cls });
-	button.innerHTML = `${icon} ${label}`;
-	button.addEventListener('click', (event) => {
-		event.preventDefault();
-		onClick();
-	});
-	return button;
+	actions: DashboardActionConfig[]
+): HTMLButtonElement[] {
+	const renderedButtons: HTMLButtonElement[] = [];
+	for (const action of actions) {
+		const button = createActionButton({
+			container,
+			iconKey: action.iconKey,
+			cssClass: action.cssClass,
+			ariaLabel: action.label,
+			faded: false,
+			labelText: action.label,
+			onClick: () => {
+				action.onClick();
+			}
+		});
+		renderedButtons.push(button as HTMLButtonElement);
+	}
+	return renderedButtons;
 }
 
 async function getActiveIssueIds(
@@ -114,22 +126,37 @@ export function renderSortControls(
 	el.empty();
 	const container = el.createDiv({ cls: 'tdc-sort-container' });
 
-	createActionButton(container, ICONS.plus, 'Add Issue', () => {
-		new NamePromptModal(plugin.app, plugin, dashboard).open();
-	});
-
-	createActionButton(container, ICONS.fileInput, 'Import Note', () => {
-		new NoteImportModal(plugin.app, plugin, dashboard).open();
-	});
+	renderDashboardActionButtons(container, [
+		{
+			iconKey: 'plus',
+			label: 'Add Issue',
+			cssClass: PRIMARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				new NamePromptModal(plugin.app, plugin, dashboard).open();
+			}
+		},
+		{
+			iconKey: 'fileInput',
+			label: 'Import Note',
+			cssClass: PRIMARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				new NoteImportModal(plugin.app, plugin, dashboard).open();
+			}
+		}
+	]);
 
 	const sortWrapper = container.createDiv({ cls: 'tdc-sort-wrapper' });
-	const sortButton = createActionButton(sortWrapper, ICONS.sort, 'Sort', () => {
-		if (dropdownOpen) {
-			closeSortDropdown();
-			return;
+	const sortButton = createActionButton({
+		container: sortWrapper,
+		iconKey: 'sort',
+		cssClass: PRIMARY_ACTION_BUTTON_CLASS,
+		ariaLabel: 'Sort',
+		faded: false,
+		labelText: 'Sort',
+		onClick: () => {
+			toggleSortDropdown();
 		}
-		openSortDropdown();
-	});
+	}) as HTMLButtonElement;
 	sortButton.addEventListener('click', (event) => {
 		event.stopPropagation();
 	});
@@ -213,10 +240,6 @@ export function renderSortControls(
 		});
 	}
 
-	sortButton.addEventListener('click', () => {
-		toggleSortDropdown();
-	});
-
 	const closeSortDropdownOnClick = (event: MouseEvent): void => {
 		const { target } = event;
 		if (!(target instanceof Node)) {
@@ -231,25 +254,32 @@ export function renderSortControls(
 
 	document.addEventListener('click', closeSortDropdownOnClick);
 
-	createActionButton(
-		container,
-		ICONS.foldAll,
-		'Collapse All',
-		() => {
-		toggleAllIssues(true, plugin, dashboard, el, setIssueCollapsed);
+	renderDashboardActionButtons(container, [
+		{
+			iconKey: 'foldAll',
+			label: 'Collapse All',
+			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				toggleAllIssues(true, plugin, dashboard, el, setIssueCollapsed);
+			}
 		},
-		SECONDARY_ACTION_BUTTON_CLASS
-	);
-
-	createActionButton(
-		container,
-		ICONS.unfoldAll,
-		'Expand All',
-		() => {
-		toggleAllIssues(false, plugin, dashboard, el, setIssueCollapsed);
+		{
+			iconKey: 'unfoldAll',
+			label: 'Expand All',
+			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				toggleAllIssues(false, plugin, dashboard, el, setIssueCollapsed);
+			}
 		},
-		SECONDARY_ACTION_BUTTON_CLASS
-	);
+		{
+			iconKey: 'sort',
+			label: 'Rebuild',
+			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
+			}
+		}
+	]);
 
 	renderGlobalActionButtons(container, dashboard, plugin);
 

@@ -237,16 +237,14 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.addDropdown((dropdown) => {
 				addDropdownOptions(dropdown, PROGRESS_DISPLAY_OPTIONS);
 
-				dropdown
-					.setValue(this.plugin.settings.progressDisplayMode)
-					.onChange((value) => {
-						if (!isProgressDisplayMode(value)) {
-							return;
-						}
+				dropdown.setValue(this.plugin.settings.progressDisplayMode).onChange((value) => {
+					if (!isProgressDisplayMode(value)) {
+						return;
+					}
 
-						this.plugin.settings.progressDisplayMode = value;
-						this.saveSettingsAndRefreshDashboard();
-					});
+					this.plugin.settings.progressDisplayMode = value;
+					this.saveSettingsAndRefreshDashboard();
+				});
 			});
 
 		this.renderGitHubSettings(containerEl);
@@ -379,8 +377,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			tokenSetting.addText((text) => {
 				text.inputEl.type = 'password';
 				text.inputEl.addClass('tdc-token-input');
-				text
-					.setPlaceholder('ghp_xxxxxxxxxxxx')
+				text.setPlaceholder('ghp_xxxxxxxxxxxx')
 					.setValue(this.plugin.settings.githubAuth.token ?? '')
 					.onChange((value) => {
 						this.plugin.settings.githubAuth.token = value;
@@ -413,16 +410,14 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.addDropdown((dropdown) => {
 				addDropdownOptions(dropdown, GITHUB_DISPLAY_MODE_OPTIONS);
 
-				dropdown
-					.setValue(this.plugin.settings.githubDisplayMode)
-					.onChange((value) => {
-						if (!isGitHubDisplayMode(value)) {
-							return;
-						}
+				dropdown.setValue(this.plugin.settings.githubDisplayMode).onChange((value) => {
+					if (!isGitHubDisplayMode(value)) {
+						return;
+					}
 
-						this.plugin.settings.githubDisplayMode = value;
-						this.saveSettingsAndRefreshDashboard();
-					});
+					this.plugin.settings.githubDisplayMode = value;
+					this.saveSettingsAndRefreshDashboard();
+				});
 			});
 	}
 
@@ -488,12 +483,16 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	}
 
 	private isDashboardSettingsCollapsed(dashboard: DashboardConfig): boolean {
-		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(
+			this.plugin.settings
+		);
 		return collapsedDashboardSettings[dashboard.id] === true;
 	}
 
 	private setDashboardSettingsCollapsed(dashboard: DashboardConfig, collapsed: boolean): void {
-		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(
+			this.plugin.settings
+		);
 		if (collapsed) {
 			collapsedDashboardSettings[dashboard.id] = true;
 		} else {
@@ -510,7 +509,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		const dashboardContainer = containerEl.createDiv({ cls: 'tdc-dashboard-config' });
 		const displayName = getDashboardDisplayName(dashboard);
 		const isCollapsed = this.isDashboardSettingsCollapsed(dashboard);
-		const dashboardHeader = dashboardContainer.createDiv({ cls: 'tdc-dashboard-config-header' });
+		const dashboardHeader = dashboardContainer.createDiv({
+			cls: 'tdc-dashboard-config-header'
+		});
 		const collapseToggle = dashboardHeader.createEl('button', {
 			cls: `tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
 			attr: {
@@ -620,7 +621,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		const updateDashboardButton = (): void => {
 			const currentFilename = getDashboardFilename(dashboard);
 			const currentPath =
-				dashboard.rootPath !== '' ? buildVaultPath(dashboard.rootPath, currentFilename) : '';
+				dashboard.rootPath !== ''
+					? buildVaultPath(dashboard.rootPath, currentFilename)
+					: '';
 			const exists =
 				currentPath !== '' && this.app.vault.getAbstractFileByPath(currentPath) !== null;
 
@@ -701,16 +704,12 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setWarning()
 					.onClick(() => {
 						const displayName = getDashboardDisplayName(dashboard);
-						new DashboardDeleteConfirmationModal(
-							this.app,
-							displayName,
-							(result) => {
-								if (!result.confirmed) {
-									return;
-								}
-								void this.deleteDashboard(dashboard, index, result.deleteFiles);
+						new DashboardDeleteConfirmationModal(this.app, displayName, (result) => {
+							if (!result.confirmed) {
+								return;
 							}
-						).open();
+							void this.deleteDashboard(dashboard, index, result.deleteFiles);
+						}).open();
 					})
 			);
 	}
@@ -734,7 +733,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			}
 		}
 
-		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(
+			this.plugin.settings
+		);
 		delete collapsedDashboardSettings[dashboard.id];
 
 		if (deleteFiles) {

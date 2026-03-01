@@ -11,7 +11,11 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	private readonly onResult: (result: DashboardDeleteResult) => void;
 	private deleteFiles = false;
 
-	constructor(app: App, dashboardName: string, onResult: (result: DashboardDeleteResult) => void) {
+	constructor(
+		app: App,
+		dashboardName: string,
+		onResult: (result: DashboardDeleteResult) => void
+	) {
 		super(app);
 		this.dashboardName = dashboardName;
 		this.onResult = onResult;

@@ -74,7 +74,10 @@ const sanitizeLoadedSettings = (loaded: unknown): Partial<TasksDashboardSettings
 	if ('collapsedIssues' in sanitized && !isRecord(sanitized.collapsedIssues)) {
 		delete sanitized.collapsedIssues;
 	}
-	if ('collapsedDashboardSettings' in sanitized && !isRecord(sanitized.collapsedDashboardSettings)) {
+	if (
+		'collapsedDashboardSettings' in sanitized &&
+		!isRecord(sanitized.collapsedDashboardSettings)
+	) {
 		delete sanitized.collapsedDashboardSettings;
 	}
 	if ('issueColors' in sanitized && !isRecord(sanitized.issueColors)) {
@@ -209,7 +212,9 @@ export default class TasksDashboardPlugin extends Plugin {
 				}
 			});
 
-			ctx.addChild(new ReactiveRenderChild(el, source, ctx, this, (s, e, c) => render(s, e, c)));
+			ctx.addChild(
+				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) => render(s, e, c))
+			);
 		});
 	}
 

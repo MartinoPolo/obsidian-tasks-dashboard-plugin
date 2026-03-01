@@ -67,18 +67,21 @@ The dashboard has four sections:
 - **Add Issue**: Opens the issue creation flow
 - **Sort**: Organizes all issues by priority (or date created/edited)
 - **Collapse/Expand All**: Toggle visibility of all issue details
-- **Rebuild**: Refresh dashboard from issue files
+- **Rebuild**: Refresh dashboard from issue files directly from dashboard controls
 
 ### Issue Controls
 Each issue entry includes:
 - Link to the issue note with priority-colored left border
 - Progress indicator (configurable display mode)
 - Collapse/expand toggle for issue details
-- ↑ ↓ buttons to reorder, move to top/bottom
-- Archive button and delete button (with confirmation)
-- Per-issue color picker, rename, GitHub quick-open
-- Folder/terminal/VS Code buttons (when folder assigned)
+- Header Row 1 actions with always-visible 3-dots overflow for hidden actions
+- Dashboard-wide action layout settings (Row 1 / Row 2, show/hide, persisted per dashboard)
+- ↑ ↓ buttons to reorder, with right-click shortcuts for move to top/bottom
+- Archive icon (move to Archive) and delete button (with confirmation)
+- Rename, color, GitHub quick-open, and folder-link actions
+- Terminal/VS Code actions when issue folder is assigned (or when folder button is hidden)
 - Embedded tasks query
+
 ### Issue Notes
 Created issues contain:
 - YAML frontmatter (created date, status, priority)
@@ -86,6 +89,8 @@ Created issues contain:
 - Issue title
 - GitHub link (if provided)
 - Blank task ready for input
+
+The **How to Use This Dashboard** section is optional and can be removed.
 
 **Auto-cursor**: When you open any active issue file, the cursor automatically positions at the end of the ## Tasks section for quick task entry.
 ### Managing Issues

@@ -76,10 +76,8 @@ export class NamePromptModal extends Modal {
 
 	onOpen() {
 		setupPromptModal(this, 'Issue Name');
-		this.input = createInputWithEnterHandler(
-			this.contentEl,
-			'Enter issue name...',
-			() => this.confirm()
+		this.input = createInputWithEnterHandler(this.contentEl, 'Enter issue name...', () =>
+			this.confirm()
 		);
 		createConfirmCancelButtons(
 			this.contentEl,

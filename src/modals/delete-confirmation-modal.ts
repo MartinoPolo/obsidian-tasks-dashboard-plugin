@@ -17,12 +17,22 @@ export class DeleteConfirmationModal extends Modal {
 		this.renderMessage();
 
 		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
-		this.createButton(btnContainer, 'tdc-prompt-btn tdc-prompt-btn-cancel', 'Cancel <kbd>Esc</kbd>', () => {
-			this.close();
-		});
-		this.createButton(btnContainer, 'tdc-prompt-btn tdc-prompt-btn-delete', 'Delete <kbd>↵</kbd>', () => {
-			this.confirmDelete();
-		});
+		this.createButton(
+			btnContainer,
+			'tdc-prompt-btn tdc-prompt-btn-cancel',
+			'Cancel <kbd>Esc</kbd>',
+			() => {
+				this.close();
+			}
+		);
+		this.createButton(
+			btnContainer,
+			'tdc-prompt-btn tdc-prompt-btn-delete',
+			'Delete <kbd>↵</kbd>',
+			() => {
+				this.confirmDelete();
+			}
+		);
 
 		this.registerEnterKeyConfirmation();
 	}
@@ -38,7 +48,12 @@ export class DeleteConfirmationModal extends Modal {
 		});
 	}
 
-	private createButton(containerEl: HTMLElement, className: string, labelHtml: string, onClick: () => void) {
+	private createButton(
+		containerEl: HTMLElement,
+		className: string,
+		labelHtml: string,
+		onClick: () => void
+	) {
 		const button = containerEl.createEl('button', {
 			cls: className
 		});
