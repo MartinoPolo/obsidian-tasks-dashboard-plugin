@@ -15,7 +15,10 @@
 - [x] All prompts appear at top of screen (same position as Quick Switcher)
 - [x] Step 1: Prompt for name (text input, Enter to confirm, Confirm/Cancel buttons with key hints)
 - [x] Step 2: Prompt for priority (list with ↑↓ navigation, Medium properly preselected, sorted: low/medium/high/top)
-- [x] Step 3: Prompt for GitHub link (optional, Enter to confirm issue creation)
+- [x] Step 3: GitHub linking flow (optional)
+  - if GitHub is enabled and authenticated: choose link type (Issue/PR, Repository, or Skip)
+  - if GitHub is enabled but not authenticated: prompt for optional pasted GitHub URL
+  - if GitHub is disabled for the dashboard: skip GitHub step
 - [x] After creation: Open issue file with cursor at end (ready to type tasks)
 
 ## Active Issue File Behavior
@@ -25,7 +28,7 @@
 ## Issue Note Format
 
 - [x] YAML frontmatter with: created datetime, status (active/archived), priority
-- [x] Back link to dashboard (`← Back to [dashboard]`)
+- [x] Back link to dashboard (`← Back to Dashboard`) with relative path to configured dashboard file
 - [x] Header with issue name
 - [x] GitHub link (if provided) as clickable link
 - [x] Blank task `- [ ] ` at end (no placeholder text)
@@ -53,7 +56,7 @@
 - [x] Sort by Priority button
 - [x] Sort by date created/edited (newest/oldest)
 - [x] Collapse/expand all issues button
-- [x] Rebuild dashboard button (refreshes from files + GitHub cards)
+- [x] Rebuild dashboard action in settings (reconstructs from files + refreshes GitHub cards)
 
 ### Per-Issue Controls
 
@@ -63,7 +66,7 @@
 - [x] Move up/down buttons (arrow icons)
 - [x] Move to top/bottom buttons
 - [x] Collapse/expand toggle per issue (state persisted)
-- [x] Rename button with modal (migrates state: collapsed, colors, folders)
+- [x] Rename button with modal (migrates state: collapsed, colors)
 - [x] Per-issue color picker (native `<input type="color">`, persisted to `issueColors`)
 - [x] GitHub quick-open button (opens linked URL, faded when no link — click prompts to add)
 - [x] Folder/terminal/VS Code buttons (per-issue, independent from global)
@@ -116,37 +119,12 @@
 - [x] Right-click folder button: opens FolderPathModal to reassign/clear (when folder set)
 - [x] Faded folder button indicates no folder assigned
 - [x] Terminal button hidden when no folder assigned (not faded)
-- [x] Terminal opens PowerShell on Windows, default terminal on Mac/Linux
+- [x] Terminal opens Windows Terminal on Windows, Terminal.app on Mac, and default terminal emulator on Linux
 - [x] VS Code button opens folder in VS Code (uses `code` CLI, cross-platform)
 - [x] VS Code button hidden when no folder assigned (same visibility as terminal)
 - [x] VS Code button styled with brand color (#007ACC)
 - [x] Per-dashboard toggle for folder/terminal button visibility
 - [x] Issue folder assignment is independent — does not affect other issues or global
-
-## Code Hardening
-
-- [ ] Fix command injection in platform.ts — replace exec() with spawn() + shell:false
-- [ ] Fix prototype pollution in YAML frontmatter parser
-- [ ] Tighten GitHub URL validation with protocol check
-- [ ] Parallelize GitHub card rendering (Promise.all)
-- [ ] Parallelize file reads during sort operations
-- [ ] Fix memory leak — dropdown event listener accumulation
-- [ ] Async progress bar rendering with placeholder
-- [ ] LRU cache with size cap for GitHub API cache
-- [ ] Debounce vault modify event handler
-- [ ] Add TFile type guards on getAbstractFileByPath calls
-- [ ] Typed error propagation from GitHub API
-- [ ] Operation locking for archive/unarchive race conditions
-- [ ] Error handling for spawn() failures with user notice
-- [ ] Validate loadData() shape before type assertion
-- [ ] Handle swallowed promise rejections in render
-- [ ] Try/catch in plugin onload() with user notice
-- [ ] Replace deprecated electron.remote
-- [ ] Split addGitHubLink (167 lines) into sub-functions
-- [ ] Split rebuildDashboardFromFiles (123 lines) into sub-functions
-- [ ] Unify duplicate sortByCreatedDate/sortByEditedDate logic
-- [ ] Extract magic numbers to named constants
-- [ ] Minor convention fixes (forEach→for...of, substr→substring, exec loop→matchAll)
 
 ## Code Quality
 
@@ -154,8 +132,3 @@
 - [x] TypeScript with proper types
 - [x] Modular architecture with separate services
 
-## Documentation
-
-- [x] requirements.md with checklist
-- [x] README.md with installation and usage instructions
-- [x] ideas.md with future tasks and improvements
