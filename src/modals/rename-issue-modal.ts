@@ -12,7 +12,7 @@ export class RenameIssueModal extends Modal {
 	private dashboard: DashboardConfig;
 	private issueId: string;
 	private currentName: string;
-	private input!: HTMLInputElement;
+	private input: HTMLInputElement | undefined;
 
 	constructor(
 		app: App,
@@ -30,13 +30,14 @@ export class RenameIssueModal extends Modal {
 
 	onOpen() {
 		setupPromptModal(this, 'Rename Issue');
-		this.input = createInputWithEnterHandler(
+		const input = createInputWithEnterHandler(
 			this.contentEl,
 			'Enter new name...',
 			() => void this.confirm()
 		);
-		this.input.value = this.currentName;
-		this.input.select();
+		input.value = this.currentName;
+		input.select();
+		this.input = input;
 		createConfirmCancelButtons(
 			this.contentEl,
 			'Rename',
@@ -45,26 +46,39 @@ export class RenameIssueModal extends Modal {
 		);
 	}
 
+	private getInput(): HTMLInputElement | undefined {
+		return this.input;
+	}
+
 	private async confirm() {
-		const value = this.input.value.trim();
-		if (value === '') {
-			this.input.addClass('tdc-input-error');
-			this.input.focus();
+		const input = this.getInput();
+		if (input === undefined) {
 			return;
 		}
+
+		const value = input.value.trim();
+		if (value === '') {
+			input.addClass('tdc-input-error');
+			input.focus();
+			return;
+		}
+
 		if (value === this.currentName) {
 			this.close();
 			return;
 		}
+
 		this.close();
 		try {
 			await this.plugin.issueManager.renameIssue(this.dashboard, this.issueId, value);
 		} catch (error) {
-			new Notice(`Error renaming issue: ${(error as Error).message}`);
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			new Notice(`Error renaming issue: ${message}`);
 		}
 	}
 
 	onClose() {
+		this.input = undefined;
 		this.contentEl.empty();
 	}
 }

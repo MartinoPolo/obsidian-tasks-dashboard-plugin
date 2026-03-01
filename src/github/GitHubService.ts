@@ -28,6 +28,8 @@ interface GitHubSearchResult {
 	totalCount: number;
 }
 
+type GitHubIssueState = GitHubIssueMetadata['state'];
+
 export interface GitHubServiceInstance {
 	setAuth: (auth: GitHubAuth) => void;
 	validateToken: () => Promise<{ valid: boolean; username?: string; error?: string }>;
@@ -82,6 +84,29 @@ export function createGitHubService(): GitHubServiceInstance {
 	let auth: GitHubAuth = { method: 'none' };
 	let rateLimit: GitHubRateLimit | undefined;
 	const cache = new Map<string, CacheEntry<unknown>>();
+
+	const createEmptySearchResult = (): GitHubSearchResult => {
+		return { items: [], totalCount: 0 };
+	};
+
+	const normalizeIssueState = (state: string): GitHubIssueState => {
+		return state === 'closed' ? 'closed' : 'open';
+	};
+
+	const extractErrorDetails = (error: unknown): { status: number | undefined; message: string } => {
+		const fallbackMessage = error instanceof Error ? error.message : 'Unknown error';
+
+		if (typeof error !== 'object' || error === null) {
+			return { status: undefined, message: fallbackMessage };
+		}
+
+		const errorRecord = error as Record<string, unknown>;
+		const status = typeof errorRecord.status === 'number' ? errorRecord.status : undefined;
+		const message =
+			typeof errorRecord.message === 'string' ? errorRecord.message : fallbackMessage;
+
+		return { status, message };
+	};
 
 	const parseRateLimitHeaders = (headers: Record<string, string>): void => {
 		if (
@@ -149,10 +174,23 @@ export function createGitHubService(): GitHubServiceInstance {
 
 	const setCache = <T>(key: string, data: T): void => {
 		if (cache.size >= MAX_CACHE_SIZE) {
-			const oldestKey = cache.keys().next().value as string;
-			cache.delete(oldestKey);
+			const oldest = cache.keys().next();
+			if (oldest.done === false) {
+				cache.delete(oldest.value);
+			}
 		}
 		cache.set(key, { data, timestamp: Date.now() });
+	};
+
+	const getOrLoadCached = async <T>(key: string, load: () => Promise<T>): Promise<T> => {
+		const cached = getCached<T>(key);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const loaded = await load();
+		setCache(key, loaded);
+		return loaded;
 	};
 
 	const clearCache = (): void => {
@@ -172,9 +210,7 @@ export function createGitHubService(): GitHubServiceInstance {
 	};
 
 	const classifyApiError = (error: unknown): GitHubApiError => {
-		const errorWithStatus = error as { status?: number; message?: string };
-		const status = errorWithStatus.status;
-		const message = errorWithStatus.message ?? String(error);
+		const { status, message } = extractErrorDetails(error);
 
 		if (status === 401 || status === 403) {
 			const isRateLimit = status === 403 && message.includes('rate limit');
@@ -233,8 +269,8 @@ export function createGitHubService(): GitHubServiceInstance {
 			const data = response.json as { login: string };
 			return { valid: true, username: data.login };
 		} catch (error) {
-			const err = error as { status?: number };
-			if (err.status === 401) {
+			const { status } = extractErrorDetails(error);
+			if (status === 401) {
 				return { valid: false, error: 'Invalid or expired token' };
 			}
 			return { valid: false, error: 'Failed to validate token' };
@@ -281,7 +317,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		return {
 			number: data.number,
 			title: data.title,
-			state: data.state as 'open' | 'closed',
+			state: normalizeIssueState(data.state),
 			labels: mapLabels(data.labels),
 			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
 			body: data.body !== null ? data.body : undefined,
@@ -292,6 +328,57 @@ export function createGitHubService(): GitHubServiceInstance {
 			isPR,
 			prStatus
 		};
+	};
+
+	const mapPullRequestResponse = (
+		data: GitHubPullRequestApiResponse,
+		owner: string,
+		repo: string
+	): GitHubIssueMetadata => {
+		const prStatus: NonNullable<GitHubIssueMetadata['prStatus']> = data.merged
+			? 'merged'
+			: data.draft
+				? 'draft'
+				: data.state === 'closed'
+					? 'closed'
+					: 'open';
+
+		return {
+			number: data.number,
+			title: data.title,
+			state: normalizeIssueState(data.state),
+			labels: mapLabels(data.labels),
+			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
+			body: data.body !== null ? data.body : undefined,
+			createdAt: data.created_at,
+			updatedAt: data.updated_at,
+			repository: `${owner}/${repo}`,
+			url: data.html_url,
+			isPR: true,
+			prStatus
+		};
+	};
+
+	const mapSearchItems = (items: GitHubIssueApiResponse[]): GitHubIssueMetadata[] => {
+		return items.map((item) => {
+			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
+			return mapIssueResponse(item, owner, repoName);
+		});
+	};
+
+	const uniqueByUrl = (items: GitHubIssueMetadata[]): GitHubIssueMetadata[] => {
+		const seenUrls = new Set<string>();
+		const uniqueItems: GitHubIssueMetadata[] = [];
+
+		for (const item of items) {
+			if (seenUrls.has(item.url)) {
+				continue;
+			}
+			seenUrls.add(item.url);
+			uniqueItems.push(item);
+		}
+
+		return uniqueItems;
 	};
 
 	const getIssue = async (
@@ -335,27 +422,7 @@ export function createGitHubService(): GitHubServiceInstance {
 			return undefined;
 		}
 
-		const metadata: GitHubIssueMetadata = {
-			number: data.number,
-			title: data.title,
-			state: data.state as 'open' | 'closed',
-			labels: mapLabels(data.labels),
-			assignees: data.assignees !== undefined ? data.assignees.map((a) => a.login) : [],
-			body: data.body !== null ? data.body : undefined,
-			createdAt: data.created_at,
-			updatedAt: data.updated_at,
-			repository: `${owner}/${repo}`,
-			url: data.html_url,
-			isPR: true,
-			prStatus: data.merged
-				? 'merged'
-				: data.draft
-					? 'draft'
-					: data.state === 'closed'
-						? 'closed'
-						: 'open'
-		};
-
+		const metadata = mapPullRequestResponse(data, owner, repo);
 		setCache(cacheKey, metadata);
 		return metadata;
 	};
@@ -378,7 +445,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		type: 'issue' | 'pr'
 	): Promise<GitHubSearchResult> => {
 		if (!isAuthenticated()) {
-			return { items: [], totalCount: 0 };
+			return createEmptySearchResult();
 		}
 
 		let searchQuery = query;
@@ -398,13 +465,10 @@ export function createGitHubService(): GitHubServiceInstance {
 		);
 
 		if (data === undefined) {
-			return { items: [], totalCount: 0 };
+			return createEmptySearchResult();
 		}
 
-		const items = data.items.map((item) => {
-			const { owner, repoName } = parseRepoFromUrl(item.repository_url);
-			return mapIssueResponse(item, owner, repoName);
-		});
+		const items = mapSearchItems(data.items);
 
 		const result = { items, totalCount: data.total_count };
 		setCache(cacheKey, result);
@@ -455,26 +519,20 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = 'user:repos';
-		const cached = getCached<GitHubRepository[]>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		return getOrLoadCached(cacheKey, async () => {
+			const data = await apiRequest<GitHubRepoApiResponse[]>(
+				`/user/repos?sort=pushed&per_page=${USER_REPOS_PER_PAGE}&type=all`
+			);
+			if (data === undefined) {
+				return [];
+			}
 
-		const data = await apiRequest<GitHubRepoApiResponse[]>(
-			`/user/repos?sort=pushed&per_page=${USER_REPOS_PER_PAGE}&type=all`
-		);
-		if (data === undefined) {
-			return [];
-		}
-
-		const repositories: GitHubRepository[] = data.map((repo) => ({
-			fullName: repo.full_name,
-			description: repo.description ?? '',
-			isPrivate: repo.private
-		}));
-
-		setCache(cacheKey, repositories);
-		return repositories;
+			return data.map((repo) => ({
+				fullName: repo.full_name,
+				description: repo.description ?? '',
+				isPrivate: repo.private
+			}));
+		});
 	};
 
 	const getRepository = async (
@@ -536,19 +594,14 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = 'user:orgs';
-		const cached = getCached<string[]>(cacheKey);
-		if (cached !== undefined) {
-			return cached;
-		}
+		return getOrLoadCached(cacheKey, async () => {
+			const data = await apiRequest<GitHubOrgApiResponse[]>('/user/orgs');
+			if (data === undefined) {
+				return [];
+			}
 
-		const data = await apiRequest<GitHubOrgApiResponse[]>('/user/orgs');
-		if (data === undefined) {
-			return [];
-		}
-
-		const orgNames = data.map((org) => org.login);
-		setCache(cacheKey, orgNames);
-		return orgNames;
+			return data.map((org) => org.login);
+		});
 	};
 
 	const MAX_PARALLEL_ORG_QUERIES = 5;
@@ -558,7 +611,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		issueType: 'issue' | 'pr'
 	): Promise<GitHubSearchResult> => {
 		if (!isAuthenticated()) {
-			return { items: [], totalCount: 0 };
+			return createEmptySearchResult();
 		}
 
 		const cacheKey = `search:my-repos:${issueType}:${query}`;
@@ -573,7 +626,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		]);
 
 		if (username === undefined) {
-			return { items: [], totalCount: 0 };
+			return createEmptySearchResult();
 		}
 
 		const typeQualifier = issueType === 'issue' ? 'is:issue' : 'is:pr';
@@ -587,15 +640,11 @@ export function createGitHubService(): GitHubServiceInstance {
 			);
 
 			if (data === undefined) {
-				return { items: [], totalCount: 0 };
+				return createEmptySearchResult();
 			}
 
 			const allowedOwners = new Set([username, ...organizations]);
-			allItems = data.items
-				.map((item) => {
-					const { owner, repoName } = parseRepoFromUrl(item.repository_url);
-					return mapIssueResponse(item, owner, repoName);
-				})
+			allItems = mapSearchItems(data.items)
 				.filter((item) => {
 					const owner = item.repository.split('/')[0];
 					return allowedOwners.has(owner);
@@ -614,22 +663,15 @@ export function createGitHubService(): GitHubServiceInstance {
 			);
 
 			allItems = [];
-			const seenUrls = new Set<string>();
 
 			for (const data of results) {
 				if (data === undefined) {
 					continue;
 				}
-				for (const item of data.items) {
-					if (seenUrls.has(item.html_url)) {
-						continue;
-					}
-					seenUrls.add(item.html_url);
-
-					const { owner, repoName } = parseRepoFromUrl(item.repository_url);
-					allItems.push(mapIssueResponse(item, owner, repoName));
-				}
+				allItems.push(...mapSearchItems(data.items));
 			}
+
+			allItems = uniqueByUrl(allItems);
 		}
 
 		allItems.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());

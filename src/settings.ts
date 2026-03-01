@@ -3,6 +3,7 @@ import TasksDashboardPlugin from '../main';
 import {
 	DashboardConfig,
 	ProgressDisplayMode,
+	GitHubAuthMethod,
 	GitHubDisplayMode,
 	getDashboardDisplayName
 } from './types';
@@ -17,6 +18,160 @@ type VisibilityToggleKey =
 	| 'showFolderButtons'
 	| 'showTerminalButtons'
 	| 'showVSCodeButtons';
+
+interface OptionDefinition<T extends string> {
+	value: T;
+	label: string;
+}
+
+interface DashboardVisibilityToggleDefinition {
+	key: VisibilityToggleKey;
+	name: string;
+	description: string;
+}
+
+interface AppWithSettingsTab extends App {
+	setting?: {
+		openTabById: (tabId: string) => void;
+	};
+}
+
+const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
+const ISSUES_FOLDER_NAME = 'Issues';
+const GITHUB_TOKEN_CREATION_URL =
+	'https://github.com/settings/tokens/new?scopes=repo&description=Obsidian%20Tasks%20Dashboard';
+
+const PROGRESS_DISPLAY_OPTIONS: OptionDefinition<ProgressDisplayMode>[] = [
+	{ value: 'number', label: 'Number only (1/5)' },
+	{ value: 'percentage', label: 'Percentage only (20%)' },
+	{ value: 'bar', label: 'Progress bar only' },
+	{ value: 'number-percentage', label: 'Number & percentage (1/5 (20%))' },
+	{ value: 'all', label: 'All (bar + percentage + number)' }
+];
+
+const GITHUB_AUTH_METHOD_OPTIONS: OptionDefinition<GitHubAuthMethod>[] = [
+	{ value: 'none', label: 'Not configured' },
+	{ value: 'pat', label: 'Personal Access Token' }
+];
+
+const GITHUB_DISPLAY_MODE_OPTIONS: OptionDefinition<GitHubDisplayMode>[] = [
+	{ value: 'minimal', label: 'Minimal (number and status only)' },
+	{ value: 'compact', label: 'Compact (number, title, status, labels)' },
+	{ value: 'full', label: 'Full (includes description and assignees)' }
+];
+
+const DASHBOARD_VISIBILITY_TOGGLES: DashboardVisibilityToggleDefinition[] = [
+	{
+		key: 'showGitHubButtons',
+		name: 'Show GitHub Buttons',
+		description: 'Show GitHub link buttons on each issue'
+	},
+	{
+		key: 'showFolderButtons',
+		name: 'Show Folder Buttons',
+		description: 'Show folder buttons on each issue and the dashboard header'
+	},
+	{
+		key: 'showTerminalButtons',
+		name: 'Show Terminal Buttons',
+		description: 'Show terminal buttons on each issue and the dashboard header'
+	},
+	{
+		key: 'showVSCodeButtons',
+		name: 'Show VS Code Buttons',
+		description: 'Show VS Code buttons on each issue and the dashboard header'
+	}
+];
+
+function addDropdownOptions<T extends string>(
+	dropdown: {
+		addOption: (value: string, display: string) => typeof dropdown;
+	},
+	options: OptionDefinition<T>[]
+): void {
+	for (const option of options) {
+		dropdown.addOption(option.value, option.label);
+	}
+}
+
+function isOneOf<T extends string>(value: string, options: OptionDefinition<T>[]): value is T {
+	for (const option of options) {
+		if (option.value === value) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function isGitHubAuthMethod(value: string): value is GitHubAuthMethod {
+	return isOneOf(value, GITHUB_AUTH_METHOD_OPTIONS);
+}
+
+function isProgressDisplayMode(value: string): value is ProgressDisplayMode {
+	return isOneOf(value, PROGRESS_DISPLAY_OPTIONS);
+}
+
+function isGitHubDisplayMode(value: string): value is GitHubDisplayMode {
+	return isOneOf(value, GITHUB_DISPLAY_MODE_OPTIONS);
+}
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	return 'Unknown error';
+}
+
+function isNonEmptyString(value: string | undefined): value is string {
+	return value !== undefined && value !== '';
+}
+
+function withMarkdownExtension(filename: string): string {
+	return filename.endsWith('.md') ? filename : `${filename}.md`;
+}
+
+function getDashboardFilename(dashboard: DashboardConfig): string {
+	return dashboard.dashboardFilename || DEFAULT_DASHBOARD_FILENAME;
+}
+
+function buildVaultPath(rootPath: string, filename: string): string {
+	if (rootPath === '') {
+		return filename;
+	}
+
+	return `${rootPath}/${filename}`;
+}
+
+function getDashboardPath(dashboard: DashboardConfig): string {
+	return buildVaultPath(dashboard.rootPath, getDashboardFilename(dashboard));
+}
+
+function getDashboardIssuesFolderPath(dashboard: DashboardConfig): string {
+	return buildVaultPath(dashboard.rootPath, ISSUES_FOLDER_NAME);
+}
+
+function hasSettingsTabApi(app: unknown): app is AppWithSettingsTab {
+	if (typeof app !== 'object' || app === null) {
+		return false;
+	}
+
+	if (!('setting' in app)) {
+		return false;
+	}
+
+	const candidateSetting = app.setting;
+	if (typeof candidateSetting !== 'object' || candidateSetting === null) {
+		return false;
+	}
+
+	if (!('openTabById' in candidateSetting)) {
+		return false;
+	}
+
+	return typeof candidateSetting.openTabById === 'function';
+}
 
 function createVisibilityToggle(
 	container: HTMLElement,
@@ -42,6 +197,15 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	plugin: TasksDashboardPlugin;
 	private platformService = createPlatformService();
 
+	private saveSettings(): void {
+		void this.plugin.saveSettings();
+	}
+
+	private saveSettingsAndRefreshDashboard(): void {
+		this.saveSettings();
+		this.plugin.triggerDashboardRefresh();
+	}
+
 	constructor(app: App, plugin: TasksDashboardPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -58,20 +222,20 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Progress Display')
 			.setDesc('How to show task progress for each issue')
-			.addDropdown((dropdown) =>
+			.addDropdown((dropdown) => {
+				addDropdownOptions(dropdown, PROGRESS_DISPLAY_OPTIONS);
+
 				dropdown
-					.addOption('number', 'Number only (1/5)')
-					.addOption('percentage', 'Percentage only (20%)')
-					.addOption('bar', 'Progress bar only')
-					.addOption('number-percentage', 'Number & percentage (1/5 (20%))')
-					.addOption('all', 'All (bar + percentage + number)')
 					.setValue(this.plugin.settings.progressDisplayMode)
 					.onChange((value) => {
-						this.plugin.settings.progressDisplayMode = value as ProgressDisplayMode;
-						void this.plugin.saveSettings();
-						this.plugin.triggerDashboardRefresh();
-					})
-			);
+						if (!isProgressDisplayMode(value)) {
+							return;
+						}
+
+						this.plugin.settings.progressDisplayMode = value;
+						this.saveSettingsAndRefreshDashboard();
+					});
+			});
 
 		this.renderGitHubSettings(containerEl);
 
@@ -86,11 +250,11 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						const newDashboard: DashboardConfig = {
 							id: generateId(),
 							rootPath: '',
-							dashboardFilename: 'Dashboard.md',
+							dashboardFilename: DEFAULT_DASHBOARD_FILENAME,
 							githubEnabled: true
 						};
 						this.plugin.settings.dashboards.push(newDashboard);
-						void this.plugin.saveSettings();
+						this.saveSettings();
 						this.plugin.registerDashboardCommands();
 						this.display();
 					})
@@ -149,8 +313,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			authStatus.empty();
 			if (
 				this.plugin.settings.githubAuth.method === 'pat' &&
-				this.plugin.settings.githubAuth.token !== undefined &&
-				this.plugin.settings.githubAuth.token !== ''
+				isNonEmptyString(this.plugin.settings.githubAuth.token)
 			) {
 				authStatus.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
 				const result = await this.plugin.githubService.validateToken();
@@ -175,22 +338,24 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			}
 		};
 
-		authSetting.addDropdown((dropdown) =>
-			dropdown
-				.addOption('none', 'Not configured')
-				.addOption('pat', 'Personal Access Token')
-				.setValue(this.plugin.settings.githubAuth.method)
-				.onChange((value) => {
-					this.plugin.settings.githubAuth.method = value as 'none' | 'pat';
-					if (value === 'none') {
-						this.plugin.settings.githubAuth.token = undefined;
-						this.plugin.githubService.setAuth({ method: 'none' });
-					}
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
-					this.display();
-				})
-		);
+		authSetting.addDropdown((dropdown) => {
+			addDropdownOptions(dropdown, GITHUB_AUTH_METHOD_OPTIONS);
+
+			dropdown.setValue(this.plugin.settings.githubAuth.method).onChange((value) => {
+				if (!isGitHubAuthMethod(value)) {
+					return;
+				}
+
+				this.plugin.settings.githubAuth.method = value;
+				if (value === 'none') {
+					this.plugin.settings.githubAuth.token = undefined;
+					this.plugin.githubService.setAuth({ method: 'none' });
+				}
+
+				this.saveSettingsAndRefreshDashboard();
+				this.display();
+			});
+		});
 
 		if (this.plugin.settings.githubAuth.method === 'pat') {
 			const tokenSetting = new Setting(containerEl)
@@ -208,8 +373,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.onChange((value) => {
 						this.plugin.settings.githubAuth.token = value;
 						this.plugin.githubService.setAuth(this.plugin.settings.githubAuth);
-						void this.plugin.saveSettings();
-						this.plugin.triggerDashboardRefresh();
+						this.saveSettingsAndRefreshDashboard();
 					});
 			});
 
@@ -224,10 +388,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setIcon('external-link')
 					.setTooltip('Create new token on GitHub')
 					.onClick(() => {
-						window.open(
-							'https://github.com/settings/tokens/new?scopes=repo&description=Obsidian%20Tasks%20Dashboard',
-							'_blank'
-						);
+						window.open(GITHUB_TOKEN_CREATION_URL, '_blank');
 					})
 			);
 		}
@@ -237,18 +398,20 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('GitHub Display Mode')
 			.setDesc('How much GitHub issue detail to show on the dashboard')
-			.addDropdown((dropdown) =>
+			.addDropdown((dropdown) => {
+				addDropdownOptions(dropdown, GITHUB_DISPLAY_MODE_OPTIONS);
+
 				dropdown
-					.addOption('minimal', 'Minimal (number and status only)')
-					.addOption('compact', 'Compact (number, title, status, labels)')
-					.addOption('full', 'Full (includes description and assignees)')
 					.setValue(this.plugin.settings.githubDisplayMode)
 					.onChange((value) => {
-						this.plugin.settings.githubDisplayMode = value as GitHubDisplayMode;
-						void this.plugin.saveSettings();
-						this.plugin.triggerDashboardRefresh();
-					})
-			);
+						if (!isGitHubDisplayMode(value)) {
+							return;
+						}
+
+						this.plugin.settings.githubDisplayMode = value;
+						this.saveSettingsAndRefreshDashboard();
+					});
+			});
 	}
 
 	private renderRepositoryPicker(container: HTMLElement, dashboard: DashboardConfig): void {
@@ -279,7 +442,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				repoSetting.addButton((button) =>
 					button.setButtonText('Clear').onClick(() => {
 						dashboard.githubRepo = undefined;
-						void this.plugin.saveSettings();
+						this.saveSettings();
 						this.display();
 					})
 				);
@@ -291,7 +454,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setValue(currentRepo)
 					.onChange((value) => {
 						dashboard.githubRepo = value !== '' ? value : undefined;
-						void this.plugin.saveSettings();
+						this.saveSettings();
 					})
 			);
 		}
@@ -307,7 +470,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 
 		new RepositoryPickerModal(this.app, repositories, (repository) => {
 			dashboard.githubRepo = repository.fullName;
-			void this.plugin.saveSettings();
+			this.saveSettings();
 			this.display();
 		}).open();
 	}
@@ -331,7 +494,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setValue(dashboard.rootPath)
 					.onChange((value) => {
 						dashboard.rootPath = value;
-						void this.plugin.saveSettings();
+						this.saveSettings();
 					})
 			);
 		new Setting(dashboardContainer)
@@ -342,11 +505,10 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setPlaceholder('Dashboard.md')
-					.setValue(dashboard.dashboardFilename || 'Dashboard.md')
+					.setValue(getDashboardFilename(dashboard))
 					.onChange((value) => {
-						const filename = value.endsWith('.md') ? value : `${value}.md`;
-						dashboard.dashboardFilename = filename;
-						void this.plugin.saveSettings();
+						dashboard.dashboardFilename = withMarkdownExtension(value);
+						this.saveSettings();
 						this.plugin.registerDashboardCommands();
 					})
 			);
@@ -356,8 +518,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			.addToggle((toggle) =>
 				toggle.setValue(dashboard.githubEnabled).onChange((value) => {
 					dashboard.githubEnabled = value;
-					void this.plugin.saveSettings();
-					this.plugin.triggerDashboardRefresh();
+					this.saveSettingsAndRefreshDashboard();
 					this.display();
 				})
 			);
@@ -377,8 +538,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setValue(dashboard.projectFolder ?? '')
 					.onChange((value) => {
 						dashboard.projectFolder = value !== '' ? value : undefined;
-						void this.plugin.saveSettings();
-						this.plugin.triggerDashboardRefresh();
+						this.saveSettingsAndRefreshDashboard();
 					})
 			);
 
@@ -387,52 +547,30 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				void this.platformService.pickFolder(dashboard.projectFolder).then((folderPath) => {
 					if (folderPath !== undefined) {
 						dashboard.projectFolder = folderPath;
-						void this.plugin.saveSettings();
+						this.saveSettings();
 						this.display();
 					}
 				});
 			})
 		);
 
-		createVisibilityToggle(
-			dashboardContainer,
-			dashboard,
-			'showGitHubButtons',
-			'Show GitHub Buttons',
-			'Show GitHub link buttons on each issue',
-			this.plugin
-		);
-		createVisibilityToggle(
-			dashboardContainer,
-			dashboard,
-			'showFolderButtons',
-			'Show Folder Buttons',
-			'Show folder buttons on each issue and the dashboard header',
-			this.plugin
-		);
-		createVisibilityToggle(
-			dashboardContainer,
-			dashboard,
-			'showTerminalButtons',
-			'Show Terminal Buttons',
-			'Show terminal buttons on each issue and the dashboard header',
-			this.plugin
-		);
-		createVisibilityToggle(
-			dashboardContainer,
-			dashboard,
-			'showVSCodeButtons',
-			'Show VS Code Buttons',
-			'Show VS Code buttons on each issue and the dashboard header',
-			this.plugin
-		);
+		for (const toggle of DASHBOARD_VISIBILITY_TOGGLES) {
+			createVisibilityToggle(
+				dashboardContainer,
+				dashboard,
+				toggle.key,
+				toggle.name,
+				toggle.description,
+				this.plugin
+			);
+		}
 
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
 
 		const updateDashboardButton = (): void => {
-			const currentFilename = dashboard.dashboardFilename || 'Dashboard.md';
+			const currentFilename = getDashboardFilename(dashboard);
 			const currentPath =
-				dashboard.rootPath !== '' ? `${dashboard.rootPath}/${currentFilename}` : '';
+				dashboard.rootPath !== '' ? buildVaultPath(dashboard.rootPath, currentFilename) : '';
 			const exists =
 				currentPath !== '' && this.app.vault.getAbstractFileByPath(currentPath) !== null;
 
@@ -465,7 +603,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 									updateDashboardButton();
 								})
 								.catch((error: unknown) => {
-									new Notice(`Error: ${(error as Error).message}`);
+									new Notice(`Error: ${getErrorMessage(error)}`);
 								});
 						})
 				);
@@ -480,8 +618,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			)
 			.addButton((btn) =>
 				btn.setButtonText('Open Hotkeys').onClick(() => {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-					(this.app as any).setting.openTabById('hotkeys');
+					if (hasSettingsTabApi(this.app)) {
+						this.app.setting?.openTabById('hotkeys');
+					}
 				})
 			);
 		new Setting(dashboardContainer)
@@ -499,7 +638,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 						this.plugin.dashboardWriter
 							.rebuildDashboardFromFiles(dashboard)
 							.catch((error: unknown) => {
-								new Notice(`Error: ${(error as Error).message}`);
+								new Notice(`Error: ${getErrorMessage(error)}`);
 							});
 					})
 			);
@@ -531,16 +670,13 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		index: number,
 		deleteFiles: boolean
 	): Promise<void> {
-		// Collect issue IDs before deletion so we can clean up related settings
 		const issueIds = await this.collectDashboardIssueIds(dashboard);
 
-		// Clean up per-issue settings (collapsedIssues, issueColors)
 		for (const issueId of issueIds) {
 			delete this.plugin.settings.collapsedIssues[issueId];
 			delete this.plugin.settings.issueColors[issueId];
 		}
 
-		// Clean up issueFolders entries keyed by dashboardId:*
 		const issueFolderPrefix = dashboard.id + ':';
 		for (const key of Object.keys(this.plugin.settings.issueFolders)) {
 			if (key.startsWith(issueFolderPrefix)) {
@@ -548,12 +684,10 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			}
 		}
 
-		// Optionally delete dashboard file and Issues folder
 		if (deleteFiles) {
 			await this.trashDashboardFiles(dashboard);
 		}
 
-		// Remove dashboard from settings array
 		this.plugin.settings.dashboards.splice(index, 1);
 		await this.plugin.saveSettings();
 		this.plugin.registerDashboardCommands();
@@ -561,9 +695,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	}
 
 	private async collectDashboardIssueIds(dashboard: DashboardConfig): Promise<string[]> {
-		const filename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath =
-			dashboard.rootPath !== '' ? `${dashboard.rootPath}/${filename}` : filename;
+		const dashboardPath = getDashboardPath(dashboard);
 		const file = this.app.vault.getAbstractFileByPath(dashboardPath);
 
 		if (!(file instanceof TFile)) {
@@ -582,13 +714,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	}
 
 	private async trashDashboardFiles(dashboard: DashboardConfig): Promise<void> {
-		const filename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath =
-			dashboard.rootPath !== '' ? `${dashboard.rootPath}/${filename}` : filename;
-		const issuesFolderPath =
-			dashboard.rootPath !== '' ? `${dashboard.rootPath}/Issues` : 'Issues';
+		const dashboardPath = getDashboardPath(dashboard);
+		const issuesFolderPath = getDashboardIssuesFolderPath(dashboard);
 
-		// Trash dashboard file
 		const dashboardFile = this.app.vault.getAbstractFileByPath(dashboardPath);
 		if (dashboardFile instanceof TFile) {
 			try {
@@ -598,7 +726,6 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			}
 		}
 
-		// Trash Issues folder
 		const issuesFolder = this.app.vault.getAbstractFileByPath(issuesFolderPath);
 		if (issuesFolder instanceof TFolder) {
 			try {

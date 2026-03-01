@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
+import { EventRef, MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { Priority, IssueProgress, DashboardConfig } from '../types';
 import { DeleteConfirmationModal } from '../modals/delete-confirmation-modal';
@@ -10,6 +10,32 @@ import { renderSortControls } from './sort-controls';
 import { deriveIssueSurfaceColors, getIsDarkTheme, sanitizeHexColor } from '../utils/color';
 
 const REACTIVE_RENDER_DEBOUNCE_MS = 100;
+const ISSUE_SURFACE_COLOR_FALLBACK = '#4a8cc7';
+
+const ISSUE_CONTAINER_COLOR_VARIABLES = [
+	'--tdc-issue-main-color',
+	'--tdc-issue-controls-bg',
+	'--tdc-issue-checklist-bg',
+	'--tdc-issue-controls-border',
+	'--tdc-issue-checklist-border'
+] as const;
+
+interface ParsedKeyValueLine {
+	key: string;
+	value: string;
+}
+
+interface IconButtonConfig {
+	cls: string;
+	ariaLabel: string;
+	title?: string;
+	icon: string;
+	onClick: () => void;
+}
+
+interface WorkspaceCustomEventEmitter {
+	on: (name: string, callback: () => void) => EventRef;
+}
 
 interface ControlParams {
 	issue: string;
@@ -50,9 +76,9 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 	) {
 		super(containerEl);
 		// Register in constructor — ctx.addChild() may never call onload()
+		const workspaceEvents = plugin.app.workspace as unknown as WorkspaceCustomEventEmitter;
 		this.registerEvent(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(plugin.app.workspace as any).on('tasks-dashboard:refresh', () => {
+			workspaceEvents.on('tasks-dashboard:refresh', () => {
 				window.clearTimeout(this.debounceTimer);
 				this.debounceTimer = window.setTimeout(() => {
 					this.containerEl.empty();
@@ -72,30 +98,126 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const githubCardRenderer = createGitHubCardRenderer();
 
+	const parseSourceKeyValueLines = (source: string): ParsedKeyValueLine[] => {
+		const entries: ParsedKeyValueLine[] = [];
+		for (const line of source.trim().split('\n')) {
+			const [key, ...valueParts] = line.split(':');
+			const value = valueParts.join(':').trim();
+			const trimmedKey = key.trim();
+			if (trimmedKey === '' || value === '') {
+				continue;
+			}
+			entries.push({ key: trimmedKey, value });
+		}
+		return entries;
+	};
+
+	const stopEventAndRun = (event: MouseEvent, action: () => void): void => {
+		event.preventDefault();
+		event.stopPropagation();
+		action();
+	};
+
+	const createIconButton = (container: HTMLElement, config: IconButtonConfig): HTMLButtonElement => {
+		const button = container.createEl('button', {
+			cls: config.cls,
+			attr: {
+				'aria-label': config.ariaLabel,
+				...(config.title !== undefined ? { title: config.title } : {})
+			}
+		});
+		button.innerHTML = config.icon;
+		button.addEventListener('click', (event) => {
+			stopEventAndRun(event, config.onClick);
+		});
+		return button;
+	};
+
+	const applyColorVariables = (
+		element: HTMLElement,
+		variables: Record<(typeof ISSUE_CONTAINER_COLOR_VARIABLES)[number], string> | undefined
+	): void => {
+		for (const variable of ISSUE_CONTAINER_COLOR_VARIABLES) {
+			if (variables !== undefined) {
+				element.style.setProperty(variable, variables[variable]);
+			} else {
+				element.style.removeProperty(variable);
+			}
+		}
+	};
+
+	const renderProgressText = (progress: IssueProgress): string => {
+		const mode = plugin.settings.progressDisplayMode;
+		if (mode === 'number') {
+			return `${progress.done}/${progress.total}`;
+		}
+		if (mode === 'percentage') {
+			return `${progress.percentage}%`;
+		}
+		if (mode === 'number-percentage') {
+			return `${progress.done}/${progress.total} (${progress.percentage}%)`;
+		}
+		if (mode === 'all') {
+			return `${progress.percentage}% (${progress.done}/${progress.total})`;
+		}
+		return '';
+	};
+
+	const renderRefreshableGitHubCard = async <TMetadata>(options: {
+		container: HTMLElement;
+		githubUrl: string;
+		fetchMetadata: () => Promise<TMetadata | undefined>;
+		clearCache: () => void;
+		renderCard: (metadata: TMetadata, onRefresh: () => void, onUnlink?: () => void) => void;
+		onUnlink?: () => void;
+	}): Promise<void> => {
+		if (!plugin.githubService.isAuthenticated()) {
+			githubCardRenderer.renderSimpleLink(options.container, options.githubUrl);
+			return;
+		}
+
+		githubCardRenderer.renderLoading(options.container);
+		const metadata = await options.fetchMetadata();
+		if (metadata === undefined) {
+			githubCardRenderer.renderSimpleLink(options.container, options.githubUrl);
+			return;
+		}
+
+		const onRefresh = (): void => {
+			options.clearCache();
+			githubCardRenderer.renderLoading(options.container);
+			void options.fetchMetadata().then((freshMetadata) => {
+				if (freshMetadata !== undefined) {
+					options.renderCard(freshMetadata, onRefresh, options.onUnlink);
+				} else {
+					githubCardRenderer.renderError(options.container, 'Failed to refresh');
+				}
+			});
+		};
+
+		options.renderCard(metadata, onRefresh, options.onUnlink);
+	};
+
 	const parseParams = (source: string): ControlParams | null => {
-		const lines = source.trim().split('\n');
 		const params: Partial<ControlParams> = {};
 		const collectedGithubLinks: string[] = [];
 
-		for (const line of lines) {
-			const [key, ...valueParts] = line.split(':');
-			const value = valueParts.join(':').trim();
-			if (key !== '' && value !== '') {
-				const trimmedKey = key.trim();
-				if (trimmedKey === 'priority') {
-					params.priority = value as Priority;
-				} else if (trimmedKey === 'github') {
-					// Legacy single-link format — migrate to array
-					params.github = value;
-					collectedGithubLinks.push(value);
-				} else if (trimmedKey === 'github_link') {
-					// New multi-link format: one github_link: per URL
-					collectedGithubLinks.push(value);
-				} else {
-					const k = trimmedKey as keyof ControlParams;
-					(params as Record<string, unknown>)[k] = value;
-				}
+		for (const line of parseSourceKeyValueLines(source)) {
+			if (line.key === 'priority') {
+				params.priority = line.value as Priority;
+				continue;
 			}
+			if (line.key === 'github') {
+				params.github = line.value;
+				collectedGithubLinks.push(line.value);
+				continue;
+			}
+			if (line.key === 'github_link') {
+				collectedGithubLinks.push(line.value);
+				continue;
+			}
+			const key = line.key as keyof ControlParams;
+			(params as Record<string, unknown>)[key] = line.value;
 		}
 
 		params.githubLinks = collectedGithubLinks;
@@ -139,9 +261,27 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		return content;
 	};
 
+	const resolveIssueControlBlock = (element: HTMLElement): HTMLElement => {
+		const embedBlock = element.closest('.cm-embed-block');
+		if (embedBlock instanceof HTMLElement) {
+			return embedBlock;
+		}
+
+		const dashboardControlBlock = element.closest('.block-language-tasks-dashboard-controls');
+		if (dashboardControlBlock instanceof HTMLElement) {
+			return dashboardControlBlock;
+		}
+
+		const codeBlockElement = element.closest('[data-tdc-issue]');
+		if (codeBlockElement instanceof HTMLElement) {
+			return codeBlockElement;
+		}
+
+		return element;
+	};
+
 	const setIssueCollapsed = (element: HTMLElement, collapsed: boolean): void => {
-		const maybeControlBlock = element.closest('.block-language-tasks-dashboard-controls');
-		const controlBlock = maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
+		const controlBlock = resolveIssueControlBlock(element);
 
 		const issueContainer = controlBlock.querySelector('.tdc-issue-container');
 		if (issueContainer !== null) {
@@ -159,10 +299,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	};
 
 	const applyIssueSurfaceStyles = (element: HTMLElement, mainColor: string | undefined): void => {
-		const maybeControlBlock = element.closest('.block-language-tasks-dashboard-controls');
-		const controlBlock = maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
+		const controlBlock = resolveIssueControlBlock(element);
 		const normalizedColor =
-			mainColor !== undefined ? sanitizeHexColor(mainColor, '#4a8cc7') : undefined;
+			mainColor !== undefined ? sanitizeHexColor(mainColor, ISSUE_SURFACE_COLOR_FALLBACK) : undefined;
 		const derivedColors =
 			normalizedColor !== undefined
 				? deriveIssueSurfaceColors(normalizedColor, getIsDarkTheme())
@@ -171,33 +310,19 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const issueContainer = controlBlock.querySelector('.tdc-issue-container');
 		if (issueContainer instanceof HTMLElement) {
 			if (derivedColors !== undefined) {
-				issueContainer.style.setProperty('--tdc-issue-main-color', derivedColors.headerBackground);
-				issueContainer.style.setProperty(
-					'--tdc-issue-controls-bg',
-					derivedColors.controlsBackground
-				);
-				issueContainer.style.setProperty(
-					'--tdc-issue-checklist-bg',
-					derivedColors.checklistBackground
-				);
-				issueContainer.style.setProperty(
-					'--tdc-issue-controls-border',
-					derivedColors.controlsBorder
-				);
-				issueContainer.style.setProperty(
-					'--tdc-issue-checklist-border',
-					derivedColors.checklistBorder
-				);
+				applyColorVariables(issueContainer, {
+					'--tdc-issue-main-color': derivedColors.headerBackground,
+					'--tdc-issue-controls-bg': derivedColors.controlsBackground,
+					'--tdc-issue-checklist-bg': derivedColors.checklistBackground,
+					'--tdc-issue-controls-border': derivedColors.controlsBorder,
+					'--tdc-issue-checklist-border': derivedColors.checklistBorder
+				});
 				const headerElement = issueContainer.querySelector('.tdc-issue-header');
 				if (headerElement instanceof HTMLElement) {
 					headerElement.style.background = derivedColors.headerBackground;
 				}
 			} else {
-				issueContainer.style.removeProperty('--tdc-issue-main-color');
-				issueContainer.style.removeProperty('--tdc-issue-controls-bg');
-				issueContainer.style.removeProperty('--tdc-issue-checklist-bg');
-				issueContainer.style.removeProperty('--tdc-issue-controls-border');
-				issueContainer.style.removeProperty('--tdc-issue-checklist-border');
+				applyColorVariables(issueContainer, undefined);
 				const headerElement = issueContainer.querySelector('.tdc-issue-header');
 				if (headerElement instanceof HTMLElement) {
 					headerElement.style.removeProperty('background');
@@ -238,20 +363,19 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 		collapseToggle.innerHTML = ICONS.chevron;
 		collapseToggle.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
+			stopEventAndRun(event, () => {
+				const currentlyCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
+				const newCollapsed = !currentlyCollapsed;
 
-			const currentlyCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
-			const newCollapsed = !currentlyCollapsed;
-
-			if (newCollapsed) {
-				plugin.settings.collapsedIssues[params.issue] = true;
-			} else {
-				delete plugin.settings.collapsedIssues[params.issue];
-			}
-			void plugin.saveSettings();
-			collapseToggle.setAttribute('aria-label', newCollapsed ? 'Expand' : 'Collapse');
-			setIssueCollapsed(container, newCollapsed);
+				if (newCollapsed) {
+					plugin.settings.collapsedIssues[params.issue] = true;
+				} else {
+					delete plugin.settings.collapsedIssues[params.issue];
+				}
+				void plugin.saveSettings();
+				collapseToggle.setAttribute('aria-label', newCollapsed ? 'Expand' : 'Collapse');
+				setIssueCollapsed(container, newCollapsed);
+			});
 		});
 
 		const link = header.createEl('a', {
@@ -288,16 +412,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			fill.style.width = `${progress.percentage}%`;
 		}
 
-		let text = '';
-		if (mode === 'number') {
-			text = `${progress.done}/${progress.total}`;
-		} else if (mode === 'percentage') {
-			text = `${progress.percentage}%`;
-		} else if (mode === 'number-percentage') {
-			text = `${progress.done}/${progress.total} (${progress.percentage}%)`;
-		} else if (mode === 'all') {
-			text = `${progress.percentage}% (${progress.done}/${progress.total})`;
-		}
+		const text = renderProgressText(progress);
 
 		if (text !== '') {
 			progressContainer.createSpan({ cls: 'tdc-progress-text', text });
@@ -313,115 +428,113 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const archiveLabel = isArchived ? 'Unarchive' : 'Archive';
 		const buttonContainer = container.createDiv({ cls: 'tdc-btn-group' });
 
-		const upButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-move',
-			attr: { 'aria-label': 'Move up' }
-		});
-		upButton.innerHTML = ICONS.up;
-		upButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
-		});
+		const moveButtons: IconButtonConfig[] = [
+			{
+				cls: 'tdc-btn tdc-btn-move',
+				ariaLabel: 'Move up',
+				icon: ICONS.up,
+				onClick: () => {
+					void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'up');
+				}
+			},
+			{
+				cls: 'tdc-btn tdc-btn-move',
+				ariaLabel: 'Move down',
+				icon: ICONS.down,
+				onClick: () => {
+					void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
+				}
+			},
+			{
+				cls: 'tdc-btn tdc-btn-move',
+				ariaLabel: 'Move to top',
+				icon: ICONS.toTop,
+				onClick: () => {
+					void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'top');
+				}
+			},
+			{
+				cls: 'tdc-btn tdc-btn-move',
+				ariaLabel: 'Move to bottom',
+				icon: ICONS.toBottom,
+				onClick: () => {
+					void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'bottom');
+				}
+			}
+		];
 
-		const downButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-move',
-			attr: { 'aria-label': 'Move down' }
-		});
-		downButton.innerHTML = ICONS.down;
-		downButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			void plugin.dashboardWriter.moveIssue(dashboard, params.issue, 'down');
-		});
+		for (const config of moveButtons) {
+			createIconButton(buttonContainer, config);
+		}
 
-		const toTopButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-move',
-			attr: { 'aria-label': 'Move to top' }
-		});
-		toTopButton.innerHTML = ICONS.toTop;
-		toTopButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'top');
-		});
-
-		const toBottomButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-move',
-			attr: { 'aria-label': 'Move to bottom' }
-		});
-		toBottomButton.innerHTML = ICONS.toBottom;
-		toBottomButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			void plugin.dashboardWriter.moveIssueToPosition(dashboard, params.issue, 'bottom');
-		});
-
-		const renameButton = buttonContainer.createEl('button', {
+		createIconButton(buttonContainer, {
 			cls: 'tdc-btn tdc-btn-rename',
-			attr: { 'aria-label': 'Rename' }
-		});
-		renameButton.innerHTML = ICONS.rename;
-		renameButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			new RenameIssueModal(plugin.app, plugin, dashboard, params.issue, params.name).open();
-		});
-
-		const colorButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-color',
-			attr: { 'aria-label': 'Header color' }
-		});
-		colorButton.innerHTML = ICONS.palette;
-		colorButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			const colorInput = document.createElement('input');
-			colorInput.type = 'color';
-			colorInput.style.position = 'absolute';
-			colorInput.style.opacity = '0';
-			colorInput.style.pointerEvents = 'none';
-			colorInput.value = plugin.settings.issueColors[params.issue] ?? '#4a8cc7';
-			document.body.appendChild(colorInput);
-			colorInput.addEventListener('input', () => {
-				applyIssueSurfaceStyles(container, colorInput.value);
-			});
-			colorInput.addEventListener('change', () => {
-				plugin.settings.issueColors[params.issue] = colorInput.value;
-				void plugin.saveSettings();
-				applyIssueSurfaceStyles(container, colorInput.value);
-				colorInput.remove();
-			});
-			colorInput.click();
-		});
-
-		const archiveButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-archive',
-			attr: { 'aria-label': archiveLabel, title: archiveLabel }
-		});
-		archiveButton.innerHTML = isArchived ? ICONS.unarchive : ICONS.archive;
-		archiveButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			if (isArchived) {
-				void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
-			} else {
-				void plugin.issueManager.archiveIssue(dashboard, params.issue);
+			ariaLabel: 'Rename',
+			icon: ICONS.rename,
+			onClick: () => {
+				new RenameIssueModal(plugin.app, plugin, dashboard, params.issue, params.name).open();
 			}
 		});
 
-		const deleteButton = buttonContainer.createEl('button', {
-			cls: 'tdc-btn tdc-btn-delete',
-			attr: { 'aria-label': 'Delete' }
+		createIconButton(buttonContainer, {
+			cls: 'tdc-btn tdc-btn-color',
+			ariaLabel: 'Header color',
+			icon: ICONS.palette,
+			onClick: () => {
+				const colorInput = document.createElement('input');
+				colorInput.type = 'color';
+				colorInput.style.position = 'absolute';
+				colorInput.style.opacity = '0';
+				colorInput.style.pointerEvents = 'none';
+				colorInput.value = plugin.settings.issueColors[params.issue] ?? ISSUE_SURFACE_COLOR_FALLBACK;
+				document.body.appendChild(colorInput);
+
+				const removeInput = (): void => {
+					colorInput.remove();
+				};
+
+				colorInput.addEventListener('input', () => {
+					applyIssueSurfaceStyles(container, colorInput.value);
+				});
+				colorInput.addEventListener(
+					'change',
+					() => {
+						plugin.settings.issueColors[params.issue] = colorInput.value;
+						void plugin.saveSettings();
+						applyIssueSurfaceStyles(container, colorInput.value);
+						removeInput();
+					},
+					{ once: true }
+				);
+				colorInput.addEventListener('blur', removeInput, { once: true });
+				colorInput.click();
+			}
 		});
-		deleteButton.innerHTML = ICONS.trash;
-		deleteButton.addEventListener('click', (event) => {
-			event.preventDefault();
-			event.stopPropagation();
-			const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
-				void plugin.issueManager.deleteIssue(dashboard, params.issue);
-			});
-			modal.open();
+
+		createIconButton(buttonContainer, {
+			cls: 'tdc-btn tdc-btn-archive',
+			ariaLabel: archiveLabel,
+			title: archiveLabel,
+			icon: isArchived ? ICONS.unarchive : ICONS.archive,
+			onClick: () => {
+				if (isArchived) {
+					void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
+				} else {
+					void plugin.issueManager.archiveIssue(dashboard, params.issue);
+				}
+			}
+		});
+
+		createIconButton(buttonContainer, {
+			cls: 'tdc-btn tdc-btn-delete',
+			ariaLabel: 'Delete',
+			icon: ICONS.trash,
+			onClick: () => {
+				const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
+					void plugin.issueManager.deleteIssue(dashboard, params.issue);
+				});
+				modal.open();
+			}
 		});
 	};
 
@@ -441,100 +554,60 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		if (isRepo) {
 			const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
 
-			if (!plugin.githubService.isAuthenticated()) {
-				githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
-				return;
-			}
-
 			const parsed = parseGitHubRepoName(githubUrl);
 			if (parsed === undefined) {
 				githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
 				return;
 			}
 
-			githubCardRenderer.renderLoading(githubContainer);
-
-			const metadata = await plugin.githubService.getRepository(parsed.owner, parsed.repo);
-			if (metadata === undefined) {
-				githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
-				return;
-			}
-
-			const onRefresh = (): void => {
-				plugin.githubService.clearCache();
-				githubCardRenderer.renderLoading(githubContainer);
-				void plugin.githubService.getRepository(parsed.owner, parsed.repo).then((freshMetadata) => {
-					if (freshMetadata !== undefined) {
-						githubCardRenderer.renderRepoCard(
-							githubContainer,
-							freshMetadata,
-							plugin.settings.githubDisplayMode,
-							onRefresh,
-							onUnlink
-						);
-					} else {
-						githubCardRenderer.renderError(githubContainer, 'Failed to refresh');
-					}
-				});
-			};
-
-			githubCardRenderer.renderRepoCard(
-				githubContainer,
-				metadata,
-				plugin.settings.githubDisplayMode,
-				onRefresh,
+			await renderRefreshableGitHubCard({
+				container: githubContainer,
+				githubUrl,
+				fetchMetadata: () => plugin.githubService.getRepository(parsed.owner, parsed.repo),
+				clearCache: () => {
+					plugin.githubService.clearCache();
+				},
+				renderCard: (metadata, onRefresh, unlinkCallback) => {
+					githubCardRenderer.renderRepoCard(
+						githubContainer,
+						metadata,
+						plugin.settings.githubDisplayMode,
+						onRefresh,
+						unlinkCallback
+					);
+				},
 				onUnlink
-			);
+			});
 			return;
 		}
 
 		// Issue/PR card
 		const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
 
-		if (!plugin.githubService.isAuthenticated()) {
-			githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
-			return;
-		}
-
-		githubCardRenderer.renderLoading(githubContainer);
-
-		const metadata = await plugin.githubService.getMetadataFromUrl(githubUrl);
-		if (metadata === undefined) {
-			githubCardRenderer.renderSimpleLink(githubContainer, githubUrl);
-			return;
-		}
-
-		const onRefresh = (): void => {
-			plugin.githubService.clearCacheForUrl(githubUrl);
-			githubCardRenderer.renderLoading(githubContainer);
-			void plugin.githubService.getMetadataFromUrl(githubUrl).then((freshMetadata) => {
-				if (freshMetadata !== undefined) {
-					githubCardRenderer.render(
-						githubContainer,
-						freshMetadata,
-						plugin.settings.githubDisplayMode,
-						onRefresh,
-						onUnlink
-					);
-				} else {
-					githubCardRenderer.renderError(githubContainer, 'Failed to refresh');
-				}
-			});
-		};
-
-		githubCardRenderer.render(
-			githubContainer,
-			metadata,
-			plugin.settings.githubDisplayMode,
-			onRefresh,
+		await renderRefreshableGitHubCard({
+			container: githubContainer,
+			githubUrl,
+			fetchMetadata: () => plugin.githubService.getMetadataFromUrl(githubUrl),
+			clearCache: () => {
+				plugin.githubService.clearCacheForUrl(githubUrl);
+			},
+			renderCard: (metadata, onRefresh, unlinkCallback) => {
+				githubCardRenderer.render(
+					githubContainer,
+					metadata,
+					plugin.settings.githubDisplayMode,
+					onRefresh,
+					unlinkCallback
+				);
+			},
 			onUnlink
-		);
+		});
 	};
 
 	const render = async (
 		source: string,
 		el: HTMLElement,
-		ctx: MarkdownPostProcessorContext
+		_ctx: MarkdownPostProcessorContext
 	): Promise<void> => {
 		const params = parseParams(source);
 		if (params === null) {
@@ -602,17 +675,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const parseGitHubNoteParams = (
 		source: string
 	): { url: string; dashboard?: string } | undefined => {
-		const lines = source.trim().split('\n');
 		let url: string | undefined;
 		let dashboardId: string | undefined;
 
-		for (const line of lines) {
-			const [key, ...valueParts] = line.split(':');
-			const value = valueParts.join(':').trim();
-			if (key.trim() === 'url' && value !== '') {
-				url = value;
-			} else if (key.trim() === 'dashboard' && value !== '') {
-				dashboardId = value;
+		for (const line of parseSourceKeyValueLines(source)) {
+			if (line.key === 'url') {
+				url = line.value;
+			} else if (line.key === 'dashboard') {
+				dashboardId = line.value;
 			}
 		}
 
@@ -626,7 +696,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const renderGitHubNoteCard = async (
 		source: string,
 		el: HTMLElement,
-		ctx: MarkdownPostProcessorContext
+		_ctx: MarkdownPostProcessorContext
 	): Promise<void> => {
 		const params = parseGitHubNoteParams(source);
 		if (params === undefined) {

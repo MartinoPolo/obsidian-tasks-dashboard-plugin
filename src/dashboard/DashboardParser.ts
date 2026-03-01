@@ -1,5 +1,10 @@
 import { Priority } from '../types';
 
+interface SectionRange {
+	start: number;
+	end: number;
+}
+
 export interface ParsedIssue {
 	id: string;
 	name: string;
@@ -25,23 +30,68 @@ export const MARKERS = {
 	ARCHIVE_END: '%% TASKS-DASHBOARD:ARCHIVE:END %%'
 } as const;
 
+const ISSUE_BLOCK_REGEX = /%% ISSUE:([\w-]+):START %%([\s\S]*?)%% ISSUE:\1:END %%/g;
+const PRIORITY_REGEX = /priority:\s*(low|medium|high|top)/;
+const NAME_REGEX = /name:\s*(.+)/;
+const PATH_REGEX = /path:\s*(.+)/;
+const VALID_PRIORITIES: readonly Priority[] = ['low', 'medium', 'high', 'top'];
+
+const resolveSectionRange = (
+	startIndex: number,
+	endIndex: number,
+	fallbackStart: number,
+	fallbackEnd: number
+): SectionRange => {
+	return {
+		start: startIndex === -1 ? fallbackStart : startIndex,
+		end: endIndex === -1 ? fallbackEnd : endIndex
+	};
+};
+
+const extractField = (issueContent: string, fieldRegex: RegExp): string | undefined => {
+	const match = issueContent.match(fieldRegex);
+	if (match === null) {
+		return undefined;
+	}
+
+	return match[1].trim();
+};
+
+const isPriority = (value: string): value is Priority => {
+	return (
+		value === VALID_PRIORITIES[0] ||
+		value === VALID_PRIORITIES[1] ||
+		value === VALID_PRIORITIES[2] ||
+		value === VALID_PRIORITIES[3]
+	);
+};
+
+const parsePriority = (issueContent: string): Priority => {
+	const rawPriority = extractField(issueContent, PRIORITY_REGEX);
+	if (rawPriority === undefined) {
+		return 'medium';
+	}
+
+	return isPriority(rawPriority) ? rawPriority : 'medium';
+};
+
 export function parseDashboard(content: string): ParsedDashboard {
 	const activeStartIndex = content.indexOf(MARKERS.ACTIVE_START);
 	const activeEndIndex = content.indexOf(MARKERS.ACTIVE_END);
 	const archiveStartIndex = content.indexOf(MARKERS.ARCHIVE_START);
 	const archiveEndIndex = content.indexOf(MARKERS.ARCHIVE_END);
+	const contentLength = content.length;
 
-	const activeIssues = parseIssuesInRange(
-		content,
-		activeStartIndex !== -1 ? activeStartIndex : 0,
-		activeEndIndex !== -1 ? activeEndIndex : content.length
+	const activeRange = resolveSectionRange(activeStartIndex, activeEndIndex, 0, contentLength);
+	const archiveRange = resolveSectionRange(
+		archiveStartIndex,
+		archiveEndIndex,
+		contentLength,
+		contentLength
 	);
 
-	const archivedIssues = parseIssuesInRange(
-		content,
-		archiveStartIndex !== -1 ? archiveStartIndex : content.length,
-		archiveEndIndex !== -1 ? archiveEndIndex : content.length
-	);
+	const activeIssues = parseIssuesInRange(content, activeRange.start, activeRange.end);
+	const archivedIssues = parseIssuesInRange(content, archiveRange.start, archiveRange.end);
 
 	return {
 		activeIssues,
@@ -56,36 +106,34 @@ export function parseDashboard(content: string): ParsedDashboard {
 export function parseIssuesInRange(content: string, start: number, end: number): ParsedIssue[] {
 	const issues: ParsedIssue[] = [];
 	const section = content.substring(start, end);
-	const issueRegex = /%% ISSUE:([\w-]+):START %%([\s\S]*?)%% ISSUE:\1:END %%/g;
 
-	for (const match of section.matchAll(issueRegex)) {
+	for (const match of section.matchAll(ISSUE_BLOCK_REGEX)) {
+		const fullMatch = match[0];
+		const issueId = match[1];
 		const issueContent = match[2];
-		const nameMatch = issueContent.match(/name:\s*(.+)/);
-		const pathMatch = issueContent.match(/path:\s*(.+)/);
-		const priorityMatch = issueContent.match(/priority:\s*(low|medium|high|top)/);
+		const issueStartOffset = match.index;
 
-		if (nameMatch && pathMatch) {
-			issues.push({
-				id: match[1],
-				name: nameMatch[1].trim(),
-				priority: (priorityMatch ? priorityMatch[1].trim() : 'medium') as Priority,
-				filePath: pathMatch[1].trim(),
-				startIndex: start + match.index!,
-				endIndex: start + match.index! + match[0].length
-			});
+		const name = extractField(issueContent, NAME_REGEX);
+		const filePath = extractField(issueContent, PATH_REGEX);
+		if (name === undefined || filePath === undefined) {
+			continue;
 		}
+
+		issues.push({
+			id: issueId,
+			name,
+			priority: parsePriority(issueContent),
+			filePath,
+			startIndex: start + issueStartOffset,
+			endIndex: start + issueStartOffset + fullMatch.length
+		});
 	}
 
 	return issues;
 }
 
 export function hasMarkers(content: string): boolean {
-	return (
-		content.includes(MARKERS.ACTIVE_START) &&
-		content.includes(MARKERS.ACTIVE_END) &&
-		content.includes(MARKERS.ARCHIVE_START) &&
-		content.includes(MARKERS.ARCHIVE_END)
-	);
+	return Object.values(MARKERS).every((marker) => content.includes(marker));
 }
 
 export function initializeDashboardStructure(dashboardId: string): string {

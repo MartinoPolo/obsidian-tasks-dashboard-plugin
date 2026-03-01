@@ -1,28 +1,35 @@
-export interface GitHubIssueApiResponse {
+export type GitHubIssueState = 'open' | 'closed';
+
+export interface GitHubLabelObjectApiResponse {
+	name: string;
+	color?: string;
+}
+
+export type GitHubLabelApiResponse = string | GitHubLabelObjectApiResponse;
+
+export interface GitHubAssigneeApiResponse {
+	login: string;
+}
+
+interface GitHubIssueLikeApiResponse {
 	number: number;
 	title: string;
-	state: string;
-	labels: Array<string | { name: string; color?: string }>;
-	assignees?: Array<{ login: string }>;
+	state: GitHubIssueState;
+	labels: GitHubLabelApiResponse[];
+	assignees?: GitHubAssigneeApiResponse[];
 	body: string | null;
 	created_at: string;
 	updated_at: string;
 	html_url: string;
+}
+
+export interface GitHubIssueApiResponse extends GitHubIssueLikeApiResponse {
 	pull_request?: { merged_at?: string };
 	draft?: boolean;
 	repository_url: string;
 }
 
-export interface GitHubPullRequestApiResponse {
-	number: number;
-	title: string;
-	state: string;
-	labels: Array<string | { name: string; color?: string }>;
-	assignees?: Array<{ login: string }>;
-	body: string | null;
-	created_at: string;
-	updated_at: string;
-	html_url: string;
+export interface GitHubPullRequestApiResponse extends GitHubIssueLikeApiResponse {
 	merged: boolean;
 	draft: boolean;
 }
@@ -50,10 +57,10 @@ export interface GitHubRepoDetailApiResponse {
 	updated_at: string;
 }
 
-export interface GitHubUserApiResponse {
+interface GitHubActorApiResponse {
 	login: string;
 }
 
-export interface GitHubOrgApiResponse {
-	login: string;
-}
+export interface GitHubUserApiResponse extends GitHubActorApiResponse {}
+
+export interface GitHubOrgApiResponse extends GitHubActorApiResponse {}

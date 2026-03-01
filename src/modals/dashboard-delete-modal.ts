@@ -7,8 +7,8 @@ export interface DashboardDeleteResult {
 }
 
 export class DashboardDeleteConfirmationModal extends Modal {
-	private dashboardName: string;
-	private onResult: (result: DashboardDeleteResult) => void;
+	private readonly dashboardName: string;
+	private readonly onResult: (result: DashboardDeleteResult) => void;
 	private deleteFiles = false;
 
 	constructor(app: App, dashboardName: string, onResult: (result: DashboardDeleteResult) => void) {
@@ -19,12 +19,24 @@ export class DashboardDeleteConfirmationModal extends Modal {
 
 	onOpen() {
 		setupPromptModal(this, 'Delete Dashboard');
+		this.renderDeleteMessage();
+		this.renderDeleteFilesCheckbox();
+		this.renderActionButtons();
+		this.registerKeyboardShortcuts();
+	}
 
+	onClose() {
+		this.contentEl.empty();
+	}
+
+	private renderDeleteMessage() {
 		this.contentEl.createEl('p', {
 			text: `Are you sure you want to remove the dashboard "${this.dashboardName}" from settings?`,
 			cls: 'tdc-delete-message'
 		});
+	}
 
+	private renderDeleteFilesCheckbox() {
 		const checkboxContainer = this.contentEl.createDiv({ cls: 'tdc-delete-checkbox-row' });
 		const checkboxId = 'tdc-delete-files-checkbox';
 		const checkbox = checkboxContainer.createEl('input', {
@@ -38,7 +50,9 @@ export class DashboardDeleteConfirmationModal extends Modal {
 		checkbox.addEventListener('change', () => {
 			this.deleteFiles = checkbox.checked;
 		});
+	}
 
+	private renderActionButtons() {
 		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
 
 		const cancelBtn = btnContainer.createEl('button', {
@@ -46,7 +60,7 @@ export class DashboardDeleteConfirmationModal extends Modal {
 		});
 		cancelBtn.innerHTML = 'Cancel <kbd>Esc</kbd>';
 		cancelBtn.addEventListener('click', () => {
-			this.close();
+			this.handleCancel();
 		});
 
 		const deleteBtn = btnContainer.createEl('button', {
@@ -54,20 +68,25 @@ export class DashboardDeleteConfirmationModal extends Modal {
 		});
 		deleteBtn.innerHTML = 'Delete <kbd>↵</kbd>';
 		deleteBtn.addEventListener('click', () => {
-			this.close();
-			this.onResult({ confirmed: true, deleteFiles: this.deleteFiles });
+			this.handleConfirm();
 		});
+	}
 
+	private registerKeyboardShortcuts() {
 		this.contentEl.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter') {
 				e.preventDefault();
-				this.close();
-				this.onResult({ confirmed: true, deleteFiles: this.deleteFiles });
+				this.handleConfirm();
 			}
 		});
 	}
 
-	onClose() {
-		this.contentEl.empty();
+	private handleCancel() {
+		this.close();
+	}
+
+	private handleConfirm() {
+		this.close();
+		this.onResult({ confirmed: true, deleteFiles: this.deleteFiles });
 	}
 }

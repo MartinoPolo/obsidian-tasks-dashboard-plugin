@@ -93,15 +93,6 @@ export interface DashboardConfig {
 	showVSCodeButtons?: boolean;
 }
 
-export function getDashboardDisplayName(dashboard: DashboardConfig): string {
-	const filename = (dashboard.dashboardFilename || 'Dashboard.md').replace(/\.md$/, '');
-	const segments = (dashboard.rootPath || '').split('/').filter(Boolean);
-	const parentFolder = segments.length > 0 ? segments[segments.length - 1] : '';
-	if (parentFolder) {
-		return `${parentFolder}/${filename}`;
-	}
-	return filename;
-}
 export interface TasksDashboardSettings {
 	dashboards: DashboardConfig[];
 	progressDisplayMode: ProgressDisplayMode;
@@ -116,19 +107,7 @@ export interface IssueProgress {
 	total: number;
 	percentage: number;
 }
-export const DEFAULT_SETTINGS: TasksDashboardSettings = {
-	dashboards: [],
-	progressDisplayMode: 'all',
-	githubAuth: { method: 'none' },
-	githubDisplayMode: 'compact',
-	collapsedIssues: {},
-	issueColors: {},
-	issueFolders: {}
-};
 
-export const PRIORITY_ORDER: Record<Priority, number> = {
-	top: 0,
-	high: 1,
-	medium: 2,
-	low: 3
-};
+export { getDashboardDisplayName } from './utils/dashboard-path';
+export { DEFAULT_SETTINGS } from './constants/settings-defaults';
+export { PRIORITY_ORDER } from './utils/priorities';

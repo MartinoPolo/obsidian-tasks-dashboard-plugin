@@ -80,11 +80,49 @@ function findIssueFilesByPath(app: App, basePath: string, issueId: string): TFil
 		.filter((f) => f.path.startsWith(basePath) && f.basename.startsWith(issueId));
 }
 
+function toStoredGitHubMetadata(
+	metadata: GitHubIssueMetadata | undefined
+): GitHubStoredMetadata | undefined {
+	if (metadata === undefined) {
+		return undefined;
+	}
+
+	return {
+		url: metadata.url,
+		number: metadata.number,
+		state: metadata.state,
+		title: metadata.title,
+		labels: metadata.labels.map((label) => label.name),
+		lastFetched: new Date().toISOString()
+	};
+}
+
+function escapeForRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getFrontmatterCloseIndex(content: string): number {
+	const openIndex = content.indexOf('---');
+	if (openIndex === -1) {
+		return -1;
+	}
+
+	return content.indexOf('---', openIndex + 3);
+}
+
+function getDashboardFilename(dashboard: DashboardConfig): string {
+	return dashboard.dashboardFilename || 'Dashboard.md';
+}
+
+function getIssueFolderStorageKey(dashboardId: string, issueId: string): string {
+	return `${dashboardId}:${issueId}`;
+}
+
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
 	const activeOperationLocks = new Set<string>();
 
 	const acquireOperationLock = (dashboardId: string, issueId: string): boolean => {
-		const lockKey = `${dashboardId}:${issueId}`;
+		const lockKey = getIssueFolderStorageKey(dashboardId, issueId);
 		if (activeOperationLocks.has(lockKey)) {
 			return false;
 		}
@@ -93,12 +131,46 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 	};
 
 	const releaseOperationLock = (dashboardId: string, issueId: string): void => {
-		activeOperationLocks.delete(`${dashboardId}:${issueId}`);
+		activeOperationLocks.delete(getIssueFolderStorageKey(dashboardId, issueId));
+	};
+
+	const withIssueOperationLock = async (
+		dashboardId: string,
+		issueId: string,
+		operation: () => Promise<void>
+	): Promise<void> => {
+		if (!acquireOperationLock(dashboardId, issueId)) {
+			new Notice(`Operation already in progress for ${issueId}`);
+			return;
+		}
+
+		try {
+			await operation();
+		} finally {
+			releaseOperationLock(dashboardId, issueId);
+		}
+	};
+
+	const getIssuePathByStatus = (dashboard: DashboardConfig, status: IssueStatus): string => {
+		const folderName = status === 'active' ? 'Active' : 'Archive';
+		return `${dashboard.rootPath}/Issues/${folderName}`;
+	};
+
+	const getFileByPath = (path: string): TFile | undefined => {
+		const abstractFile = app.vault.getAbstractFileByPath(path);
+		if (abstractFile instanceof TFile) {
+			return abstractFile;
+		}
+		return undefined;
+	};
+
+	const getDashboardFile = (dashboard: DashboardConfig): TFile | undefined => {
+		return getFileByPath(getDashboardPath(dashboard));
 	};
 
 	const ensureFolderExists = async (path: string): Promise<void> => {
-		const folder = app.vault.getAbstractFileByPath(path);
-		if (folder === null) {
+		const existingPath = app.vault.getAbstractFileByPath(path);
+		if (existingPath === null) {
 			await app.vault.createFolder(path);
 		}
 	};
@@ -123,9 +195,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		let yaml = '\ngithub_links:';
 		for (let index = 0; index < links.length; index++) {
 			const url = links[index];
-			const metadata: GitHubStoredMetadata | undefined = metadataList[index] as
-				| GitHubStoredMetadata
-				| undefined;
+			const metadata = metadataList.at(index);
 			yaml += `\n  - url: "${url}"`;
 			if (metadata !== undefined) {
 				yaml += buildGitHubMetadataYaml(metadata);
@@ -142,9 +212,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		let body = '';
 		for (let index = 0; index < links.length; index++) {
 			const url = links[index];
-			const metadata: GitHubStoredMetadata | undefined = metadataList[index] as
-				| GitHubStoredMetadata
-				| undefined;
+			const metadata = metadataList.at(index);
 			const linkText = formatGitHubLinkText(url, metadata);
 			body += `\n[${linkText}](${url})
 
@@ -157,7 +225,7 @@ dashboard: ${dashboardId}
 	};
 
 	const generateIssueContent = (issue: Issue, dashboard: DashboardConfig): string => {
-		const filename = dashboard.dashboardFilename || 'Dashboard.md';
+		const filename = getDashboardFilename(dashboard);
 		const relativePath = '../'.repeat(2) + encodeURI(filename);
 
 		// Collect links and metadata from both old and new fields
@@ -192,27 +260,135 @@ priority: ${issue.priority}`;
 		return content;
 	};
 
+	const findIssueFileInStatus = (
+		dashboard: DashboardConfig,
+		issueId: string,
+		status: IssueStatus
+	): TFile | undefined => {
+		const folderPath = getIssuePathByStatus(dashboard, status);
+		const matchingFiles = findIssueFilesByPath(app, folderPath, issueId);
+		return matchingFiles.at(0);
+	};
+
+	const editDashboardIssueBlock = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		transformBlock: (block: string) => string
+	): Promise<void> => {
+		const dashboardFile = getDashboardFile(dashboard);
+		if (dashboardFile === undefined) {
+			return;
+		}
+
+		let dashboardContent = await app.vault.read(dashboardFile);
+		const startMarker = `%% ISSUE:${issueId}:START %%`;
+		const endMarker = `%% ISSUE:${issueId}:END %%`;
+		const startIndex = dashboardContent.indexOf(startMarker);
+		const endIndex = dashboardContent.indexOf(endMarker);
+
+		if (startIndex === -1 || endIndex === -1) {
+			return;
+		}
+
+		const blockEnd = endIndex + endMarker.length;
+		const originalBlock = dashboardContent.substring(startIndex, blockEnd);
+		const updatedBlock = transformBlock(originalBlock);
+
+		if (updatedBlock === originalBlock) {
+			return;
+		}
+
+		dashboardContent =
+			dashboardContent.slice(0, startIndex) + updatedBlock + dashboardContent.slice(blockEnd);
+		await app.vault.modify(dashboardFile, dashboardContent);
+	};
+
+	const moveIssueState = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		fromStatus: IssueStatus,
+		toStatus: IssueStatus,
+		onDashboardMove: (dashboardConfig: DashboardConfig, id: string) => Promise<void>,
+		noticeMessage: string
+	): Promise<void> => {
+		const issueFile = findIssueFileInStatus(dashboard, issueId, fromStatus);
+		if (issueFile === undefined) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+
+		let content = await app.vault.read(issueFile);
+		content = content.replace(new RegExp(`^status:\\s*${fromStatus}`, 'm'), `status: ${toStatus}`);
+		await app.vault.modify(issueFile, content);
+
+		const destinationPath = `${getIssuePathByStatus(dashboard, toStatus)}/${issueFile.name}`;
+		await app.vault.rename(issueFile, destinationPath);
+		await onDashboardMove(dashboard, issueId);
+
+		new Notice(`${noticeMessage}: ${issueId}`);
+	};
+
+	const removeIssueSettings = (dashboardId: string, issueId: string): boolean => {
+		let settingsChanged = false;
+
+		if (issueId in plugin.settings.collapsedIssues) {
+			delete plugin.settings.collapsedIssues[issueId];
+			settingsChanged = true;
+		}
+
+		if (issueId in plugin.settings.issueColors) {
+			delete plugin.settings.issueColors[issueId];
+			settingsChanged = true;
+		}
+
+		const issueFolderKey = getIssueFolderStorageKey(dashboardId, issueId);
+		if (issueFolderKey in plugin.settings.issueFolders) {
+			delete plugin.settings.issueFolders[issueFolderKey];
+			settingsChanged = true;
+		}
+
+		return settingsChanged;
+	};
+
+	const migrateIssueSettings = (
+		dashboardId: string,
+		oldIssueId: string,
+		newIssueId: string
+	): boolean => {
+		let settingsChanged = false;
+
+		if (oldIssueId in plugin.settings.collapsedIssues) {
+			plugin.settings.collapsedIssues[newIssueId] = plugin.settings.collapsedIssues[oldIssueId];
+			delete plugin.settings.collapsedIssues[oldIssueId];
+			settingsChanged = true;
+		}
+
+		if (oldIssueId in plugin.settings.issueColors) {
+			plugin.settings.issueColors[newIssueId] = plugin.settings.issueColors[oldIssueId];
+			delete plugin.settings.issueColors[oldIssueId];
+			settingsChanged = true;
+		}
+
+		const oldFolderKey = getIssueFolderStorageKey(dashboardId, oldIssueId);
+		const newFolderKey = getIssueFolderStorageKey(dashboardId, newIssueId);
+		if (oldFolderKey in plugin.settings.issueFolders) {
+			plugin.settings.issueFolders[newFolderKey] = plugin.settings.issueFolders[oldFolderKey];
+			delete plugin.settings.issueFolders[oldFolderKey];
+			settingsChanged = true;
+		}
+
+		return settingsChanged;
+	};
+
 	const createIssue = async (params: CreateIssueParams): Promise<Issue> => {
 		const { name, priority, githubLink, githubMetadata, dashboard } = params;
 		const issueId = slugify(name);
-		const activePath = `${dashboard.rootPath}/Issues/Active`;
+		const activePath = getIssuePathByStatus(dashboard, 'active');
 
 		await ensureFolderExists(activePath);
 
 		const filePath = generateUniqueFilePath(activePath, issueId);
 		const created = new Date().toISOString();
-
-		let storedMetadata: GitHubStoredMetadata | undefined;
-		if (githubMetadata !== undefined) {
-			storedMetadata = {
-				url: githubMetadata.url,
-				number: githubMetadata.number,
-				state: githubMetadata.state,
-				title: githubMetadata.title,
-				labels: githubMetadata.labels.map((l) => l.name),
-				lastFetched: new Date().toISOString()
-			};
-		}
+		const storedMetadata = toStoredGitHubMetadata(githubMetadata);
 
 		const githubLinks = githubLink !== undefined && githubLink !== '' ? [githubLink] : [];
 		const githubMetadataList = storedMetadata !== undefined ? [storedMetadata] : [];
@@ -241,13 +417,13 @@ priority: ${issue.priority}`;
 		const { file, priority, dashboard } = params;
 		const name = file.basename;
 		const issueId = slugify(name);
-		const activePath = `${dashboard.rootPath}/Issues/Active`;
+		const activePath = getIssuePathByStatus(dashboard, 'active');
 
 		await ensureFolderExists(activePath);
 
 		const filePath = generateUniqueFilePath(activePath, issueId);
 		const created = new Date().toISOString();
-		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
+		const dashboardFilename = getDashboardFilename(dashboard);
 		const relativePath = '../'.repeat(2) + encodeURI(dashboardFilename);
 
 		// Read original note content — original stays untouched
@@ -304,92 +480,51 @@ ${originalBody}`;
 	const findIssueFile = (
 		dashboard: DashboardConfig,
 		issueId: string
-	): { file: TFile; status: IssueStatus } | null => {
-		const activePath = `${dashboard.rootPath}/Issues/Active`;
-		const archivePath = `${dashboard.rootPath}/Issues/Archive`;
-
-		const activeFiles = findIssueFilesByPath(app, activePath, issueId);
-		if (activeFiles.length > 0) {
-			return { file: activeFiles[0], status: 'active' };
+	): { file: TFile; status: IssueStatus } | undefined => {
+		const activeFile = findIssueFileInStatus(dashboard, issueId, 'active');
+		if (activeFile !== undefined) {
+			return { file: activeFile, status: 'active' };
 		}
 
-		const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
-		if (archiveFiles.length > 0) {
-			return { file: archiveFiles[0], status: 'archived' };
+		const archivedFile = findIssueFileInStatus(dashboard, issueId, 'archived');
+		if (archivedFile !== undefined) {
+			return { file: archivedFile, status: 'archived' };
 		}
 
-		return null;
+		return undefined;
 	};
 
 	const archiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
-		if (!acquireOperationLock(dashboard.id, issueId)) {
-			new Notice(`Operation already in progress for ${issueId}`);
-			return;
-		}
-
-		try {
-			const activePath = `${dashboard.rootPath}/Issues/Active`;
-			const archivePath = `${dashboard.rootPath}/Issues/Archive`;
-
-			await ensureFolderExists(archivePath);
-
-			const activeFiles = findIssueFilesByPath(app, activePath, issueId);
-			if (activeFiles.length === 0) {
-				throw new Error(`Issue not found: ${issueId}`);
-			}
-
-			const file = activeFiles[0];
-			let content = await app.vault.read(file);
-
-			content = content.replace(/^status:\s*active/m, 'status: archived');
-			await app.vault.modify(file, content);
-
-			const newPath = `${archivePath}/${file.name}`;
-			await app.vault.rename(file, newPath);
-			await plugin.dashboardWriter.moveIssueToArchive(dashboard, issueId);
-
-			new Notice(`Archived: ${issueId}`);
-		} finally {
-			releaseOperationLock(dashboard.id, issueId);
-		}
+		await withIssueOperationLock(dashboard.id, issueId, async () => {
+			await ensureFolderExists(getIssuePathByStatus(dashboard, 'archived'));
+			await moveIssueState(
+				dashboard,
+				issueId,
+				'active',
+				'archived',
+				plugin.dashboardWriter.moveIssueToArchive,
+				'Archived'
+			);
+		});
 	};
 
 	const unarchiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
-		if (!acquireOperationLock(dashboard.id, issueId)) {
-			new Notice(`Operation already in progress for ${issueId}`);
-			return;
-		}
-
-		try {
-			const activePath = `${dashboard.rootPath}/Issues/Active`;
-			const archivePath = `${dashboard.rootPath}/Issues/Archive`;
-
-			await ensureFolderExists(activePath);
-
-			const archiveFiles = findIssueFilesByPath(app, archivePath, issueId);
-			if (archiveFiles.length === 0) {
-				throw new Error(`Issue not found: ${issueId}`);
-			}
-
-			const file = archiveFiles[0];
-			let content = await app.vault.read(file);
-
-			content = content.replace(/^status:\s*archived/m, 'status: active');
-			await app.vault.modify(file, content);
-
-			const newPath = `${activePath}/${file.name}`;
-			await app.vault.rename(file, newPath);
-			await plugin.dashboardWriter.moveIssueToActive(dashboard, issueId);
-
-			new Notice(`Unarchived: ${issueId}`);
-		} finally {
-			releaseOperationLock(dashboard.id, issueId);
-		}
+		await withIssueOperationLock(dashboard.id, issueId, async () => {
+			await ensureFolderExists(getIssuePathByStatus(dashboard, 'active'));
+			await moveIssueState(
+				dashboard,
+				issueId,
+				'archived',
+				'active',
+				plugin.dashboardWriter.moveIssueToActive,
+				'Unarchived'
+			);
+		});
 	};
 
 	const deleteIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		const issueFile = findIssueFile(dashboard, issueId);
-		if (issueFile === null) {
+		if (issueFile === undefined) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
 		const { file } = issueFile;
@@ -399,15 +534,7 @@ ${originalBody}`;
 		// Use system trash for recoverability
 		await app.vault.trash(file, true);
 
-		let settingsChanged = false;
-		if (issueId in plugin.settings.collapsedIssues) {
-			delete plugin.settings.collapsedIssues[issueId];
-			settingsChanged = true;
-		}
-		if (issueId in plugin.settings.issueColors) {
-			delete plugin.settings.issueColors[issueId];
-			settingsChanged = true;
-		}
+		const settingsChanged = removeIssueSettings(dashboard.id, issueId);
 		if (settingsChanged) {
 			void plugin.saveSettings();
 		}
@@ -427,7 +554,7 @@ ${originalBody}`;
 		}
 
 		const issueResult = findIssueFile(dashboard, oldIssueId);
-		if (issueResult === null) {
+		if (issueResult === undefined) {
 			throw new Error(`Issue not found: ${oldIssueId}`);
 		}
 
@@ -439,35 +566,25 @@ ${originalBody}`;
 			throw new Error(`An issue with name "${newName}" already exists`);
 		}
 
-		// Update dashboard file — replace within the issue's block only
-		const dashboardPath = getDashboardPath(dashboard);
-		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
-
-		if (dashboardFile !== null) {
-			let content = await app.vault.read(dashboardFile);
-			const startMarker = `%% ISSUE:${oldIssueId}:START %%`;
-			const endMarker = `%% ISSUE:${oldIssueId}:END %%`;
-			const startIndex = content.indexOf(startMarker);
-			const endIndex = content.indexOf(endMarker);
-
-			if (startIndex !== -1 && endIndex !== -1) {
-				const blockEnd = endIndex + endMarker.length;
-				let block = content.substring(startIndex, blockEnd);
-
-				block = block.replace(`%% ISSUE:${oldIssueId}:START %%`, `%% ISSUE:${newIssueId}:START %%`);
-				block = block.replace(`%% ISSUE:${oldIssueId}:END %%`, `%% ISSUE:${newIssueId}:END %%`);
-				block = block.replace(`issue: ${oldIssueId}`, `issue: ${newIssueId}`);
-				block = block.replace(/name: .+/, `name: ${newName}`);
-				block = block.replace(`path: ${file.path}`, `path: ${newPath}`);
-				block = block.replace(
-					`path includes Issues/${folder}/${oldIssueId}`,
-					`path includes Issues/${folder}/${newIssueId}`
-				);
-
-				content = content.slice(0, startIndex) + block + content.slice(blockEnd);
-				await app.vault.modify(dashboardFile, content);
-			}
-		}
+		await editDashboardIssueBlock(dashboard, oldIssueId, (block) => {
+			let updatedBlock = block;
+			updatedBlock = updatedBlock.replace(
+				`%% ISSUE:${oldIssueId}:START %%`,
+				`%% ISSUE:${newIssueId}:START %%`
+			);
+			updatedBlock = updatedBlock.replace(
+				`%% ISSUE:${oldIssueId}:END %%`,
+				`%% ISSUE:${newIssueId}:END %%`
+			);
+			updatedBlock = updatedBlock.replace(`issue: ${oldIssueId}`, `issue: ${newIssueId}`);
+			updatedBlock = updatedBlock.replace(/name: .+/, `name: ${newName}`);
+			updatedBlock = updatedBlock.replace(`path: ${file.path}`, `path: ${newPath}`);
+			updatedBlock = updatedBlock.replace(
+				`path includes Issues/${folder}/${oldIssueId}`,
+				`path includes Issues/${folder}/${newIssueId}`
+			);
+			return updatedBlock;
+		});
 
 		// Update issue file H1
 		let issueContent = await app.vault.read(file);
@@ -477,19 +594,9 @@ ${originalBody}`;
 		// Rename file
 		await app.vault.rename(file, newPath);
 
-		// Migrate collapsed state
-		if (oldIssueId in plugin.settings.collapsedIssues) {
-			plugin.settings.collapsedIssues[newIssueId] = plugin.settings.collapsedIssues[oldIssueId];
-			delete plugin.settings.collapsedIssues[oldIssueId];
+		if (migrateIssueSettings(dashboard.id, oldIssueId, newIssueId)) {
+			void plugin.saveSettings();
 		}
-
-		// Migrate header color
-		if (oldIssueId in plugin.settings.issueColors) {
-			plugin.settings.issueColors[newIssueId] = plugin.settings.issueColors[oldIssueId];
-			delete plugin.settings.issueColors[oldIssueId];
-		}
-
-		void plugin.saveSettings();
 		new Notice(`Renamed: ${oldIssueId} → ${newIssueId}`);
 	};
 
@@ -530,7 +637,10 @@ ${originalBody}`;
 			}
 		}
 
-		const newCloseIndex = migrated.indexOf('---', migrated.indexOf('---') + 3);
+		const newCloseIndex = getFrontmatterCloseIndex(migrated);
+		if (newCloseIndex === -1) {
+			return migrated;
+		}
 		migrated =
 			migrated.slice(0, newCloseIndex) +
 			githubLinksFrontmatter +
@@ -545,7 +655,7 @@ ${originalBody}`;
 		githubUrl: string,
 		storedMetadata: GitHubStoredMetadata | undefined
 	): string => {
-		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+		const frontmatterCloseIndex = getFrontmatterCloseIndex(content);
 		if (frontmatterCloseIndex === -1) {
 			return content;
 		}
@@ -572,7 +682,10 @@ ${originalBody}`;
 		if (hasOldGithub) {
 			let migrated = migrateOldGitHubFormat(content, frontmatterSection);
 			// Now append the new link to the migrated github_links
-			const migratedCloseIndex = migrated.indexOf('---', migrated.indexOf('---') + 3);
+			const migratedCloseIndex = getFrontmatterCloseIndex(migrated);
+			if (migratedCloseIndex === -1) {
+				return migrated;
+			}
 			let newEntry = `\n  - url: "${githubUrl}"`;
 			if (storedMetadata !== undefined) {
 				newEntry += buildGitHubMetadataYaml(storedMetadata);
@@ -629,42 +742,22 @@ ${originalBody}`;
 		issueId: string,
 		githubUrl: string
 	): Promise<void> => {
-		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
-		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
+		await editDashboardIssueBlock(dashboard, issueId, (block) => {
+			let updatedBlock = block;
 
-		if (dashboardFile === null) {
-			return;
-		}
+			updatedBlock = updatedBlock.replace(/^github: (.+)$/m, 'github_link: $1');
 
-		let dashboardContent = await app.vault.read(dashboardFile);
-		const startMarker = `%% ISSUE:${issueId}:START %%`;
-		const endMarker = `%% ISSUE:${issueId}:END %%`;
-		const startIndex = dashboardContent.indexOf(startMarker);
-		const endIndex = dashboardContent.indexOf(endMarker);
+			const controlsBlockEnd = updatedBlock.indexOf('```\n');
+			if (controlsBlockEnd === -1) {
+				return updatedBlock;
+			}
 
-		if (startIndex === -1 || endIndex === -1) {
-			return;
-		}
-
-		const blockEnd = endIndex + endMarker.length;
-		let block = dashboardContent.substring(startIndex, blockEnd);
-
-		// Migrate any old `github:` line to `github_link:` while we're here
-		block = block.replace(/^github: (.+)$/m, 'github_link: $1');
-
-		// Insert github_link: url before the closing ``` of tasks-dashboard-controls
-		const controlsBlockEnd = block.indexOf('```\n');
-		if (controlsBlockEnd !== -1) {
-			block =
-				block.slice(0, controlsBlockEnd) +
+			return (
+				updatedBlock.slice(0, controlsBlockEnd) +
 				`github_link: ${githubUrl}\n` +
-				block.slice(controlsBlockEnd);
-		}
-
-		dashboardContent =
-			dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
-		await app.vault.modify(dashboardFile, dashboardContent);
+				updatedBlock.slice(controlsBlockEnd)
+			);
+		});
 	};
 
 	const addGitHubLink = async (
@@ -674,7 +767,7 @@ ${originalBody}`;
 		metadata?: GitHubIssueMetadata
 	): Promise<void> => {
 		const issueResult = findIssueFile(dashboard, issueId);
-		if (issueResult === null) {
+		if (issueResult === undefined) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
 
@@ -682,17 +775,7 @@ ${originalBody}`;
 		let content = await app.vault.read(file);
 
 		// Build stored metadata for frontmatter
-		let storedMetadata: GitHubStoredMetadata | undefined;
-		if (metadata !== undefined) {
-			storedMetadata = {
-				url: metadata.url,
-				number: metadata.number,
-				state: metadata.state,
-				title: metadata.title,
-				labels: metadata.labels.map((l) => l.name),
-				lastFetched: new Date().toISOString()
-			};
-		}
+		const storedMetadata = toStoredGitHubMetadata(metadata);
 
 		content = updateFrontmatterWithGitHubLink(content, githubUrl, storedMetadata);
 		content = updateBodyWithGitHubLink(content, githubUrl, storedMetadata, dashboard.id);
@@ -709,7 +792,7 @@ ${originalBody}`;
 		githubUrl: string
 	): Promise<void> => {
 		const issueResult = findIssueFile(dashboard, issueId);
-		if (issueResult === null) {
+		if (issueResult === undefined) {
 			throw new Error(`Issue not found: ${issueId}`);
 		}
 
@@ -717,14 +800,14 @@ ${originalBody}`;
 		let content = await app.vault.read(file);
 
 		// --- Remove from frontmatter ---
-		const frontmatterCloseIndex = content.indexOf('---', content.indexOf('---') + 3);
+		const frontmatterCloseIndex = getFrontmatterCloseIndex(content);
 		if (frontmatterCloseIndex !== -1) {
 			const frontmatter = content.slice(0, frontmatterCloseIndex);
 			const afterFrontmatter = content.slice(frontmatterCloseIndex);
 
 			// Match the `- url: "{url}"` entry and its metadata children
 			const entryPattern = new RegExp(
-				`\\n  - url: "${githubUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"` +
+				`\\n  - url: "${escapeForRegExp(githubUrl)}"` +
 				`(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
 				'g'
 			);
@@ -741,7 +824,7 @@ ${originalBody}`;
 
 		// --- Remove markdown link + code block from body ---
 		// Pattern: [linkText](url)\n\n```tasks-dashboard-github\nurl: {url}\ndashboard: ...\n```
-		const escapedUrl = githubUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const escapedUrl = escapeForRegExp(githubUrl);
 		const bodyLinkPattern = new RegExp(
 			`\\n?\\[([^\\]]*?)\\]\\(${escapedUrl}\\)\\s*\\n\\n\`\`\`tasks-dashboard-github\\nurl: ${escapedUrl}\\ndashboard: [^\\n]+\\n\`\`\``,
 			'g'
@@ -751,32 +834,9 @@ ${originalBody}`;
 		await app.vault.modify(file, content);
 
 		// --- Remove from Dashboard.md ---
-		const dashboardFilename = dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath = `${dashboard.rootPath}/${dashboardFilename}`;
-		const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath) as TFile | null;
-
-		if (dashboardFile !== null) {
-			let dashboardContent = await app.vault.read(dashboardFile);
-			const startMarker = `%% ISSUE:${issueId}:START %%`;
-			const endMarker = `%% ISSUE:${issueId}:END %%`;
-			const startIndex = dashboardContent.indexOf(startMarker);
-			const endIndex = dashboardContent.indexOf(endMarker);
-
-			if (startIndex !== -1 && endIndex !== -1) {
-				const blockEnd = endIndex + endMarker.length;
-				let block = dashboardContent.substring(startIndex, blockEnd);
-
-				// Remove the github_link: {url} line
-				block = block.replace(
-					new RegExp(`\\ngithub_link: ${escapedUrl}`, 'g'),
-					''
-				);
-
-				dashboardContent =
-					dashboardContent.slice(0, startIndex) + block + dashboardContent.slice(blockEnd);
-				await app.vault.modify(dashboardFile, dashboardContent);
-			}
-		}
+		await editDashboardIssueBlock(dashboard, issueId, (block) => {
+			return block.replace(new RegExp(`\\ngithub_link: ${escapedUrl}`, 'g'), '');
+		});
 
 		new Notice(`GitHub link removed from ${issueId}`);
 	};

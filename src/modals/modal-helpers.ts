@@ -1,15 +1,72 @@
 import { Modal } from 'obsidian';
 
+const TOP_MODAL_CLASS = 'tdc-top-modal';
+const PROMPT_MODAL_CLASS = 'tdc-prompt-modal';
+const PROMPT_TITLE_CLASS = 'tdc-prompt-title';
+const PROMPT_BUTTONS_CLASS = 'tdc-prompt-buttons';
+const PROMPT_BUTTON_CLASS = 'tdc-prompt-btn';
+const PROMPT_CONFIRM_CLASS = 'tdc-prompt-btn-confirm';
+const PROMPT_CANCEL_CLASS = 'tdc-prompt-btn-cancel';
+const PROMPT_INPUT_CLASS = 'tdc-prompt-input';
+
+interface PromptButtonOptions {
+	label: string;
+	shortcut: string;
+	className: string;
+	onClick: () => void;
+}
+
+const applyPromptModalClasses = (modal: Modal): void => {
+	const { modalEl, containerEl } = modal;
+	containerEl.addClass(TOP_MODAL_CLASS);
+	modalEl.addClass(PROMPT_MODAL_CLASS);
+};
+
+const createPromptTitle = (contentEl: HTMLElement, titleText: string): void => {
+	contentEl.empty();
+	contentEl.createEl('div', { cls: PROMPT_TITLE_CLASS, text: titleText });
+};
+
+const createShortcutHint = (buttonEl: HTMLButtonElement, shortcut: string): void => {
+	buttonEl.appendText(' ');
+	buttonEl.createEl('kbd', { text: shortcut });
+};
+
+const createPromptButton = (
+	containerEl: HTMLElement,
+	options: PromptButtonOptions
+): HTMLButtonElement => {
+	const buttonEl = containerEl.createEl('button', {
+		cls: `${PROMPT_BUTTON_CLASS} ${options.className}`,
+		text: options.label
+	});
+	createShortcutHint(buttonEl, options.shortcut);
+	buttonEl.addEventListener('click', options.onClick);
+	return buttonEl;
+};
+
+const bindEnterKeyHandler = (
+	inputEl: HTMLInputElement,
+	onEnter: () => void
+): void => {
+	inputEl.addEventListener('keydown', (event: KeyboardEvent) => {
+		if (event.key !== 'Enter') {
+			return;
+		}
+
+		event.preventDefault();
+		onEnter();
+	});
+};
+
 /**
  * Apply standard prompt modal classes and create title element.
  * Shared by NamePromptModal, DeleteConfirmationModal, GithubPromptModal, RenameIssueModal.
  */
 export function setupPromptModal(modal: Modal, titleText: string): void {
-	const { contentEl, modalEl, containerEl } = modal;
-	containerEl.addClass('tdc-top-modal');
-	modalEl.addClass('tdc-prompt-modal');
-	contentEl.empty();
-	contentEl.createEl('div', { cls: 'tdc-prompt-title', text: titleText });
+	const { contentEl } = modal;
+	applyPromptModalClasses(modal);
+	createPromptTitle(contentEl, titleText);
 }
 
 /**
@@ -22,17 +79,19 @@ export function createConfirmCancelButtons(
 	onConfirm: () => void,
 	onCancel: () => void
 ): HTMLButtonElement {
-	const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
-	const confirmBtn = btnContainer.createEl('button', {
-		cls: 'tdc-prompt-btn tdc-prompt-btn-confirm'
+	const buttonContainer = contentEl.createDiv({ cls: PROMPT_BUTTONS_CLASS });
+	const confirmBtn = createPromptButton(buttonContainer, {
+		label: confirmLabel,
+		shortcut: '↵',
+		className: PROMPT_CONFIRM_CLASS,
+		onClick: onConfirm
 	});
-	confirmBtn.innerHTML = `${confirmLabel} <kbd>↵</kbd>`;
-	confirmBtn.addEventListener('click', onConfirm);
-	const cancelBtn = btnContainer.createEl('button', {
-		cls: 'tdc-prompt-btn tdc-prompt-btn-cancel'
+	void createPromptButton(buttonContainer, {
+		label: 'Cancel',
+		shortcut: 'Esc',
+		className: PROMPT_CANCEL_CLASS,
+		onClick: onCancel
 	});
-	cancelBtn.innerHTML = 'Cancel <kbd>Esc</kbd>';
-	cancelBtn.addEventListener('click', onCancel);
 	return confirmBtn;
 }
 
@@ -47,15 +106,10 @@ export function createInputWithEnterHandler(
 ): HTMLInputElement {
 	const input = contentEl.createEl('input', {
 		type: 'text',
-		cls: 'tdc-prompt-input',
+		cls: PROMPT_INPUT_CLASS,
 		attr: { placeholder }
 	});
 	input.focus();
-	input.addEventListener('keydown', (e) => {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			onEnter();
-		}
-	});
+	bindEnterKeyHandler(input, onEnter);
 	return input;
 }

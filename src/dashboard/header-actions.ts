@@ -61,6 +61,7 @@ export function createActionButton(config: ActionButtonConfig): HTMLElement {
 		cls: `tdc-btn ${config.cssClass}${config.faded ? ' tdc-btn-faded' : ''}`,
 		attr: { 'aria-label': config.ariaLabel }
 	});
+	const contextMenuHandler = config.onContextMenu;
 	button.innerHTML = config.labelText !== undefined
 		? ICONS[config.iconKey] + ' ' + config.labelText
 		: ICONS[config.iconKey];
@@ -69,11 +70,11 @@ export function createActionButton(config: ActionButtonConfig): HTMLElement {
 		event.stopPropagation();
 		config.onClick(event);
 	});
-	if (config.onContextMenu !== undefined) {
+	if (contextMenuHandler !== undefined) {
 		button.addEventListener('contextmenu', (event) => {
 			event.preventDefault();
 			event.stopPropagation();
-			config.onContextMenu!(event);
+			contextMenuHandler(event);
 		});
 	}
 	return button;
@@ -87,6 +88,66 @@ function getPlatformService(): PlatformService {
 		sharedPlatformService = createPlatformService();
 	}
 	return sharedPlatformService;
+}
+
+function isNonEmptyString(value: string | undefined): value is string {
+	return value !== undefined && value !== '';
+}
+
+interface FolderDependentActionButtonConfig {
+	container: HTMLElement;
+	iconKey: keyof typeof ICONS;
+	cssClass: string;
+	ariaLabelWithFolder: string;
+	ariaLabelWithoutFolder: string;
+	folderPath: string | undefined;
+	onOpenFolder: (folderPath: string) => void;
+	onSelectFolder: () => void;
+	openFolderSelectorOnContextMenu: 'always' | 'when-folder-exists';
+	labelText?: string;
+}
+
+function renderFolderDependentActionButton(config: FolderDependentActionButtonConfig): void {
+	const hasFolder = isNonEmptyString(config.folderPath);
+	const shouldOpenFolderSelectorOnContextMenu =
+		config.openFolderSelectorOnContextMenu === 'always' || hasFolder;
+
+	createActionButton({
+		container: config.container,
+		iconKey: config.iconKey,
+		cssClass: config.cssClass,
+		ariaLabel: hasFolder ? config.ariaLabelWithFolder : config.ariaLabelWithoutFolder,
+		faded: !hasFolder,
+		labelText: config.labelText,
+		onClick: () => {
+			const folderPath = config.folderPath;
+			if (isNonEmptyString(folderPath)) {
+				config.onOpenFolder(folderPath);
+				return;
+			}
+
+			config.onSelectFolder();
+		},
+		onContextMenu: shouldOpenFolderSelectorOnContextMenu
+			? () => {
+				config.onSelectFolder();
+			}
+			: undefined
+	});
+}
+
+function isGitHubUrl(url: string): boolean {
+	return /^https?:\/\/github\.com\//.test(url);
+}
+
+function openFirstGitHubLink(links: string[]): boolean {
+	const firstLink = links[0];
+	if (!isGitHubUrl(firstLink)) {
+		return false;
+	}
+
+	window.open(firstLink, '_blank');
+	return true;
 }
 
 interface IssueActionButtonsParams {
@@ -107,68 +168,57 @@ export function renderIssueActionButtons(
 	const platformService = getPlatformService();
 	const issueFolderKey = dashboard.id + ':' + params.issueId;
 	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
-	const hasIssueFolder = issueFolder !== undefined && issueFolder !== '';
+	const hasIssueFolder = isNonEmptyString(issueFolder);
+	const openIssueFolderModal = () => {
+		new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
+	};
 
 	if (visibility.folder) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container: headerActions,
 			iconKey: 'folder',
 			cssClass: 'tdc-btn-folder',
-			ariaLabel: hasIssueFolder ? 'Open issue folder' : 'Set issue folder',
-			faded: !hasIssueFolder,
-			onClick: () => {
-				if (hasIssueFolder) {
-					platformService.openInFileExplorer(issueFolder);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-				}
+			ariaLabelWithFolder: 'Open issue folder',
+			ariaLabelWithoutFolder: 'Set issue folder',
+			folderPath: issueFolder,
+			onOpenFolder: (folderPath) => {
+				platformService.openInFileExplorer(folderPath);
 			},
-			onContextMenu: () => {
-				if (hasIssueFolder) {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-				}
-			}
+			onSelectFolder: openIssueFolderModal,
+			openFolderSelectorOnContextMenu: 'when-folder-exists'
 		});
 	}
 
 	if (visibility.terminal && (hasIssueFolder || !visibility.folder)) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container: headerActions,
 			iconKey: 'terminal',
 			cssClass: 'tdc-btn-terminal',
-			ariaLabel: hasIssueFolder ? 'Open terminal' : 'Set issue folder',
-			faded: !hasIssueFolder,
-			onClick: () => {
-				if (hasIssueFolder) {
-					const issueColor = plugin.settings.issueColors[params.issueId];
-					platformService.openTerminal(issueFolder, issueColor);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-				}
+			ariaLabelWithFolder: 'Open terminal',
+			ariaLabelWithoutFolder: 'Set issue folder',
+			folderPath: issueFolder,
+			onOpenFolder: (folderPath) => {
+				const issueColor = plugin.settings.issueColors[params.issueId];
+				platformService.openTerminal(folderPath, issueColor);
 			},
-			onContextMenu: () => {
-				new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-			}
+			onSelectFolder: openIssueFolderModal,
+			openFolderSelectorOnContextMenu: 'always'
 		});
 	}
 
 	if (visibility.vscode && (hasIssueFolder || !visibility.folder)) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container: headerActions,
 			iconKey: 'vscode',
 			cssClass: 'tdc-btn-vscode',
-			ariaLabel: hasIssueFolder ? 'Open in VS Code' : 'Set issue folder',
-			faded: !hasIssueFolder,
-			onClick: () => {
-				if (hasIssueFolder) {
-					platformService.openVSCode(issueFolder);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-				}
+			ariaLabelWithFolder: 'Open in VS Code',
+			ariaLabelWithoutFolder: 'Set issue folder',
+			folderPath: issueFolder,
+			onOpenFolder: (folderPath) => {
+				platformService.openVSCode(folderPath);
 			},
-			onContextMenu: () => {
-				new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-			}
+			onSelectFolder: openIssueFolderModal,
+			openFolderSelectorOnContextMenu: 'always'
 		});
 	}
 
@@ -182,10 +232,7 @@ export function renderIssueActionButtons(
 			faded: !hasGithubLinks,
 			onClick: () => {
 				if (hasGithubLinks) {
-					const targetUrl = params.githubLinks[0];
-					if (/^https?:\/\/github\.com\//.test(targetUrl)) {
-						window.open(targetUrl, '_blank');
-					}
+					openFirstGitHubLink(params.githubLinks);
 					return;
 				}
 				if (!plugin.githubService.isAuthenticated()) {
@@ -223,70 +270,59 @@ export function renderGlobalActionButtons(
 ): void {
 	const visibility = getButtonVisibility(dashboard);
 	const platformService = getPlatformService();
-	const hasProjectFolder = dashboard.projectFolder !== undefined && dashboard.projectFolder !== '';
+	const hasProjectFolder = isNonEmptyString(dashboard.projectFolder);
+	const openProjectFolderModal = () => {
+		new FolderPathModal(plugin.app, plugin, dashboard).open();
+	};
 
 	if (visibility.folder) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container,
 			iconKey: 'folder',
 			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-folder',
-			ariaLabel: hasProjectFolder ? 'Open project folder' : 'Set project folder',
-			faded: !hasProjectFolder,
-			labelText: 'Open Folder',
-			onClick: () => {
-				if (hasProjectFolder) {
-					platformService.openInFileExplorer(dashboard.projectFolder!);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard).open();
-				}
+			ariaLabelWithFolder: 'Open project folder',
+			ariaLabelWithoutFolder: 'Set project folder',
+			folderPath: dashboard.projectFolder,
+			onOpenFolder: (folderPath) => {
+				platformService.openInFileExplorer(folderPath);
 			},
-			onContextMenu: () => {
-				if (hasProjectFolder) {
-					new FolderPathModal(plugin.app, plugin, dashboard).open();
-				}
-			}
+			onSelectFolder: openProjectFolderModal,
+			openFolderSelectorOnContextMenu: 'when-folder-exists',
+			labelText: 'Open Folder'
 		});
 	}
 
 	if (visibility.terminal && (hasProjectFolder || !visibility.folder)) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container,
 			iconKey: 'terminal',
 			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-terminal',
-			ariaLabel: hasProjectFolder ? 'Open terminal' : 'Set project folder',
-			faded: !hasProjectFolder,
-			labelText: 'Terminal',
-			onClick: () => {
-				if (hasProjectFolder) {
-					platformService.openTerminal(dashboard.projectFolder!);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard).open();
-				}
+			ariaLabelWithFolder: 'Open terminal',
+			ariaLabelWithoutFolder: 'Set project folder',
+			folderPath: dashboard.projectFolder,
+			onOpenFolder: (folderPath) => {
+				platformService.openTerminal(folderPath);
 			},
-			onContextMenu: () => {
-				new FolderPathModal(plugin.app, plugin, dashboard).open();
-			}
+			onSelectFolder: openProjectFolderModal,
+			openFolderSelectorOnContextMenu: 'always',
+			labelText: 'Terminal'
 		});
 	}
 
 	if (visibility.vscode && (hasProjectFolder || !visibility.folder)) {
-		createActionButton({
+		renderFolderDependentActionButton({
 			container,
 			iconKey: 'vscode',
 			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode',
-			ariaLabel: hasProjectFolder ? 'Open in VS Code' : 'Set project folder',
-			faded: !hasProjectFolder,
-			labelText: 'VS Code',
-			onClick: () => {
-				if (hasProjectFolder) {
-					platformService.openVSCode(dashboard.projectFolder!);
-				} else {
-					new FolderPathModal(plugin.app, plugin, dashboard).open();
-				}
+			ariaLabelWithFolder: 'Open in VS Code',
+			ariaLabelWithoutFolder: 'Set project folder',
+			folderPath: dashboard.projectFolder,
+			onOpenFolder: (folderPath) => {
+				platformService.openVSCode(folderPath);
 			},
-			onContextMenu: () => {
-				new FolderPathModal(plugin.app, plugin, dashboard).open();
-			}
+			onSelectFolder: openProjectFolderModal,
+			openFolderSelectorOnContextMenu: 'always',
+			labelText: 'VS Code'
 		});
 	}
 

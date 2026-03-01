@@ -7,6 +7,47 @@ import { parseDashboard } from './DashboardParser';
 import { ICONS, renderGlobalActionButtons } from './header-actions';
 
 type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
+type SortOption = { label: string; action: () => void };
+
+const ACTION_BUTTON_CLASS = 'tdc-btn tdc-btn-action';
+const SECONDARY_ACTION_BUTTON_CLASS = 'tdc-btn tdc-btn-action tdc-btn-action-secondary';
+
+function setIssueCollapsedState(
+	plugin: TasksDashboardPlugin,
+	issueId: string,
+	collapsed: boolean
+): void {
+	if (collapsed) {
+		plugin.settings.collapsedIssues[issueId] = true;
+		return;
+	}
+	delete plugin.settings.collapsedIssues[issueId];
+}
+
+function findDashboardElement(element: HTMLElement): Element | null {
+	return (
+		element.closest('.markdown-preview-view') ??
+		element.closest('.markdown-reading-view') ??
+		element.closest('.cm-editor') ??
+		element.closest('.markdown-source-view')
+	);
+}
+
+function createActionButton(
+	container: HTMLElement,
+	icon: string,
+	label: string,
+	onClick: () => void,
+	cls = ACTION_BUTTON_CLASS
+): HTMLButtonElement {
+	const button = container.createEl('button', { cls });
+	button.innerHTML = `${icon} ${label}`;
+	button.addEventListener('click', (event) => {
+		event.preventDefault();
+		onClick();
+	});
+	return button;
+}
 
 async function getActiveIssueIds(
 	plugin: TasksDashboardPlugin,
@@ -35,21 +76,15 @@ function toggleAllIssues(
 ): void {
 	void getActiveIssueIds(plugin, dashboard).then((issueIds) => {
 		for (const issueId of issueIds) {
-			if (collapsed) {
-				plugin.settings.collapsedIssues[issueId] = true;
-			} else {
-				delete plugin.settings.collapsedIssues[issueId];
-			}
+			setIssueCollapsedState(plugin, issueId, collapsed);
 		}
 		void plugin.saveSettings();
-		const dashboardElement =
-			element.closest('.markdown-preview-view') ??
-			element.closest('.markdown-reading-view') ??
-			element.closest('.cm-editor') ??
-			element.closest('.markdown-source-view');
+		const dashboardElement = findDashboardElement(element);
 		if (dashboardElement !== null) {
 			for (const controlBlock of Array.from(
-				dashboardElement.querySelectorAll('.block-language-tasks-dashboard-controls')
+				dashboardElement.querySelectorAll(
+					'.block-language-tasks-dashboard-controls, [data-tdc-issue]'
+				)
 			)) {
 				if (controlBlock instanceof HTMLElement) {
 					setIssueCollapsed(controlBlock, collapsed);
@@ -66,12 +101,12 @@ export function renderSortControls(
 	plugin: TasksDashboardPlugin,
 	setIssueCollapsed: SetIssueCollapsedFn
 ): void {
-	const dashboardIdMatch = source.match(/dashboard:\s*([\w-]+)/);
-	if (dashboardIdMatch === null) {
+	const dashboardId = source.match(/dashboard:\s*([\w-]+)/)?.[1];
+	if (dashboardId === undefined) {
 		return;
 	}
 
-	const dashboard = plugin.settings.dashboards.find((d) => d.id === dashboardIdMatch[1]);
+	const dashboard = plugin.settings.dashboards.find((d) => d.id === dashboardId);
 	if (dashboard === undefined) {
 		return;
 	}
@@ -79,29 +114,31 @@ export function renderSortControls(
 	el.empty();
 	const container = el.createDiv({ cls: 'tdc-sort-container' });
 
-	const addButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
-	addButton.innerHTML = ICONS.plus + ' Add Issue';
-	addButton.addEventListener('click', (event) => {
-		event.preventDefault();
+	createActionButton(container, ICONS.plus, 'Add Issue', () => {
 		new NamePromptModal(plugin.app, plugin, dashboard).open();
 	});
 
-	const importButton = container.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
-	importButton.innerHTML = ICONS.fileInput + ' Import Note';
-	importButton.addEventListener('click', (event) => {
-		event.preventDefault();
+	createActionButton(container, ICONS.fileInput, 'Import Note', () => {
 		new NoteImportModal(plugin.app, plugin, dashboard).open();
 	});
 
 	const sortWrapper = container.createDiv({ cls: 'tdc-sort-wrapper' });
-	const sortButton = sortWrapper.createEl('button', { cls: 'tdc-btn tdc-btn-action' });
-	sortButton.innerHTML = ICONS.sort + ' Sort';
+	const sortButton = createActionButton(sortWrapper, ICONS.sort, 'Sort', () => {
+		if (dropdownOpen) {
+			closeSortDropdown();
+			return;
+		}
+		openSortDropdown();
+	});
+	sortButton.addEventListener('click', (event) => {
+		event.stopPropagation();
+	});
 
 	const sortDropdown = sortWrapper.createDiv({ cls: 'tdc-sort-dropdown' });
 	sortDropdown.style.display = 'none';
 	let dropdownOpen = false;
 
-	const sortOptions: Array<{ label: string; action: () => void }> = [
+	const sortOptions: SortOption[] = [
 		{
 			label: 'Priority',
 			action: () => void plugin.dashboardWriter.sortByPriority(dashboard)
@@ -158,6 +195,14 @@ export function renderSortControls(
 		window.addEventListener('resize', positionSortDropdown);
 	};
 
+	const toggleSortDropdown = (): void => {
+		if (dropdownOpen) {
+			closeSortDropdown();
+			return;
+		}
+		openSortDropdown();
+	};
+
 	for (const option of sortOptions) {
 		const item = sortDropdown.createDiv({ cls: 'tdc-sort-dropdown-item', text: option.label });
 		item.addEventListener('click', (event) => {
@@ -168,18 +213,16 @@ export function renderSortControls(
 		});
 	}
 
-	sortButton.addEventListener('click', (event) => {
-		event.preventDefault();
-		event.stopPropagation();
-		if (dropdownOpen) {
-			closeSortDropdown();
-		} else {
-			openSortDropdown();
-		}
+	sortButton.addEventListener('click', () => {
+		toggleSortDropdown();
 	});
 
 	const closeSortDropdownOnClick = (event: MouseEvent): void => {
-		const target = event.target as Node;
+		const { target } = event;
+		if (!(target instanceof Node)) {
+			closeSortDropdown();
+			return;
+		}
 		if (sortWrapper.contains(target) || sortDropdown.contains(target)) {
 			return;
 		}
@@ -188,33 +231,34 @@ export function renderSortControls(
 
 	document.addEventListener('click', closeSortDropdownOnClick);
 
-	const collapseAllButton = container.createEl('button', {
-		cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary'
-	});
-	collapseAllButton.innerHTML = ICONS.foldAll + ' Collapse All';
-	collapseAllButton.addEventListener('click', (event) => {
-		event.preventDefault();
+	createActionButton(
+		container,
+		ICONS.foldAll,
+		'Collapse All',
+		() => {
 		toggleAllIssues(true, plugin, dashboard, el, setIssueCollapsed);
-	});
+		},
+		SECONDARY_ACTION_BUTTON_CLASS
+	);
 
-	const expandAllButton = container.createEl('button', {
-		cls: 'tdc-btn tdc-btn-action tdc-btn-action-secondary'
-	});
-	expandAllButton.innerHTML = ICONS.unfoldAll + ' Expand All';
-	expandAllButton.addEventListener('click', (event) => {
-		event.preventDefault();
+	createActionButton(
+		container,
+		ICONS.unfoldAll,
+		'Expand All',
+		() => {
 		toggleAllIssues(false, plugin, dashboard, el, setIssueCollapsed);
-	});
+		},
+		SECONDARY_ACTION_BUTTON_CLASS
+	);
 
 	renderGlobalActionButtons(container, dashboard, plugin);
 
 	const containerRenderChild = new MarkdownRenderChild(container);
-	const portalDropdown = sortDropdown;
 	containerRenderChild.register(() => {
 		document.removeEventListener('click', closeSortDropdownOnClick);
 		closeSortDropdown();
-		if (portalDropdown.parentElement !== null) {
-			portalDropdown.parentElement.removeChild(portalDropdown);
+		if (sortDropdown.parentElement !== null) {
+			sortDropdown.parentElement.removeChild(sortDropdown);
 		}
 	});
 	ctx.addChild(containerRenderChild);

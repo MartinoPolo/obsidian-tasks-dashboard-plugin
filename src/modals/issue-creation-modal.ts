@@ -9,10 +9,64 @@ import {
 	createInputWithEnterHandler
 } from './modal-helpers';
 
+interface CreateIssueRequest {
+	name: string;
+	priority: Priority;
+	dashboard: DashboardConfig;
+	githubLink?: string;
+	githubMetadata?: GitHubIssueMetadata;
+}
+
+const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
+
+const GITHUB_LINK_TYPE_OPTIONS: GitHubLinkTypeOption[] = [
+	{
+		type: 'issue-pr',
+		label: 'Link Issue/PR',
+		description: 'Search and link a GitHub issue or pull request'
+	},
+	{
+		type: 'repository',
+		label: 'Link Repository',
+		description: 'Link a GitHub repository to this issue'
+	},
+	{
+		type: 'skip',
+		label: 'Skip',
+		description: 'Create issue without a GitHub link'
+	}
+];
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error && error.message !== '') {
+		return error.message;
+	}
+
+	return 'Unknown error';
+}
+
+async function createIssueWithNotice(
+	app: App,
+	plugin: TasksDashboardPlugin,
+	request: CreateIssueRequest
+): Promise<void> {
+	try {
+		const issue = await plugin.issueManager.createIssue(request);
+		new Notice(`Created issue: ${request.name}`);
+		await openFileAndFocusEnd(app, issue.filePath);
+	} catch (error) {
+		new Notice(`Error creating issue: ${getErrorMessage(error)}`);
+	}
+}
+
+function formatPriorityLabel(priority: Priority): string {
+	return priority.charAt(0).toUpperCase() + priority.slice(1);
+}
+
 export class NamePromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
-	private input!: HTMLInputElement;
+	private input: HTMLInputElement | undefined;
 
 	constructor(app: App, plugin: TasksDashboardPlugin, dashboard: DashboardConfig) {
 		super(app);
@@ -36,6 +90,10 @@ export class NamePromptModal extends Modal {
 	}
 
 	private confirm() {
+		if (this.input === undefined) {
+			return;
+		}
+
 		const value = this.input.value.trim();
 		if (value !== '') {
 			this.close();
@@ -83,13 +141,13 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	}
 
 	getSuggestions(): Priority[] {
-		return ['low', 'medium', 'high', 'top'];
+		return PRIORITY_OPTIONS;
 	}
 
 	renderSuggestion(priority: Priority, el: HTMLElement) {
 		const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
 		container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-		container.createSpan({ text: priority.charAt(0).toUpperCase() + priority.slice(1) });
+		container.createSpan({ text: formatPriorityLabel(priority) });
 	}
 
 	onChooseSuggestion(priority: Priority) {
@@ -99,9 +157,7 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				this.plugin,
 				this.dashboard,
 				this.issueName,
-				priority,
-				undefined,
-				undefined
+				priority
 			);
 			return;
 		}
@@ -132,24 +188,6 @@ interface GitHubLinkTypeOption {
 	label: string;
 	description: string;
 }
-
-const GITHUB_LINK_TYPE_OPTIONS: GitHubLinkTypeOption[] = [
-	{
-		type: 'issue-pr',
-		label: 'Link Issue/PR',
-		description: 'Search and link a GitHub issue or pull request'
-	},
-	{
-		type: 'repository',
-		label: 'Link Repository',
-		description: 'Link a GitHub repository to this issue'
-	},
-	{
-		type: 'skip',
-		label: 'Skip',
-		description: 'Create issue without a GitHub link'
-	}
-];
 
 class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 	private plugin: TasksDashboardPlugin;
@@ -183,36 +221,36 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 	}
 
 	onChooseSuggestion(option: GitHubLinkTypeOption) {
-		if (option.type === 'skip') {
-			void createIssueWithGitHub(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				this.priority,
-				undefined,
-				undefined
-			);
-			return;
-		}
-
-		if (option.type === 'issue-pr') {
-			new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
+		switch (option.type) {
+			case 'skip': {
 				void createIssueWithGitHub(
 					this.app,
 					this.plugin,
 					this.dashboard,
 					this.issueName,
-					this.priority,
-					url,
-					metadata
+					this.priority
 				);
-			}).open();
-			return;
+				return;
+			}
+			case 'issue-pr': {
+				new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
+					void createIssueWithGitHub(
+						this.app,
+						this.plugin,
+						this.dashboard,
+						this.issueName,
+						this.priority,
+						url,
+						metadata
+					);
+				}).open();
+				return;
+			}
+			case 'repository': {
+				void this.openRepositoryPicker();
+				return;
+			}
 		}
-
-		// option.type === 'repository' at this point (after prior returns)
-		void this.openRepositoryPicker();
 	}
 
 	private async openRepositoryPicker(): Promise<void> {
@@ -224,9 +262,7 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 				this.plugin,
 				this.dashboard,
 				this.issueName,
-				this.priority,
-				undefined,
-				undefined
+				this.priority
 			);
 			return;
 		}
@@ -271,18 +307,12 @@ export async function createIssueWithRepoLink(
 	repository: GitHubRepository
 ): Promise<void> {
 	const repoUrl = `https://github.com/${repository.fullName}`;
-	try {
-		const issue = await plugin.issueManager.createIssue({
-			name: issueName,
-			priority,
-			githubLink: repoUrl,
-			dashboard
-		});
-		new Notice(`Created issue: ${issueName}`);
-		await openFileAndFocusEnd(app, issue.filePath);
-	} catch (error) {
-		new Notice(`Error creating issue: ${(error as Error).message}`);
-	}
+	await createIssueWithNotice(app, plugin, {
+		name: issueName,
+		priority,
+		githubLink: repoUrl,
+		dashboard
+	});
 }
 
 export async function createIssueWithGitHub(
@@ -294,19 +324,13 @@ export async function createIssueWithGitHub(
 	githubUrl?: string,
 	githubMetadata?: GitHubIssueMetadata
 ): Promise<void> {
-	try {
-		const issue = await plugin.issueManager.createIssue({
-			name: issueName,
-			priority,
-			githubLink: githubUrl,
-			githubMetadata,
-			dashboard
-		});
-		new Notice(`Created issue: ${issueName}`);
-		await openFileAndFocusEnd(app, issue.filePath);
-	} catch (error) {
-		new Notice(`Error creating issue: ${(error as Error).message}`);
-	}
+	await createIssueWithNotice(app, plugin, {
+		name: issueName,
+		priority,
+		githubLink: githubUrl,
+		githubMetadata,
+		dashboard
+	});
 }
 
 class GithubPromptModal extends Modal {
@@ -314,7 +338,7 @@ class GithubPromptModal extends Modal {
 	private dashboard: DashboardConfig;
 	private issueName: string;
 	private priority: Priority;
-	private input!: HTMLInputElement;
+	private input: HTMLInputElement | undefined;
 
 	constructor(
 		app: App,
@@ -346,24 +370,20 @@ class GithubPromptModal extends Modal {
 	}
 
 	private async confirm() {
+		if (this.input === undefined) {
+			return;
+		}
+
 		const value = this.input.value.trim();
 		this.close();
-		await this.createIssue(value !== '' ? value : undefined);
-	}
-
-	private async createIssue(githubLink?: string) {
-		try {
-			const issue = await this.plugin.issueManager.createIssue({
-				name: this.issueName,
-				priority: this.priority,
-				githubLink,
-				dashboard: this.dashboard
-			});
-			new Notice(`Created issue: ${this.issueName}`);
-			await openFileAndFocusEnd(this.app, issue.filePath);
-		} catch (error) {
-			new Notice(`Error creating issue: ${(error as Error).message}`);
-		}
+		await createIssueWithGitHub(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.issueName,
+			this.priority,
+			value !== '' ? value : undefined
+		);
 	}
 
 	onClose() {

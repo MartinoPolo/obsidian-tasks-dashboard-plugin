@@ -5,7 +5,9 @@ import {
 	Notice,
 	FuzzySuggestModal,
 	type Editor,
-	type EditorPosition
+	type EditorPosition,
+	type MarkdownPostProcessorContext,
+	type App
 } from 'obsidian';
 import {
 	TasksDashboardSettings,
@@ -30,6 +32,68 @@ import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 
 const CURSOR_POSITION_DELAY_MS = 50;
+const REFRESH_DEBOUNCE_MS = 500;
+
+interface CommandManagerLike {
+	removeCommand: (id: string) => void;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const hasRemoveCommand = (value: unknown): value is CommandManagerLike => {
+	return isRecord(value) && typeof value.removeCommand === 'function';
+};
+
+const removeRegisteredCommands = (app: App, commandIds: string[]): void => {
+	const commandManager: unknown = Reflect.get(app, 'commands');
+	if (!hasRemoveCommand(commandManager)) {
+		return;
+	}
+	for (const commandId of commandIds) {
+		commandManager.removeCommand(commandId);
+	}
+};
+
+const sanitizeLoadedSettings = (loaded: unknown): Partial<TasksDashboardSettings> => {
+	if (!isRecord(loaded)) {
+		return {};
+	}
+
+	const sanitized: Partial<TasksDashboardSettings> = {
+		...loaded
+	};
+
+	if ('dashboards' in sanitized && !Array.isArray(sanitized.dashboards)) {
+		delete sanitized.dashboards;
+	}
+	if ('githubAuth' in sanitized && !isRecord(sanitized.githubAuth)) {
+		delete sanitized.githubAuth;
+	}
+	if ('collapsedIssues' in sanitized && !isRecord(sanitized.collapsedIssues)) {
+		delete sanitized.collapsedIssues;
+	}
+	if ('issueColors' in sanitized && !isRecord(sanitized.issueColors)) {
+		delete sanitized.issueColors;
+	}
+	if ('issueFolders' in sanitized && !isRecord(sanitized.issueFolders)) {
+		delete sanitized.issueFolders;
+	}
+
+	return sanitized;
+};
+
+const withDefaultGitHubEnabled = (dashboard: DashboardConfig): DashboardConfig => {
+	const githubEnabledValue: unknown = Reflect.get(dashboard, 'githubEnabled');
+	if (githubEnabledValue === undefined) {
+		return {
+			...dashboard,
+			githubEnabled: true
+		};
+	}
+	return dashboard;
+};
 
 export default class TasksDashboardPlugin extends Plugin {
 	// The ! approach is idiomatic for Obsidian plugins where initialization happens in onload() rather than the constructor.
@@ -49,36 +113,21 @@ export default class TasksDashboardPlugin extends Plugin {
 			this.progressTracker = createProgressTracker(this.app);
 			this.dashboardWriter = createDashboardWriter(this.app, this);
 			this.dashboardRenderer = createDashboardRenderer(this);
-			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-controls', (source, el, ctx) => {
-				this.dashboardRenderer.render(source, el, ctx).catch((error: unknown) => {
-					console.error('Tasks Dashboard: render failed', error);
-					el.createEl('span', { text: 'Failed to render dashboard controls', cls: 'tdc-error' });
-				});
-				ctx.addChild(
-					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-						this.dashboardRenderer.render(s, e, c)
-					)
-				);
-			});
-			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) => {
-				this.dashboardRenderer.renderSortButton(source, el, ctx);
-				ctx.addChild(
-					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-						this.dashboardRenderer.renderSortButton(s, e, c)
-					)
-				);
-			});
-			this.registerMarkdownCodeBlockProcessor('tasks-dashboard-github', (source, el, ctx) => {
-				this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx).catch((error: unknown) => {
-					console.error('Tasks Dashboard: GitHub card render failed', error);
-					el.createEl('span', { text: 'Failed to render GitHub card', cls: 'tdc-error' });
-				});
-				ctx.addChild(
-					new ReactiveRenderChild(el, source, ctx, this, (s, e, c) =>
-						this.dashboardRenderer.renderGitHubNoteCard(s, e, c)
-					)
-				);
-			});
+			this.registerReactiveCodeBlockProcessor(
+				'tasks-dashboard-controls',
+				(source, el, ctx) => this.dashboardRenderer.render(source, el, ctx),
+				'Failed to render dashboard controls',
+				'Tasks Dashboard: render failed'
+			);
+			this.registerReactiveCodeBlockProcessor('tasks-dashboard-sort', (source, el, ctx) =>
+				this.dashboardRenderer.renderSortButton(source, el, ctx)
+			);
+			this.registerReactiveCodeBlockProcessor(
+				'tasks-dashboard-github',
+				(source, el, ctx) => this.dashboardRenderer.renderGitHubNoteCard(source, el, ctx),
+				'Failed to render GitHub card',
+				'Tasks Dashboard: GitHub card render failed'
+			);
 			this.registerDashboardCommands();
 			this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
 			this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
@@ -99,7 +148,6 @@ export default class TasksDashboardPlugin extends Plugin {
 				})
 			);
 			let refreshDebounceTimer: ReturnType<typeof setTimeout> | undefined;
-			const REFRESH_DEBOUNCE_MS = 500;
 			const requestDashboardRefresh = (): void => {
 				if (refreshDebounceTimer !== undefined) {
 					clearTimeout(refreshDebounceTimer);
@@ -136,6 +184,30 @@ export default class TasksDashboardPlugin extends Plugin {
 
 	triggerDashboardRefresh(): void {
 		this.app.workspace.trigger('tasks-dashboard:refresh');
+	}
+
+	private registerReactiveCodeBlockProcessor(
+		language: string,
+		render: (
+			source: string,
+			el: HTMLElement,
+			ctx: MarkdownPostProcessorContext
+		) => void | Promise<void>,
+		errorMessage?: string,
+		errorLogPrefix?: string
+	): void {
+		this.registerMarkdownCodeBlockProcessor(language, (source, el, ctx) => {
+			void Promise.resolve(render(source, el, ctx)).catch((error: unknown) => {
+				if (errorLogPrefix !== undefined) {
+					console.error(errorLogPrefix, error);
+				}
+				if (errorMessage !== undefined) {
+					el.createEl('span', { text: errorMessage, cls: 'tdc-error' });
+				}
+			});
+
+			ctx.addChild(new ReactiveRenderChild(el, source, ctx, this, (s, e, c) => render(s, e, c)));
+		});
 	}
 
 	private isActiveIssueFile(file: TFile): boolean {
@@ -181,17 +253,11 @@ export default class TasksDashboardPlugin extends Plugin {
 	}
 
 	onunload() {
-		for (const id of this.registeredCommands) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			(this.app as any).commands.removeCommand(id);
-		}
+		removeRegisteredCommands(this.app, this.registeredCommands);
 	}
 
 	registerDashboardCommands() {
-		for (const id of this.registeredCommands) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			(this.app as any).commands.removeCommand(id);
-		}
+		removeRegisteredCommands(this.app, this.registeredCommands);
 		this.registeredCommands = [];
 		for (const dashboard of this.settings.dashboards) {
 			const commandId = `tasks-dashboard:create-issue-${dashboard.id}`;
@@ -246,34 +312,12 @@ export default class TasksDashboardPlugin extends Plugin {
 
 	async loadSettings() {
 		const loaded: unknown = await this.loadData();
-		const validatedData =
-			loaded !== null && loaded !== undefined && typeof loaded === 'object' && !Array.isArray(loaded)
-				? (loaded as Partial<TasksDashboardSettings>)
-				: {};
-
-		// Validate critical fields — discard if wrong type
-		if ('dashboards' in validatedData && !Array.isArray(validatedData.dashboards)) {
-			delete validatedData.dashboards;
-		}
-		if ('githubAuth' in validatedData && (typeof validatedData.githubAuth !== 'object' || validatedData.githubAuth === null)) {
-			delete validatedData.githubAuth;
-		}
-		if ('collapsedIssues' in validatedData && (typeof validatedData.collapsedIssues !== 'object' || validatedData.collapsedIssues === null)) {
-			delete validatedData.collapsedIssues;
-		}
-		if ('issueColors' in validatedData && (typeof validatedData.issueColors !== 'object' || validatedData.issueColors === null)) {
-			delete validatedData.issueColors;
-		}
-		if ('issueFolders' in validatedData && (typeof validatedData.issueFolders !== 'object' || validatedData.issueFolders === null)) {
-			delete validatedData.issueFolders;
-		}
-
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, validatedData);
-		for (const dashboard of this.settings.dashboards) {
-			if ((dashboard as unknown as Record<string, unknown>).githubEnabled === undefined) {
-				dashboard.githubEnabled = true;
-			}
-		}
+		const validatedData = sanitizeLoadedSettings(loaded);
+		const mergedSettings = Object.assign({}, DEFAULT_SETTINGS, validatedData);
+		this.settings = {
+			...mergedSettings,
+			dashboards: mergedSettings.dashboards.map(withDefaultGitHubEnabled)
+		};
 	}
 
 	async saveSettings() {

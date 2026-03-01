@@ -7,13 +7,18 @@ const SEARCH_DEBOUNCE_MS = 300;
 const MAX_COMBINED_RESULTS = 20;
 const RECENT_ISSUES_LIMIT = 10;
 const TITLE_TRUNCATION_LENGTH = 50;
+const ISSUE_ICON =
+	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+const PR_ICON =
+	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>';
 
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
+type SearchPair = [GitHubIssueMetadata[], GitHubIssueMetadata[]];
 
 export class GitHubSearchModal extends Modal {
-	private plugin: TasksDashboardPlugin;
-	private dashboard: DashboardConfig;
-	private onSelect: OnSelectCallback;
+	private readonly plugin: TasksDashboardPlugin;
+	private readonly dashboard: DashboardConfig;
+	private readonly onSelect: OnSelectCallback;
 	private searchInput!: HTMLInputElement;
 	private resultsContainer!: HTMLElement;
 	private searchScopeSelect!: HTMLSelectElement;
@@ -111,12 +116,12 @@ export class GitHubSearchModal extends Modal {
 			this.handleSearchInput();
 		});
 
-		this.searchInput.addEventListener('keydown', (e) => {
-			this.handleKeydown(e);
+		this.searchInput.addEventListener('keydown', (event) => {
+			this.handleKeydown(event);
 		});
 
 		this.searchScopeSelect.addEventListener('change', () => {
-			this.searchScope = this.searchScopeSelect.value as GitHubSearchScope;
+			this.searchScope = this.parseSearchScope(this.searchScopeSelect.value);
 			this.handleSearchInput();
 		});
 	}
@@ -160,38 +165,33 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private moveSelection(delta: number): void {
-		const items = this.resultsContainer.querySelectorAll('.tdc-gh-result-item');
+		const items = this.getResultItems();
 		if (items.length === 0) {
 			return;
 		}
 
-		const previousItem = items[this.selectedIndex] as HTMLElement | undefined;
-		previousItem?.removeClass('tdc-gh-selected');
+		this.removeSelectionClass(items[this.selectedIndex]);
 		this.selectedIndex = Math.max(0, Math.min(items.length - 1, this.selectedIndex + delta));
-		const currentItem = items[this.selectedIndex] as HTMLElement | undefined;
-		currentItem?.addClass('tdc-gh-selected');
-		currentItem?.scrollIntoView({ block: 'nearest' });
+		const currentItem = items[this.selectedIndex];
+		this.addSelectionClass(currentItem);
+		currentItem.scrollIntoView({ block: 'nearest' });
 	}
 
 	private selectCurrent(): void {
 		const query = this.searchInput.value.trim();
 
 		if (this.isGitHubUrl(query)) {
-			this.close();
-			this.onSelect(query);
+			this.finishSelection(query);
 			return;
 		}
 
 		if (this.selectedIndex >= 0 && this.selectedIndex < this.currentResults.length) {
 			const selected = this.currentResults[this.selectedIndex];
-			this.close();
-			this.onSelect(selected.url, selected);
+			this.finishSelection(selected.url, selected);
 			return;
 		}
 
-		// No explicit selection + non-URL text = skip GitHub linking
-		this.close();
-		this.onSelect(undefined);
+		this.finishSelection(undefined);
 	}
 
 	private isGitHubUrl(text: string): boolean {
@@ -204,14 +204,7 @@ export class GitHubSearchModal extends Modal {
 
 		const repo = this.getRepoForCurrentScope();
 		const results = await this.plugin.githubService.getRecentIssues(repo, RECENT_ISSUES_LIMIT);
-
-		this.currentResults = results;
-		this.renderResults(results, 'Recent Issues');
-
-		if (results.length > 0) {
-			this.selectedIndex = 0;
-			this.resultsContainer.querySelector('.tdc-gh-result-item')?.addClass('tdc-gh-selected');
-		}
+		this.renderResultsAndSelectFirst(results, 'Recent Issues');
 	}
 
 	private async performSearch(query: string): Promise<void> {
@@ -224,35 +217,32 @@ export class GitHubSearchModal extends Modal {
 		this.selectedIndex = -1;
 
 		try {
-			let issueResults, prResults;
+			const [issueItems, prItems] = await this.searchIssuesAndPullRequests(query);
 
-			if (this.searchScope === 'my-repos') {
-				[issueResults, prResults] = await Promise.all([
-					this.plugin.githubService.searchIssuesInMyRepos(query),
-					this.plugin.githubService.searchPullRequestsInMyRepos(query)
-				]);
-			} else {
-				const repo = this.getRepoForCurrentScope();
-				[issueResults, prResults] = await Promise.all([
-					this.plugin.githubService.searchIssues(query, repo),
-					this.plugin.githubService.searchPullRequests(query, repo)
-				]);
-			}
-
-			const combined = [...issueResults.items, ...prResults.items]
+			const combined = [...issueItems, ...prItems]
 				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 				.slice(0, MAX_COMBINED_RESULTS);
-
-			this.currentResults = combined;
-			this.renderResults(combined, `Search Results (${combined.length})`);
-
-			if (combined.length > 0) {
-				this.selectedIndex = 0;
-				this.resultsContainer.querySelector('.tdc-gh-result-item')?.addClass('tdc-gh-selected');
-			}
+			this.renderResultsAndSelectFirst(combined, `Search Results (${combined.length})`);
 		} finally {
 			this.isSearching = false;
 		}
+	}
+
+	private async searchIssuesAndPullRequests(query: string): Promise<SearchPair> {
+		if (this.searchScope === 'my-repos') {
+			const [issueResults, prResults] = await Promise.all([
+				this.plugin.githubService.searchIssuesInMyRepos(query),
+				this.plugin.githubService.searchPullRequestsInMyRepos(query)
+			]);
+			return [issueResults.items, prResults.items];
+		}
+
+		const repo = this.getRepoForCurrentScope();
+		const [issueResults, prResults] = await Promise.all([
+			this.plugin.githubService.searchIssues(query, repo),
+			this.plugin.githubService.searchPullRequests(query, repo)
+		]);
+		return [issueResults.items, prResults.items];
 	}
 
 	private showLoading(message: string): void {
@@ -266,6 +256,7 @@ export class GitHubSearchModal extends Modal {
 	private showUrlPreview(url: string): void {
 		this.resultsContainer.empty();
 		this.currentResults = [];
+		this.selectedIndex = -1;
 
 		const preview = this.resultsContainer.createDiv({ cls: 'tdc-gh-url-preview' });
 		preview.createSpan({ text: 'URL detected: ' });
@@ -307,15 +298,11 @@ export class GitHubSearchModal extends Modal {
 			});
 
 			row.addEventListener('mouseenter', () => {
-				for (const el of Array.from(list.querySelectorAll('.tdc-gh-result-item'))) {
-					el.removeClass('tdc-gh-selected');
-				}
-				row.addClass('tdc-gh-selected');
-				this.selectedIndex = index;
+				this.selectResultRow(row, index);
 			});
 
 			const icon = row.createSpan({ cls: 'tdc-gh-result-icon' });
-			icon.innerHTML = item.isPR ? this.getPRIcon() : this.getIssueIcon();
+			icon.innerHTML = item.isPR ? PR_ICON : ISSUE_ICON;
 
 			row.createSpan({
 				cls: 'tdc-gh-result-number',
@@ -341,12 +328,64 @@ export class GitHubSearchModal extends Modal {
 		}
 	}
 
-	private getIssueIcon(): string {
-		return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+	private renderResultsAndSelectFirst(results: GitHubIssueMetadata[], title: string): void {
+		this.currentResults = results;
+		this.renderResults(results, title);
+		this.setInitialSelection(results.length > 0);
 	}
 
-	private getPRIcon(): string {
-		return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`;
+	private setInitialSelection(hasResults: boolean): void {
+		if (!hasResults) {
+			this.selectedIndex = -1;
+			return;
+		}
+
+		this.selectedIndex = 0;
+		const firstItem = this.getResultItems()[0];
+		this.addSelectionClass(firstItem);
+	}
+
+	private selectResultRow(row: Element, index: number): void {
+		const resultItems = this.getResultItems();
+		for (const item of Array.from(resultItems)) {
+			if (item instanceof HTMLElement) {
+				item.removeClass('tdc-gh-selected');
+			}
+		}
+		if (row instanceof HTMLElement) {
+			row.addClass('tdc-gh-selected');
+		}
+		this.selectedIndex = index;
+	}
+
+	private getResultItems(): NodeListOf<Element> {
+		return this.resultsContainer.querySelectorAll('.tdc-gh-result-item');
+	}
+
+	private addSelectionClass(item: Element | undefined): void {
+		if (item === undefined) {
+			return;
+		}
+		item.addClass('tdc-gh-selected');
+	}
+
+	private removeSelectionClass(item: Element | undefined): void {
+		if (item === undefined) {
+			return;
+		}
+		item.removeClass('tdc-gh-selected');
+	}
+
+	private finishSelection(url: string | undefined, metadata?: GitHubIssueMetadata): void {
+		this.close();
+		this.onSelect(url, metadata);
+	}
+
+	private parseSearchScope(value: string): GitHubSearchScope {
+		if (value === 'linked' || value === 'my-repos' || value === 'all-github') {
+			return value;
+		}
+		return this.hasLinkedRepo() ? 'linked' : 'my-repos';
 	}
 
 	private hasLinkedRepo(): boolean {
@@ -363,6 +402,7 @@ export class GitHubSearchModal extends Modal {
 	onClose(): void {
 		if (this.searchTimeout !== undefined) {
 			clearTimeout(this.searchTimeout);
+			this.searchTimeout = undefined;
 		}
 		this.contentEl.empty();
 	}

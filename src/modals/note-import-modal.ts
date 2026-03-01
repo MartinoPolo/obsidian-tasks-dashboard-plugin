@@ -2,9 +2,60 @@ import { App, FuzzySuggestModal, Notice, SuggestModal, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, Priority } from '../types';
 
+const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
+const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
+
+const isRootPath = (path: string): boolean => {
+	return path === '' || path === '/';
+};
+
+const createDashboardPath = (dashboard: DashboardConfig): string => {
+	const dashboardFilename = dashboard.dashboardFilename || DEFAULT_DASHBOARD_FILENAME;
+	return `${dashboard.rootPath}/${dashboardFilename}`;
+};
+
+const isImportableFile = (file: TFile, issuesPath: string, dashboardPath: string): boolean => {
+	if (file.path.startsWith(issuesPath)) {
+		return false;
+	}
+
+	if (file.path === dashboardPath) {
+		return false;
+	}
+
+	return true;
+};
+
+const formatPriority = (priority: Priority): string => {
+	return `${priority.charAt(0).toUpperCase()}${priority.slice(1)}`;
+};
+
+const getErrorMessage = (error: unknown): string => {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (typeof error === 'string') {
+		return error;
+	}
+
+	return 'Unknown error';
+};
+
+const focusFirstPrioritySuggestion = (inputEl: HTMLInputElement): void => {
+	setTimeout(() => {
+		const arrowDownEvent = new KeyboardEvent('keydown', {
+			key: 'ArrowDown',
+			code: 'ArrowDown',
+			bubbles: true
+		});
+		inputEl.dispatchEvent(arrowDownEvent);
+	}, 0);
+};
+
 export class NoteImportModal extends FuzzySuggestModal<TFile> {
-	private plugin: TasksDashboardPlugin;
-	private dashboard: DashboardConfig;
+	private readonly plugin: TasksDashboardPlugin;
+	private readonly dashboard: DashboardConfig;
 
 	constructor(app: App, plugin: TasksDashboardPlugin, dashboard: DashboardConfig) {
 		super(app);
@@ -13,45 +64,38 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 		this.setPlaceholder('Search vault notes to import...');
 	}
 
-	getItems(): TFile[] {
+	override getItems(): TFile[] {
 		const issuesPath = `${this.dashboard.rootPath}/Issues/`;
-		const dashboardFilename = this.dashboard.dashboardFilename || 'Dashboard.md';
-		const dashboardPath = `${this.dashboard.rootPath}/${dashboardFilename}`;
+		const dashboardPath = createDashboardPath(this.dashboard);
 
-		return this.app.vault.getMarkdownFiles().filter((file) => {
-			if (file.path.startsWith(issuesPath)) {
-				return false;
-			}
-			if (file.path === dashboardPath) {
-				return false;
-			}
-			return true;
-		});
+		return this.app.vault
+			.getMarkdownFiles()
+			.filter((file) => isImportableFile(file, issuesPath, dashboardPath));
 	}
 
-	getItemText(file: TFile): string {
+	override getItemText(file: TFile): string {
 		return file.path;
 	}
 
-	renderSuggestion(match: { item: TFile }, element: HTMLElement): void {
+	override renderSuggestion(match: { item: TFile }, element: HTMLElement): void {
 		const file = match.item;
 		const container = element.createDiv({ cls: 'tdc-note-import-suggestion' });
 		container.createDiv({ cls: 'tdc-note-import-name', text: file.basename });
 		const parentPath = file.parent?.path ?? '';
-		if (parentPath !== '' && parentPath !== '/') {
+		if (!isRootPath(parentPath)) {
 			container.createDiv({ cls: 'tdc-note-import-path', text: parentPath });
 		}
 	}
 
-	onChooseItem(file: TFile): void {
+	override onChooseItem(file: TFile): void {
 		new ImportPriorityModal(this.app, this.plugin, this.dashboard, file).open();
 	}
 }
 
 class ImportPriorityModal extends SuggestModal<Priority> {
-	private plugin: TasksDashboardPlugin;
-	private dashboard: DashboardConfig;
-	private sourceFile: TFile;
+	private readonly plugin: TasksDashboardPlugin;
+	private readonly dashboard: DashboardConfig;
+	private readonly sourceFile: TFile;
 
 	constructor(
 		app: App,
@@ -66,29 +110,22 @@ class ImportPriorityModal extends SuggestModal<Priority> {
 		this.setPlaceholder('Select priority');
 	}
 
-	onOpen() {
+	override onOpen(): void {
 		void Promise.resolve(super.onOpen());
-		setTimeout(() => {
-			const event = new KeyboardEvent('keydown', {
-				key: 'ArrowDown',
-				code: 'ArrowDown',
-				bubbles: true
-			});
-			this.inputEl.dispatchEvent(event);
-		}, 0);
+		focusFirstPrioritySuggestion(this.inputEl);
 	}
 
-	getSuggestions(): Priority[] {
-		return ['low', 'medium', 'high', 'top'];
+	override getSuggestions(): Priority[] {
+		return PRIORITY_OPTIONS;
 	}
 
-	renderSuggestion(priority: Priority, el: HTMLElement) {
+	override renderSuggestion(priority: Priority, el: HTMLElement): void {
 		const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
 		container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-		container.createSpan({ text: priority.charAt(0).toUpperCase() + priority.slice(1) });
+		container.createSpan({ text: formatPriority(priority) });
 	}
 
-	onChooseSuggestion(priority: Priority) {
+	override onChooseSuggestion(priority: Priority): void {
 		void this.importNote(priority);
 	}
 
@@ -101,7 +138,7 @@ class ImportPriorityModal extends SuggestModal<Priority> {
 			});
 			new Notice(`Imported note as issue: ${issue.name}`);
 		} catch (error) {
-			new Notice(`Error importing note: ${(error as Error).message}`);
+			new Notice(`Error importing note: ${getErrorMessage(error)}`);
 		}
 	}
 }
