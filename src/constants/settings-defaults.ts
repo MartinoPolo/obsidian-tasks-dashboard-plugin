@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	githubAuth: { method: 'none' },
 	githubDisplayMode: 'compact',
 	collapsedIssues: {},
+	collapsedDashboardSettings: {},
 	issueColors: {},
 	issueFolders: {}
 };

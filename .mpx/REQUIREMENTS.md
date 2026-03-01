@@ -129,6 +129,7 @@
 ## Planned Requirements (Not Implemented Yet)
 
 - [ ] Add a global in-dashboard Rebuild button in dashboard controls.
+- [ ] In settings only, allow each dashboard section to collapse into a one-line summary row and expand on demand; do not change dashboard note rendering behavior.
 - [ ] Keep per-issue header title prioritized over non-essential header actions: when horizontal space is limited, hide non-3-dots header actions before truncating title text.
 - [ ] Keep an always-visible per-issue 3-dots overflow button in both expanded and collapsed cards.
 - [ ] Ensure overflow contains only actions hidden from row1/row2 and never duplicates visible actions.

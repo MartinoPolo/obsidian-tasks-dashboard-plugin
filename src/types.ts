@@ -99,6 +99,7 @@ export interface TasksDashboardSettings {
 	githubAuth: GitHubAuth;
 	githubDisplayMode: GitHubDisplayMode;
 	collapsedIssues: Record<string, boolean>;
+	collapsedDashboardSettings: Record<string, boolean>;
 	issueColors: Record<string, string>;
 	issueFolders: Record<string, string>;
 }

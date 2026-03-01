@@ -74,6 +74,9 @@ const sanitizeLoadedSettings = (loaded: unknown): Partial<TasksDashboardSettings
 	if ('collapsedIssues' in sanitized && !isRecord(sanitized.collapsedIssues)) {
 		delete sanitized.collapsedIssues;
 	}
+	if ('collapsedDashboardSettings' in sanitized && !isRecord(sanitized.collapsedDashboardSettings)) {
+		delete sanitized.collapsedDashboardSettings;
+	}
 	if ('issueColors' in sanitized && !isRecord(sanitized.issueColors)) {
 		delete sanitized.issueColors;
 	}

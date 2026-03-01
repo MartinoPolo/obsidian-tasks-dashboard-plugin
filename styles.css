@@ -586,6 +586,27 @@
 	font-size: 1.1em;
 }
 
+.tdc-dashboard-config-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.tdc-dashboard-config-header h3 {
+	margin: 0;
+}
+
+.tdc-dashboard-config-header + .setting-item {
+	margin-top: 8px;
+}
+
+.tdc-dashboard-config-title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .tdc-no-dashboards {
 	color: var(--text-muted);
 	font-style: italic;

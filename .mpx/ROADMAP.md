@@ -8,14 +8,14 @@ Detailed task logs and phase-level decisions stay in `.mpx/phases/*/`.
 
 ## Current State
 
-- Completed phases: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13.
+- Completed phases: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15.
 - Remaining planned phases: 11, 14.
 
 ## Future Work
 
 ### Phase 11 — Color Customization
 
-- Status: In progress (`6/12`)
+- Status: In progress (`7/10`)
 - Dependency: Phases 4, 5, 6, 8, 9 (already complete)
 - Scope: adaptive color customization with one main issue color and derived controls/checklist backgrounds, plus per-dashboard Active/Notes/Archive section body colors
 - Current focus: deliver checklist and controls background derivation first, then section body coloring and rebuild-safe metadata handling

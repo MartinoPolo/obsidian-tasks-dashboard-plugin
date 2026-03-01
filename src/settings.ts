@@ -12,6 +12,7 @@ import { RepositoryPickerModal } from './modals/RepositoryPickerModal';
 import { createPlatformService } from './utils/platform';
 import { DashboardDeleteConfirmationModal } from './modals/dashboard-delete-modal';
 import { parseDashboard } from './dashboard/DashboardParser';
+import { ICONS } from './dashboard/header-actions';
 
 type VisibilityToggleKey =
 	| 'showGitHubButtons'
@@ -126,6 +127,17 @@ function getErrorMessage(error: unknown): string {
 
 function isNonEmptyString(value: string | undefined): value is string {
 	return value !== undefined && value !== '';
+}
+
+function resolveCollapsedDashboardSettingsMap(settings: object): Record<string, boolean> {
+	const candidate: unknown = Reflect.get(settings, 'collapsedDashboardSettings');
+	if (typeof candidate === 'object' && candidate !== null && !Array.isArray(candidate)) {
+		return candidate as Record<string, boolean>;
+	}
+
+	const emptyMap: Record<string, boolean> = {};
+	Reflect.set(settings, 'collapsedDashboardSettings', emptyMap);
+	return emptyMap;
 }
 
 function withMarkdownExtension(filename: string): string {
@@ -475,6 +487,21 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		}).open();
 	}
 
+	private isDashboardSettingsCollapsed(dashboard: DashboardConfig): boolean {
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		return collapsedDashboardSettings[dashboard.id] === true;
+	}
+
+	private setDashboardSettingsCollapsed(dashboard: DashboardConfig, collapsed: boolean): void {
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		if (collapsed) {
+			collapsedDashboardSettings[dashboard.id] = true;
+		} else {
+			delete collapsedDashboardSettings[dashboard.id];
+		}
+		this.saveSettings();
+	}
+
 	private renderDashboardSettings(
 		containerEl: HTMLElement,
 		dashboard: DashboardConfig,
@@ -482,7 +509,30 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	): void {
 		const dashboardContainer = containerEl.createDiv({ cls: 'tdc-dashboard-config' });
 		const displayName = getDashboardDisplayName(dashboard);
-		dashboardContainer.createEl('h3', { text: `Dashboard: ${displayName}` });
+		const isCollapsed = this.isDashboardSettingsCollapsed(dashboard);
+		const dashboardHeader = dashboardContainer.createDiv({ cls: 'tdc-dashboard-config-header' });
+		const collapseToggle = dashboardHeader.createEl('button', {
+			cls: `tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
+			attr: {
+				type: 'button',
+				'aria-expanded': String(!isCollapsed),
+				'aria-label': isCollapsed
+					? `Expand settings for ${displayName}`
+					: `Collapse settings for ${displayName}`
+			}
+		});
+		collapseToggle.innerHTML = ICONS.chevron;
+		const titleContainer = dashboardHeader.createDiv({ cls: 'tdc-dashboard-config-title' });
+		titleContainer.createEl('h3', { text: `Dashboard: ${displayName}` });
+		collapseToggle.addEventListener('click', () => {
+			this.setDashboardSettingsCollapsed(dashboard, !isCollapsed);
+			this.display();
+		});
+
+		if (isCollapsed) {
+			return;
+		}
+
 		new Setting(dashboardContainer)
 			.setName('Root Path')
 			.setDesc(
@@ -683,6 +733,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				delete this.plugin.settings.issueFolders[key];
 			}
 		}
+
+		const collapsedDashboardSettings = resolveCollapsedDashboardSettingsMap(this.plugin.settings);
+		delete collapsedDashboardSettings[dashboard.id];
 
 		if (deleteFiles) {
 			await this.trashDashboardFiles(dashboard);

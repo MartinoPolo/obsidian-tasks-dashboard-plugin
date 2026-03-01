@@ -17,11 +17,10 @@ Implement adaptive issue-card color customization with a single main issue color
 - [x] Apply issue-level style variables/hooks in renderer and CSS
 - [x] Remove section-level color settings and rendering hooks (Active/Notes/Archive)
 - [ ] Preserve frontmatter/style metadata during dashboard rebuild where required
-- [ ] Document color behavior and configuration in README
 
 ## Validation
 - [x] `pnpm typecheck`
-- [ ] `pnpm lint`
+- [x] `pnpm lint`
 - [x] `pnpm build`
 
 ## Completion Criteria
@@ -29,4 +28,4 @@ Implement adaptive issue-card color customization with a single main issue color
 - [ ] Rebuild flow does not break section markers or issue markers
 
 ---
-Progress: 6/10 tasks complete
+Progress: 7/10 tasks complete
