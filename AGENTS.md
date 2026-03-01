@@ -2,7 +2,7 @@
 
 ## Guidelines
 
-- Follow `.mpx/REQUIREMENTS.md` for behavior and invariants.
+- Follow `.mpx/SPEC.md` for behavior and invariants.
 - Follow `.mpx/ROADMAP.md` for planning state.
 - Keep docs concise, imperative, and non-duplicative.
 - When touching behavior, update docs that define source-of-truth expectations.

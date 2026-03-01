@@ -1,6 +1,6 @@
 # Phase 11: Color Customization - Checklist
 
-**Status:** In progress
+**Status:** Complete
 **Dependencies:** Phases 4, 5, 6, 8, 9
 
 ## Objective
@@ -16,7 +16,7 @@ Implement adaptive issue-card color customization with a single main issue color
 - [x] Extend settings/types with per-issue color fields
 - [x] Apply issue-level style variables/hooks in renderer and CSS
 - [x] Remove section-level color settings and rendering hooks (Active/Notes/Archive)
-- [ ] Preserve frontmatter/style metadata during dashboard rebuild where required
+- [x] Preserve frontmatter/style metadata during dashboard rebuild where required
 
 ## Validation
 - [x] `pnpm typecheck`
@@ -24,8 +24,8 @@ Implement adaptive issue-card color customization with a single main issue color
 - [x] `pnpm build`
 
 ## Completion Criteria
-- [ ] One main issue color reliably derives readable checklist and controls backgrounds in light/dark themes
-- [ ] Rebuild flow does not break section markers or issue markers
+- [x] One main issue color reliably derives readable checklist and controls backgrounds in light/dark themes
+- [x] Rebuild flow does not break section markers or issue markers
 
 ---
-Progress: 7/10 tasks complete
+Progress: 10/10 tasks complete
