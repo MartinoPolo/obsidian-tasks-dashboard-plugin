@@ -79,6 +79,7 @@ export interface Issue {
 	githubMetadataList?: GitHubStoredMetadata[];
 	filePath: string;
 }
+
 export interface DashboardConfig {
 	id: string;
 	rootPath: string;

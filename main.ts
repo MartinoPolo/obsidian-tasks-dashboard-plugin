@@ -100,6 +100,15 @@ export default class TasksDashboardPlugin extends Plugin {
 			);
 			let refreshDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 			const REFRESH_DEBOUNCE_MS = 500;
+			const requestDashboardRefresh = (): void => {
+				if (refreshDebounceTimer !== undefined) {
+					clearTimeout(refreshDebounceTimer);
+				}
+				refreshDebounceTimer = setTimeout(() => {
+					refreshDebounceTimer = undefined;
+					this.triggerDashboardRefresh();
+				}, REFRESH_DEBOUNCE_MS);
+			};
 
 			this.registerEvent(
 				this.app.vault.on('modify', (file) => {
@@ -110,13 +119,13 @@ export default class TasksDashboardPlugin extends Plugin {
 						return;
 					}
 					this.progressTracker.invalidateCache(file.path);
-					if (refreshDebounceTimer !== undefined) {
-						clearTimeout(refreshDebounceTimer);
-					}
-					refreshDebounceTimer = setTimeout(() => {
-						refreshDebounceTimer = undefined;
-						this.triggerDashboardRefresh();
-					}, REFRESH_DEBOUNCE_MS);
+					requestDashboardRefresh();
+				})
+			);
+
+			this.registerEvent(
+				this.app.workspace.on('css-change', () => {
+					requestDashboardRefresh();
 				})
 			);
 		} catch (error) {

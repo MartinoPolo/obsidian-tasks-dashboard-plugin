@@ -7,6 +7,7 @@ import { createGitHubCardRenderer } from '../github/GitHubCardRenderer';
 import { isGitHubRepoUrl, parseGitHubRepoName } from '../utils/github-url';
 import { ICONS, renderIssueActionButtons } from './header-actions';
 import { renderSortControls } from './sort-controls';
+import { deriveIssueSurfaceColors, getIsDarkTheme, sanitizeHexColor } from '../utils/color';
 
 const REACTIVE_RENDER_DEBOUNCE_MS = 100;
 
@@ -157,6 +158,69 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 	};
 
+	const applyIssueSurfaceStyles = (element: HTMLElement, mainColor: string | undefined): void => {
+		const maybeControlBlock = element.closest('.block-language-tasks-dashboard-controls');
+		const controlBlock = maybeControlBlock instanceof HTMLElement ? maybeControlBlock : element;
+		const normalizedColor =
+			mainColor !== undefined ? sanitizeHexColor(mainColor, '#4a8cc7') : undefined;
+		const derivedColors =
+			normalizedColor !== undefined
+				? deriveIssueSurfaceColors(normalizedColor, getIsDarkTheme())
+				: undefined;
+
+		const issueContainer = controlBlock.querySelector('.tdc-issue-container');
+		if (issueContainer instanceof HTMLElement) {
+			if (derivedColors !== undefined) {
+				issueContainer.style.setProperty('--tdc-issue-main-color', derivedColors.headerBackground);
+				issueContainer.style.setProperty(
+					'--tdc-issue-controls-bg',
+					derivedColors.controlsBackground
+				);
+				issueContainer.style.setProperty(
+					'--tdc-issue-checklist-bg',
+					derivedColors.checklistBackground
+				);
+				issueContainer.style.setProperty(
+					'--tdc-issue-controls-border',
+					derivedColors.controlsBorder
+				);
+				issueContainer.style.setProperty(
+					'--tdc-issue-checklist-border',
+					derivedColors.checklistBorder
+				);
+				const headerElement = issueContainer.querySelector('.tdc-issue-header');
+				if (headerElement instanceof HTMLElement) {
+					headerElement.style.background = derivedColors.headerBackground;
+				}
+			} else {
+				issueContainer.style.removeProperty('--tdc-issue-main-color');
+				issueContainer.style.removeProperty('--tdc-issue-controls-bg');
+				issueContainer.style.removeProperty('--tdc-issue-checklist-bg');
+				issueContainer.style.removeProperty('--tdc-issue-controls-border');
+				issueContainer.style.removeProperty('--tdc-issue-checklist-border');
+				const headerElement = issueContainer.querySelector('.tdc-issue-header');
+				if (headerElement instanceof HTMLElement) {
+					headerElement.style.removeProperty('background');
+				}
+			}
+		}
+
+		const contentBlocks = collectIssueContentBlocks(controlBlock);
+		for (const block of contentBlocks) {
+			if (block.tagName === 'HR' || block.querySelector('hr') !== null) {
+				continue;
+			}
+			block.classList.add('tdc-issue-content-block');
+			if (derivedColors !== undefined) {
+				block.style.setProperty('--tdc-issue-checklist-bg', derivedColors.checklistBackground);
+				block.style.setProperty('--tdc-issue-checklist-border', derivedColors.checklistBorder);
+			} else {
+				block.style.removeProperty('--tdc-issue-checklist-bg');
+				block.style.removeProperty('--tdc-issue-checklist-border');
+			}
+		}
+	};
+
 	const renderHeader = (
 		container: HTMLElement,
 		params: ControlParams,
@@ -167,11 +231,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const header = container.createDiv({
 			cls: `tdc-issue-header priority-${params.priority}`
 		});
-
-		const headerColor = plugin.settings.issueColors[params.issue];
-		if (headerColor !== undefined) {
-			header.style.background = headerColor;
-		}
 
 		const collapseToggle = header.createEl('button', {
 			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
@@ -325,16 +384,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			colorInput.value = plugin.settings.issueColors[params.issue] ?? '#4a8cc7';
 			document.body.appendChild(colorInput);
 			colorInput.addEventListener('input', () => {
-				const headerElement = container
-					.closest('.tdc-issue-container')
-					?.querySelector('.tdc-issue-header');
-				if (headerElement instanceof HTMLElement) {
-					headerElement.style.background = colorInput.value;
-				}
+				applyIssueSurfaceStyles(container, colorInput.value);
 			});
 			colorInput.addEventListener('change', () => {
 				plugin.settings.issueColors[params.issue] = colorInput.value;
 				void plugin.saveSettings();
+				applyIssueSurfaceStyles(container, colorInput.value);
 				colorInput.remove();
 			});
 			colorInput.click();
@@ -494,7 +549,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
 		const container = el.createDiv({
-			cls: `tdc-issue-container${isCollapsed ? ' tdc-collapsed' : ''}`
+			cls: `tdc-issue-container priority-${params.priority}${isCollapsed ? ' tdc-collapsed' : ''}`
 		});
 		el.setAttribute('data-tdc-issue', params.issue);
 
@@ -504,6 +559,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const placeholderProgress: IssueProgress = { done: 0, total: 0, percentage: 0 };
 		renderProgressBar(controls, placeholderProgress, params.priority);
 		renderButtons(controls, params, dashboard);
+		applyIssueSurfaceStyles(el, plugin.settings.issueColors[params.issue]);
+		window.setTimeout(() => {
+			applyIssueSurfaceStyles(el, plugin.settings.issueColors[params.issue]);
+		}, 60);
 
 		void plugin.progressTracker.getProgress(params.path).then((progress) => {
 			const placeholderElement = controls.querySelector('.tdc-progress');

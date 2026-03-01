@@ -126,6 +126,26 @@
 - [x] Per-dashboard toggle for folder/terminal button visibility
 - [x] Issue folder assignment is independent — does not affect other issues or global
 
+## Planned Requirements (Not Implemented Yet)
+
+- [ ] Add a global in-dashboard Rebuild button in dashboard controls.
+- [ ] Keep per-issue header title prioritized over non-essential header actions: when horizontal space is limited, hide non-3-dots header actions before truncating title text.
+- [ ] Keep an always-visible per-issue 3-dots overflow button in both expanded and collapsed cards.
+- [ ] Ensure overflow contains only actions hidden from row1/row2 and never duplicates visible actions.
+- [ ] On issue-header hover, reveal all actions that belong to the header row and allow title truncation in that hover state.
+- [ ] In hover-reveal state, enforce title minimum width of 200px; if space is still insufficient, allow horizontal overflow rather than hiding the 3-dots trigger.
+- [ ] Add dropdown settings mode with three sections (row1, row2, save), per-action show/hide + move-row controls, persisted at dashboard scope.
+- [ ] Set default layout row1: folder, terminal, vs code, github, move up, move down; row2: all remaining actions.
+- [ ] Add right-click on move up/down with move-to-top and move-to-bottom options.
+- [ ] Update How to Use content: note the section can be removed, align archive icon wording, mention delete/rename/recolor/folder-link actions, and clarify terminal/vscode depend on folder assignment.
+- [ ] Remove visual blank spacing between collapsed active issues.
+
+### Optional (Non-Blocking) UX Improvements
+
+- [ ] Add optional tooltip hints for overflow actions when labels are icon-only.
+- [ ] Add optional one-click reset to default action layout at dashboard scope.
+- [ ] Add optional lightweight confirmation toast after saving action layout settings.
+
 ## Code Quality
 
 - [x] Minimal whitespace

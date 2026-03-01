@@ -8,18 +8,6 @@ import { ICONS, renderGlobalActionButtons } from './header-actions';
 
 type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
 
-/**
- * Find the nearest dashboard-level DOM container (reading view / editor wrapper).
- */
-function findDashboardContainer(element: HTMLElement): Element | null {
-	return (
-		element.closest('.markdown-preview-view') ??
-		element.closest('.markdown-reading-view') ??
-		element.closest('.cm-editor') ??
-		element.closest('.markdown-source-view')
-	);
-}
-
 async function getActiveIssueIds(
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig
@@ -54,7 +42,11 @@ function toggleAllIssues(
 			}
 		}
 		void plugin.saveSettings();
-		const dashboardElement = findDashboardContainer(element);
+		const dashboardElement =
+			element.closest('.markdown-preview-view') ??
+			element.closest('.markdown-reading-view') ??
+			element.closest('.cm-editor') ??
+			element.closest('.markdown-source-view');
 		if (dashboardElement !== null) {
 			for (const controlBlock of Array.from(
 				dashboardElement.querySelectorAll('.block-language-tasks-dashboard-controls')

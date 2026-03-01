@@ -87,6 +87,27 @@
 /* ===== Issue Container ===== */
 .tdc-issue-container {
 	margin: 8px 0;
+	--tdc-issue-main-color: var(--tdc-priority-medium);
+	--tdc-issue-controls-bg: var(--background-secondary);
+	--tdc-issue-checklist-bg: var(--background-primary-alt);
+	--tdc-issue-controls-border: var(--background-modifier-border);
+	--tdc-issue-checklist-border: var(--background-modifier-border);
+}
+
+.tdc-issue-container.priority-low {
+	--tdc-issue-main-color: var(--tdc-priority-low);
+}
+
+.tdc-issue-container.priority-medium {
+	--tdc-issue-main-color: var(--tdc-priority-medium);
+}
+
+.tdc-issue-container.priority-high {
+	--tdc-issue-main-color: var(--tdc-priority-high);
+}
+
+.tdc-issue-container.priority-top {
+	--tdc-issue-main-color: var(--tdc-priority-top);
 }
 
 /* ===== Collapse Toggle ===== */
@@ -190,7 +211,8 @@
 	align-items: center;
 	gap: 12px;
 	padding: 6px 10px;
-	background: var(--background-secondary);
+	background: var(--tdc-issue-controls-bg);
+	border: 1px solid var(--tdc-issue-controls-border);
 	border-radius: var(--tdc-border-radius);
 	margin-bottom: 8px;
 	overflow-x: auto;
@@ -199,6 +221,18 @@
 
 .tdc-controls::-webkit-scrollbar {
 	display: none;
+}
+
+.tdc-issue-content-block {
+	background: var(--tdc-issue-checklist-bg);
+	border: 1px solid var(--tdc-issue-checklist-border);
+	border-radius: var(--tdc-border-radius);
+	padding: 6px 10px;
+	margin: 6px 0;
+}
+
+.tdc-issue-content-block .block-language-tasks {
+	margin: 0;
 }
 
 /* ===== Progress Bar ===== */
@@ -361,12 +395,12 @@
 }
 
 .tdc-btn-vscode {
-	background: color-mix(in srgb, #007ACC 15%, transparent);
-	color: #007ACC;
+	background: color-mix(in srgb, #007acc 15%, transparent);
+	color: #007acc;
 }
 
 .tdc-btn-vscode:hover {
-	background: #007ACC;
+	background: #007acc;
 	color: white;
 }
 
