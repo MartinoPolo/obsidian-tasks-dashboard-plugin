@@ -72,6 +72,12 @@ const sanitizeLoadedSettings = (loaded: unknown): Partial<TasksDashboardSettings
 	if ('githubAuth' in sanitized && !isRecord(sanitized.githubAuth)) {
 		delete sanitized.githubAuth;
 	}
+	if (
+		'deleteIssueRemoveWorktreeByDefault' in sanitized &&
+		typeof sanitized.deleteIssueRemoveWorktreeByDefault !== 'boolean'
+	) {
+		delete sanitized.deleteIssueRemoveWorktreeByDefault;
+	}
 	if ('collapsedIssues' in sanitized && !isRecord(sanitized.collapsedIssues)) {
 		delete sanitized.collapsedIssues;
 	}

@@ -1,11 +1,15 @@
-import { Notice } from 'obsidian';
+import { Menu, Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
-import { GitHubSearchModal } from '../modals/GitHubSearchModal';
 import { GitHubLinksModal } from '../modals/github-links-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { openWorktreeIssueCreationModal } from '../modals/issue-creation-modal';
+import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
 import { createPlatformService, type PlatformService } from '../utils/platform';
+import {
+	getOpenableGitHubLinks,
+	openGitHubLinkChooser
+} from './dashboard-github-link-actions';
 
 export const ICONS = {
 	trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
@@ -146,18 +150,47 @@ function renderFolderDependentActionButton(config: FolderDependentActionButtonCo
 	});
 }
 
-function isGitHubUrl(url: string): boolean {
-	return /^https?:\/\/github\.com\//.test(url);
-}
+function openDashboardGitHubRepoSettings(
+	event: MouseEvent,
+	plugin: TasksDashboardPlugin,
+	dashboard: DashboardConfig
+): void {
+	const menu = new Menu();
+	menu.addItem((item) => {
+		item.setTitle('Select linked repository').onClick(() => {
+			if (!plugin.githubService.isAuthenticated()) {
+				new Notice('Configure GitHub token in plugin settings to pick repositories.');
+				return;
+			}
 
-function openFirstGitHubLink(links: string[]): boolean {
-	const firstLink = links[0];
-	if (!isGitHubUrl(firstLink)) {
-		return false;
+			void plugin.githubService.getUserRepositories().then((repositories) => {
+				if (repositories.length === 0) {
+					new Notice('No repositories found for this account.');
+					return;
+				}
+
+				new RepositoryPickerModal(plugin.app, repositories, (repository) => {
+					dashboard.githubRepo = repository.fullName;
+					void plugin.saveSettings();
+					plugin.triggerDashboardRefresh();
+					new Notice(`Linked dashboard repository: ${repository.fullName}`);
+				}).open();
+			});
+		});
+	});
+
+	if (dashboard.githubRepo !== undefined && dashboard.githubRepo !== '') {
+		menu.addItem((item) => {
+			item.setTitle('Clear linked repository').onClick(() => {
+				dashboard.githubRepo = undefined;
+				void plugin.saveSettings();
+				plugin.triggerDashboardRefresh();
+				new Notice('Cleared linked dashboard repository.');
+			});
+		});
 	}
 
-	window.open(firstLink, '_blank');
-	return true;
+	menu.showAtPosition({ x: event.clientX, y: event.clientY });
 }
 
 interface IssueActionButtonsParams {
@@ -179,6 +212,10 @@ export function renderIssueActionButtons(
 	const issueFolderKey = dashboard.id + ':' + params.issueId;
 	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
 	const hasIssueFolder = isNonEmptyString(issueFolder);
+	const hasIssueGitFolder = isNonEmptyString(issueFolder)
+		? platformService.isGitRepositoryFolder(issueFolder)
+		: false;
+	const hasIssueWorktreeScope = hasIssueGitFolder;
 	const openIssueFolderModal = () => {
 		new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
 	};
@@ -199,7 +236,7 @@ export function renderIssueActionButtons(
 		});
 	}
 
-	if (visibility.terminal && (hasIssueFolder || !visibility.folder)) {
+	if (visibility.terminal) {
 		renderFolderDependentActionButton({
 			container: headerActions,
 			iconKey: 'terminal',
@@ -216,7 +253,7 @@ export function renderIssueActionButtons(
 		});
 	}
 
-	if (visibility.vscode && (hasIssueFolder || !visibility.folder)) {
+	if (visibility.vscode) {
 		renderFolderDependentActionButton({
 			container: headerActions,
 			iconKey: 'vscode',
@@ -233,43 +270,26 @@ export function renderIssueActionButtons(
 	}
 
 	if (visibility.github) {
-		const hasGithubLinks = params.githubLinks.length > 0;
+		const openableLinks = getOpenableGitHubLinks(params.githubLinks);
 		createActionButton({
 			container: headerActions,
 			iconKey: 'github',
 			cssClass: 'tdc-btn-github-quickopen',
-			ariaLabel: hasGithubLinks ? 'Open GitHub link' : 'Add GitHub link',
-			faded: !hasGithubLinks,
-			onClick: () => {
-				if (hasGithubLinks) {
-					openFirstGitHubLink(params.githubLinks);
+			ariaLabel: openableLinks.length > 0 ? 'Open or edit GitHub links' : 'Add GitHub link',
+			faded: openableLinks.length === 0,
+			onClick: (event) => {
+				if (openableLinks.length === 1) {
+					window.open(openableLinks[0], '_blank');
 					return;
 				}
-				if (!plugin.githubService.isAuthenticated()) {
-					new Notice('Configure GitHub token in settings to search for issues.');
+				if (openableLinks.length > 1) {
+					openGitHubLinkChooser(event, openableLinks);
 					return;
 				}
-				new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
-					if (url === undefined) {
-						return;
-					}
-					void plugin.issueManager.addGitHubLink(
-						dashboard,
-						params.issueId,
-						url,
-						metadata
-					);
-				}).open();
+				new GitHubLinksModal(plugin, dashboard, params.issueId, params.githubLinks).open();
 			},
 			onContextMenu: () => {
-				if (hasGithubLinks) {
-					new GitHubLinksModal(
-						plugin,
-						dashboard,
-						params.issueId,
-						params.githubLinks
-					).open();
-				}
+				new GitHubLinksModal(plugin, dashboard, params.issueId, params.githubLinks).open();
 			}
 		});
 	}
@@ -279,10 +299,28 @@ export function renderIssueActionButtons(
 			container: headerActions,
 			iconKey: 'worktree',
 			cssClass: 'tdc-btn-worktree',
-			ariaLabel: 'Add issue in worktree',
-			faded: false,
+			ariaLabel: hasIssueWorktreeScope
+				? 'Add issue in worktree'
+				: 'Configure issue folder (git repository) for worktree',
+			faded: !hasIssueWorktreeScope,
 			onClick: () => {
-				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard);
+				if (!hasIssueWorktreeScope) {
+					if (!hasIssueFolder) {
+						openIssueFolderModal();
+						return;
+					}
+
+					new Notice('Issue folder must point to a Git repository to create worktrees.');
+					return;
+				}
+
+				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
+					worktreeOriginFolder: issueFolder,
+					sourceIssueGitHubLinks: params.githubLinks
+				});
+			},
+			onContextMenu: () => {
+				openIssueFolderModal();
 			}
 		});
 	}
@@ -299,6 +337,9 @@ export function renderGlobalActionButtons(
 	const visibility = getButtonVisibility(dashboard);
 	const platformService = getPlatformService();
 	const hasProjectFolder = isNonEmptyString(dashboard.projectFolder);
+	const hasProjectGitFolder = isNonEmptyString(dashboard.projectFolder)
+		? platformService.isGitRepositoryFolder(dashboard.projectFolder)
+		: false;
 	const openProjectFolderModal = () => {
 		new FolderPathModal(plugin.app, plugin, dashboard).open();
 	};
@@ -315,12 +356,12 @@ export function renderGlobalActionButtons(
 				platformService.openInFileExplorer(folderPath);
 			},
 			onSelectFolder: openProjectFolderModal,
-			openFolderSelectorOnContextMenu: 'when-folder-exists',
+			openFolderSelectorOnContextMenu: 'always',
 			labelText: 'Open Folder'
 		});
 	}
 
-	if (visibility.terminal && (hasProjectFolder || !visibility.folder)) {
+	if (visibility.terminal) {
 		renderFolderDependentActionButton({
 			container,
 			iconKey: 'terminal',
@@ -337,7 +378,7 @@ export function renderGlobalActionButtons(
 		});
 	}
 
-	if (visibility.vscode && (hasProjectFolder || !visibility.folder)) {
+	if (visibility.vscode) {
 		renderFolderDependentActionButton({
 			container,
 			iconKey: 'vscode',
@@ -369,6 +410,9 @@ export function renderGlobalActionButtons(
 				} else {
 					new Notice('Configure GitHub repository in dashboard settings.');
 				}
+			},
+			onContextMenu: (event) => {
+				openDashboardGitHubRepoSettings(event, plugin, dashboard);
 			}
 		});
 
@@ -376,11 +420,28 @@ export function renderGlobalActionButtons(
 			container,
 			iconKey: 'worktree',
 			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-worktree',
-			ariaLabel: 'Add issue in worktree',
-			faded: false,
+			ariaLabel: hasProjectGitFolder
+				? 'Add issue in worktree'
+				: 'Set dashboard folder to a Git repository for worktree',
+			faded: !hasProjectGitFolder,
 			labelText: 'Add Worktree Issue',
 			onClick: () => {
-				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard);
+				if (!hasProjectGitFolder) {
+					if (!hasProjectFolder) {
+						openProjectFolderModal();
+						return;
+					}
+
+					new Notice('Dashboard folder must point to a Git repository to create worktrees.');
+					return;
+				}
+
+				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
+					worktreeOriginFolder: dashboard.projectFolder
+				});
+			},
+			onContextMenu: () => {
+				openProjectFolderModal();
 			}
 		});
 	}

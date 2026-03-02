@@ -124,6 +124,19 @@ export function createGitHubService(): GitHubServiceInstance {
 		return getIssue(parsed.owner, parsed.repo, parsed.number);
 	};
 
+	const normalizeSearchQuery = (query: string): string => {
+		return query.trim().replace(/\s+/g, ' ');
+	};
+
+	const buildTextQuery = (query: string): string => {
+		const normalizedQuery = normalizeSearchQuery(query);
+		if (normalizedQuery === '') {
+			return normalizedQuery;
+		}
+
+		return `${normalizedQuery} in:title,body`;
+	};
+
 	const searchItems = async (
 		query: string,
 		repo: string | undefined,
@@ -133,9 +146,9 @@ export function createGitHubService(): GitHubServiceInstance {
 			return createEmptySearchResult();
 		}
 
-		let searchQuery = query;
+		let searchQuery = buildTextQuery(query);
 		if (repo !== undefined && repo !== '') {
-			searchQuery = `repo:${repo} ${query}`;
+			searchQuery = `repo:${repo} ${searchQuery}`.trim();
 		}
 		searchQuery = `${searchQuery} is:${type}`;
 
@@ -300,56 +313,50 @@ export function createGitHubService(): GitHubServiceInstance {
 			return cached;
 		}
 
-		const [username, organizations] = await Promise.all([
-			getAuthenticatedUser(),
-			getUserOrganizations()
-		]);
-
-		if (username === undefined) {
+		const repositories = await getUserRepositories();
+		if (repositories.length === 0) {
 			return createEmptySearchResult();
 		}
 
+		const allowedRepositories = new Set(
+			repositories.map((repository) => repository.fullName.toLowerCase())
+		);
+
 		const typeQualifier = issueType === 'issue' ? 'is:issue' : 'is:pr';
+		const textQuery = buildTextQuery(query);
 		let allItems: GitHubIssueMetadata[];
+		const searchQuery = `${textQuery} ${typeQualifier}`.trim();
+		const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
+			buildIssueSearchEndpoint(searchQuery, FALLBACK_SEARCH_PER_PAGE)
+		);
 
-		if (organizations.length > MAX_PARALLEL_ORG_QUERIES) {
-			// Fallback: global search + client-side owner filter
-			const searchQuery = `${query} ${typeQualifier}`;
-			const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
-				buildIssueSearchEndpoint(searchQuery, FALLBACK_SEARCH_PER_PAGE)
-			);
+		if (data === undefined) {
+			return createEmptySearchResult();
+		}
 
-			if (data === undefined) {
-				return createEmptySearchResult();
-			}
+		allItems = mapSearchItems(data.items).filter((item) => {
+			return allowedRepositories.has(item.repository.toLowerCase());
+		});
 
-			const allowedOwners = new Set([username, ...organizations]);
-			allItems = mapSearchItems(data.items).filter((item) => {
-				const owner = item.repository.split('/')[0];
-				return allowedOwners.has(owner);
+		if (allItems.length === 0 && repositories.length <= MAX_PARALLEL_ORG_QUERIES) {
+			const repoQualifiedQueries = repositories.map((repository) => {
+				return `repo:${repository.fullName} ${textQuery} ${typeQualifier}`.trim();
 			});
-		} else {
-			// Parallel queries: user:{login} + org:{orgName} for each
-			const qualifiers = [`user:${username}`, ...organizations.map((org) => `org:${org}`)];
-			const searchQueries = qualifiers.map(
-				(qualifier) => `${qualifier} ${query} ${typeQualifier}`
-			);
 
-			const results = await Promise.all(
-				searchQueries.map((searchQuery) =>
-					requestClient.apiRequest<GitHubSearchApiResponse>(
-						buildIssueSearchEndpoint(searchQuery, SEARCH_RESULTS_PER_PAGE)
-					)
-				)
+			const repoSearchResults = await Promise.all(
+				repoQualifiedQueries.map((repoQuery) => {
+					return requestClient.apiRequest<GitHubSearchApiResponse>(
+						buildIssueSearchEndpoint(repoQuery, SEARCH_RESULTS_PER_PAGE)
+					);
+				})
 			);
 
 			allItems = [];
-
-			for (const data of results) {
-				if (data === undefined) {
+			for (const repoData of repoSearchResults) {
+				if (repoData === undefined) {
 					continue;
 				}
-				allItems.push(...mapSearchItems(data.items));
+				allItems.push(...mapSearchItems(repoData.items));
 			}
 
 			allItems = uniqueByUrl(allItems);

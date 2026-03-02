@@ -19,30 +19,48 @@ const PR_ICON =
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
 type SearchPair = [GitHubIssueMetadata[], GitHubIssueMetadata[]];
 
+interface GitHubSearchModalLinkedRepositories {
+	issueRepository?: string;
+	dashboardRepository?: string;
+}
+
+interface ScopeOption {
+	value: GitHubSearchScope;
+	label: string;
+}
+
 export class GitHubSearchModal extends Modal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
+	private readonly issueLinkedRepository: string | undefined;
+	private readonly dashboardLinkedRepository: string | undefined;
 	private readonly onSelect: OnSelectCallback;
 	private searchInput!: HTMLInputElement;
 	private resultsContainer!: HTMLElement;
 	private searchScopeSelect!: HTMLSelectElement;
 	private searchScope: GitHubSearchScope;
+	private readonly scopeOptions: ScopeOption[];
 	private selectedIndex = -1;
 	private currentResults: GitHubIssueMetadata[] = [];
 	private searchTimeout: ReturnType<typeof setTimeout> | undefined;
-	private isSearching = false;
+	private activeRequestId = 0;
 
 	constructor(
 		app: App,
 		plugin: TasksDashboardPlugin,
 		dashboard: DashboardConfig,
-		onSelect: OnSelectCallback
+		onSelect: OnSelectCallback,
+		linkedRepositories?: GitHubSearchModalLinkedRepositories
 	) {
 		super(app);
 		this.plugin = plugin;
 		this.dashboard = dashboard;
+		this.issueLinkedRepository = linkedRepositories?.issueRepository;
+		this.dashboardLinkedRepository =
+			linkedRepositories?.dashboardRepository ?? dashboard.githubRepo;
 		this.onSelect = onSelect;
-		this.searchScope = this.hasLinkedRepo() ? 'linked' : 'my-repos';
+		this.scopeOptions = this.buildScopeOptions();
+		this.searchScope = this.scopeOptions[0]?.value ?? 'my-repos';
 	}
 
 	onOpen(): void {
@@ -66,20 +84,12 @@ export class GitHubSearchModal extends Modal {
 
 		this.searchScopeSelect = scopeLabel.createEl('select', { cls: 'tdc-gh-scope-select' });
 
-		if (this.hasLinkedRepo()) {
+		for (const option of this.scopeOptions) {
 			this.searchScopeSelect.createEl('option', {
-				value: 'linked',
-				text: `Linked repository (${this.dashboard.githubRepo})`
+				value: option.value,
+				text: option.label
 			});
 		}
-		this.searchScopeSelect.createEl('option', {
-			value: 'my-repos',
-			text: 'My repositories'
-		});
-		this.searchScopeSelect.createEl('option', {
-			value: 'all-github',
-			text: 'All GitHub'
-		});
 
 		this.searchScopeSelect.value = this.searchScope;
 
@@ -111,7 +121,7 @@ export class GitHubSearchModal extends Modal {
 		this.setupEventListeners();
 		this.searchInput.focus();
 
-		void this.loadRecentIssues();
+		void this.loadRecentIssues(this.nextRequestId());
 	}
 
 	private setupEventListeners(): void {
@@ -134,6 +144,8 @@ export class GitHubSearchModal extends Modal {
 			clearTimeout(this.searchTimeout);
 		}
 
+		const requestId = this.nextRequestId();
+
 		const query = this.searchInput.value.trim();
 
 		if (this.isGitHubUrl(query)) {
@@ -142,12 +154,12 @@ export class GitHubSearchModal extends Modal {
 		}
 
 		if (query === '') {
-			void this.loadRecentIssues();
+			void this.loadRecentIssues(requestId);
 			return;
 		}
 
 		this.searchTimeout = setTimeout(() => {
-			void this.performSearch(query);
+			void this.performSearch(query, requestId);
 		}, SEARCH_DEBOUNCE_MS);
 	}
 
@@ -201,34 +213,42 @@ export class GitHubSearchModal extends Modal {
 		return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/.test(text.trim());
 	}
 
-	private async loadRecentIssues(): Promise<void> {
+	private async loadRecentIssues(requestId: number): Promise<void> {
 		this.showLoading('Loading recent issues...');
 		this.selectedIndex = -1;
 
-		const repo = this.getRepoForCurrentScope();
-		const results = await this.plugin.githubService.getRecentIssues(repo, RECENT_ISSUES_LIMIT);
-		this.renderResultsAndSelectFirst(results, 'Recent Issues');
-	}
+		let results: GitHubIssueMetadata[] = [];
+		if (this.searchScope === 'my-repos') {
+			const [issueItems, prItems] = await this.searchIssuesAndPullRequests('');
+			results = [...issueItems, ...prItems]
+				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+				.slice(0, RECENT_ISSUES_LIMIT);
+		} else {
+			const repo = this.getRepoForCurrentScope();
+			results = await this.plugin.githubService.getRecentIssues(repo, RECENT_ISSUES_LIMIT);
+		}
 
-	private async performSearch(query: string): Promise<void> {
-		if (this.isSearching) {
+		if (!this.isLatestRequest(requestId)) {
 			return;
 		}
 
-		this.isSearching = true;
+		this.renderResultsAndSelectFirst(results, 'Recent Issues');
+	}
+
+	private async performSearch(query: string, requestId: number): Promise<void> {
 		this.showLoading('Searching...');
 		this.selectedIndex = -1;
 
-		try {
-			const [issueItems, prItems] = await this.searchIssuesAndPullRequests(query);
+		const [issueItems, prItems] = await this.searchIssuesAndPullRequests(query);
 
-			const combined = [...issueItems, ...prItems]
-				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-				.slice(0, MAX_COMBINED_RESULTS);
-			this.renderResultsAndSelectFirst(combined, `Search Results (${combined.length})`);
-		} finally {
-			this.isSearching = false;
+		if (!this.isLatestRequest(requestId)) {
+			return;
 		}
+
+		const combined = [...issueItems, ...prItems]
+			.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+			.slice(0, MAX_COMBINED_RESULTS);
+		this.renderResultsAndSelectFirst(combined, `Search Results (${combined.length})`);
 	}
 
 	private async searchIssuesAndPullRequests(query: string): Promise<SearchPair> {
@@ -384,20 +404,62 @@ export class GitHubSearchModal extends Modal {
 		this.onSelect(url, metadata);
 	}
 
-	private parseSearchScope(value: string): GitHubSearchScope {
-		if (value === 'linked' || value === 'my-repos' || value === 'all-github') {
-			return value;
-		}
-		return this.hasLinkedRepo() ? 'linked' : 'my-repos';
+	private nextRequestId(): number {
+		this.activeRequestId += 1;
+		return this.activeRequestId;
 	}
 
-	private hasLinkedRepo(): boolean {
-		return this.dashboard.githubRepo !== undefined && this.dashboard.githubRepo !== '';
+	private isLatestRequest(requestId: number): boolean {
+		return requestId === this.activeRequestId;
+	}
+
+	private parseSearchScope(value: string): GitHubSearchScope {
+		if (
+			value === 'linked-dashboard' ||
+			value === 'linked-issue' ||
+			value === 'my-repos' ||
+			value === 'all-github'
+		) {
+			return value;
+		}
+		return this.scopeOptions[0]?.value ?? 'my-repos';
+	}
+
+	private buildScopeOptions(): ScopeOption[] {
+		const options: ScopeOption[] = [];
+		const issueRepo = this.issueLinkedRepository;
+		const dashboardRepo = this.dashboardLinkedRepository;
+
+		if (issueRepo !== undefined && issueRepo !== '') {
+			options.push({
+				value: 'linked-issue',
+				label: `Issue linked repository (${issueRepo})`
+			});
+		}
+
+		if (
+			dashboardRepo !== undefined &&
+			dashboardRepo !== '' &&
+			dashboardRepo !== issueRepo
+		) {
+			options.push({
+				value: 'linked-dashboard',
+				label: `Dashboard linked repository (${dashboardRepo})`
+			});
+		}
+
+		options.push({ value: 'my-repos', label: 'My repositories' });
+		options.push({ value: 'all-github', label: 'All GitHub' });
+
+		return options;
 	}
 
 	private getRepoForCurrentScope(): string | undefined {
-		if (this.searchScope === 'linked') {
-			return this.dashboard.githubRepo;
+		if (this.searchScope === 'linked-issue') {
+			return this.issueLinkedRepository;
+		}
+		if (this.searchScope === 'linked-dashboard') {
+			return this.dashboardLinkedRepository;
 		}
 		return undefined;
 	}

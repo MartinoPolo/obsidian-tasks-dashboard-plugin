@@ -536,11 +536,17 @@
 }
 
 .tdc-btn-folder.tdc-btn-faded,
+.tdc-btn-terminal.tdc-btn-faded,
+.tdc-btn-vscode.tdc-btn-faded,
+.tdc-btn-worktree.tdc-btn-faded,
 .tdc-btn-github-quickopen.tdc-btn-faded {
 	opacity: 0.4;
 }
 
 .tdc-btn-folder.tdc-btn-faded:hover,
+.tdc-btn-terminal.tdc-btn-faded:hover,
+.tdc-btn-vscode.tdc-btn-faded:hover,
+.tdc-btn-worktree.tdc-btn-faded:hover,
 .tdc-btn-github-quickopen.tdc-btn-faded:hover {
 	opacity: 0.8;
 }

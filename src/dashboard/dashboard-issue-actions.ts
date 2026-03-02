@@ -1,10 +1,12 @@
 import { Menu, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DeleteConfirmationModal } from '../modals/delete-confirmation-modal';
+import {
+	DeleteConfirmationModal,
+	type DeleteConfirmationResult
+} from '../modals/delete-confirmation-modal';
 import { ArchiveConfirmationModal } from '../modals/archive-confirmation-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { GitHubLinksModal } from '../modals/github-links-modal';
-import { GitHubSearchModal } from '../modals/GitHubSearchModal';
 import {
 	openPrioritySelectionModal,
 	openWorktreeIssueCreationModal
@@ -13,25 +15,15 @@ import { RenameIssueModal } from '../modals/rename-issue-modal';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import type { PlatformService } from '../utils/platform';
 import { getButtonVisibility } from './header-actions';
+import {
+	getOpenableGitHubLinks,
+	openGitHubLinkChooser
+} from './dashboard-github-link-actions';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
 
 const isNonEmptyString = (value: string | undefined): value is string => {
 	return value !== undefined && value !== '';
-};
-
-const isGitHubUrl = (url: string): boolean => {
-	return /^https?:\/\/github\.com\//.test(url);
-};
-
-const openFirstGitHubLink = (links: string[]): boolean => {
-	const firstLink = links[0];
-	if (!isGitHubUrl(firstLink)) {
-		return false;
-	}
-
-	window.open(firstLink, '_blank');
-	return true;
 };
 
 const openMoveContextMenu = (
@@ -89,6 +81,9 @@ export const buildIssueActionDescriptors = (options: {
 	const issueFolderKey = `${dashboard.id}:${params.issue}`;
 	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
 	const hasIssueFolder = isNonEmptyString(issueFolder);
+	const hasIssueGitFolder =
+		hasIssueFolder && platformService.isGitRepositoryFolder(issueFolder);
+	const hasIssueWorktreeScope = hasIssueGitFolder;
 	const visibility = getButtonVisibility(dashboard);
 	const isArchived = /\/Issues\/Archive(\/|$)/i.test(params.path);
 
@@ -124,7 +119,7 @@ export const buildIssueActionDescriptors = (options: {
 		label: hasIssueFolder ? 'Open terminal' : 'Set issue folder',
 		iconKey: 'terminal',
 		cssClass: 'tdc-btn-terminal',
-		shouldRender: visibility.terminal && (hasIssueFolder || !visibility.folder),
+		shouldRender: visibility.terminal,
 		faded: !hasIssueFolder,
 		onClick: () => {
 			if (isNonEmptyString(issueFolder)) {
@@ -144,7 +139,7 @@ export const buildIssueActionDescriptors = (options: {
 		label: hasIssueFolder ? 'Open in VS Code' : 'Set issue folder',
 		iconKey: 'vscode',
 		cssClass: 'tdc-btn-vscode',
-		shouldRender: visibility.vscode && (hasIssueFolder || !visibility.folder),
+		shouldRender: visibility.vscode,
 		faded: !hasIssueFolder,
 		onClick: () => {
 			if (isNonEmptyString(issueFolder)) {
@@ -160,50 +155,62 @@ export const buildIssueActionDescriptors = (options: {
 
 	descriptors.set('github', {
 		key: 'github',
-		label: params.githubLinks.length > 0 ? 'Open GitHub link' : 'Add GitHub link',
+		label: params.githubLinks.length > 0 ? 'Open or edit GitHub links' : 'Add GitHub link',
 		iconKey: 'github',
 		cssClass: 'tdc-btn-github-quickopen',
 		shouldRender: visibility.github,
 		faded: params.githubLinks.length === 0,
-		onClick: () => {
-			const hasLinks = params.githubLinks.length > 0;
-			if (hasLinks) {
-				openFirstGitHubLink(params.githubLinks);
+		onClick: (event) => {
+			const openableLinks = getOpenableGitHubLinks(params.githubLinks);
+			if (openableLinks.length === 1) {
+				window.open(openableLinks[0], '_blank');
 				return;
 			}
-			if (!plugin.githubService.isAuthenticated()) {
-				new Notice('Configure GitHub token in settings to search for issues.');
-				return;
-			}
-			new GitHubSearchModal(plugin.app, plugin, dashboard, (url, metadata) => {
-				if (url === undefined) {
+
+			if (openableLinks.length > 1) {
+				if (event !== undefined) {
+					openGitHubLinkChooser(event, openableLinks);
 					return;
 				}
-				void plugin.issueManager.addGitHubLink(dashboard, params.issue, url, metadata);
-			}).open();
+
+				new GitHubLinksModal(plugin, dashboard, params.issue, params.githubLinks).open();
+				return;
+			}
+
+			new GitHubLinksModal(plugin, dashboard, params.issue, params.githubLinks).open();
 		},
-		onContextMenu:
-			params.githubLinks.length > 0
-				? () => {
-						new GitHubLinksModal(
-							plugin,
-							dashboard,
-							params.issue,
-							params.githubLinks
-						).open();
-					}
-				: undefined
+		onContextMenu: () => {
+			new GitHubLinksModal(plugin, dashboard, params.issue, params.githubLinks).open();
+		}
 	});
 
 	descriptors.set('worktree', {
 		key: 'worktree',
-		label: 'Add issue in worktree',
+		label: hasIssueWorktreeScope
+			? 'Add issue in worktree'
+			: 'Configure issue folder (git repository) for worktree',
 		iconKey: 'worktree',
 		cssClass: 'tdc-btn-worktree',
 		shouldRender: visibility.github,
-		faded: false,
+		faded: !hasIssueWorktreeScope,
 		onClick: () => {
-			openWorktreeIssueCreationModal(plugin.app, plugin, dashboard);
+			if (!hasIssueWorktreeScope) {
+				if (!hasIssueFolder) {
+					openIssueFolderModal();
+					return;
+				}
+
+				new Notice('Issue folder must point to a Git repository to create worktrees.');
+				return;
+			}
+
+			openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
+				worktreeOriginFolder: issueFolder,
+				sourceIssueGitHubLinks: params.githubLinks
+			});
+		},
+		onContextMenu: () => {
+			openIssueFolderModal();
 		}
 	});
 
@@ -382,7 +389,12 @@ export const buildIssueActionDescriptors = (options: {
 						plugin.app,
 						params.name,
 						hasAssociatedWorktree,
-						(result) => {
+						plugin.settings.deleteIssueRemoveWorktreeByDefault,
+						(checked: boolean) => {
+							plugin.settings.deleteIssueRemoveWorktreeByDefault = checked;
+							void plugin.saveSettings();
+						},
+						(result: DeleteConfirmationResult) => {
 							if (!result.confirmed) {
 								return;
 							}

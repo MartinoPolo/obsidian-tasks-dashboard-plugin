@@ -3,7 +3,11 @@ export type IssueStatus = 'active' | 'archived';
 export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-percentage' | 'all';
 export type GitHubAuthMethod = 'none' | 'pat';
 export type GitHubDisplayMode = 'minimal' | 'compact' | 'full';
-export type GitHubSearchScope = 'linked' | 'my-repos' | 'all-github';
+export type GitHubSearchScope =
+	| 'linked-dashboard'
+	| 'linked-issue'
+	| 'my-repos'
+	| 'all-github';
 export type IssueActionKey =
 	| 'folder'
 	| 'terminal'
@@ -120,6 +124,7 @@ export interface TasksDashboardSettings {
 	progressDisplayMode: ProgressDisplayMode;
 	githubAuth: GitHubAuth;
 	githubDisplayMode: GitHubDisplayMode;
+	deleteIssueRemoveWorktreeByDefault: boolean;
 	worktreeBashPath?: string;
 	collapsedIssues: Record<string, boolean>;
 	collapsedDashboardSettings: Record<string, boolean>;

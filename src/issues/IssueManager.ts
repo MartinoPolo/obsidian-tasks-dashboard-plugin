@@ -28,6 +28,47 @@ const CURRENT_DIRECTORY_BRANCH = '.';
 const PARENT_DIRECTORY_BRANCH = '..';
 const LEADING_DASH_PATTERN = /^-+/;
 const TRAILING_DASH_PATTERN = /-+$/;
+const WORKTREE_ORIGIN_FOLDER_FIELD = 'worktree_origin_folder';
+
+function quoteYamlString(value: string): string {
+	return `'${value.replace(/'/g, "''")}'`;
+}
+
+function getFrontmatter(content: string): string | undefined {
+	const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+	if (frontmatterMatch === null) {
+		return undefined;
+	}
+
+	return frontmatterMatch[1];
+}
+
+function getFrontmatterStringField(content: string, fieldName: string): string | undefined {
+	const frontmatter = getFrontmatter(content);
+	if (frontmatter === undefined) {
+		return undefined;
+	}
+
+	const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*(.+)\\s*$`, 'm');
+	const fieldMatch = frontmatter.match(fieldRegex);
+	if (fieldMatch === null) {
+		return undefined;
+	}
+
+	const rawValue = fieldMatch[1].trim();
+	const singleQuotedMatch = rawValue.match(/^'(.*)'$/);
+	if (singleQuotedMatch !== null) {
+		return singleQuotedMatch[1].replace(/''/g, "'");
+	}
+
+	const doubleQuotedMatch = rawValue.match(/^"(.*)"$/);
+	if (doubleQuotedMatch !== null) {
+		return doubleQuotedMatch[1].replace(/\\"/g, '"');
+	}
+
+	return rawValue;
+}
 
 function isValidGitBranchName(branchName: string): boolean {
 	if (branchName === EMPTY_BRANCH_NAME) {
@@ -205,8 +246,16 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 	};
 
 	const createIssue = async (params: CreateIssueParams): Promise<Issue> => {
-		const { name, priority, githubLink, githubMetadata, dashboard, worktree, worktreeColor } =
-			params;
+		const {
+			name,
+			priority,
+			githubLink,
+			githubMetadata,
+			dashboard,
+			worktree,
+			worktreeColor,
+			worktreeOriginFolder
+		} = params;
 		const issueId = slugify(name);
 		const activePath = getIssuePathByStatus(dashboard, 'active');
 
@@ -237,6 +286,9 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 			let worktreeFrontmatter = '\nworktree: true';
 			if (worktreeColor !== undefined && worktreeColor !== '') {
 				worktreeFrontmatter += `\nworktree_color: "${worktreeColor}"`;
+			}
+			if (worktreeOriginFolder !== undefined && worktreeOriginFolder !== '') {
+				worktreeFrontmatter += `\n${WORKTREE_ORIGIN_FOLDER_FIELD}: ${quoteYamlString(worktreeOriginFolder)}`;
 			}
 			content = appendBeforeFrontmatterClose(content, worktreeFrontmatter);
 		}
@@ -345,12 +397,12 @@ ${originalBody}`;
 	): Promise<boolean> => {
 		const { file } = getIssueFileOrThrow(dashboard, issueId);
 		const content = await app.vault.read(file);
-		const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-		if (frontmatterMatch === null) {
+		const frontmatter = getFrontmatter(content);
+		if (frontmatter === undefined) {
 			return false;
 		}
 
-		return /^worktree:\s*true\s*$/m.test(frontmatterMatch[1]);
+		return /^worktree:\s*true\s*$/m.test(frontmatter);
 	};
 
 	const removeWorktreeFrontmatterFields = (content: string): string => {
@@ -361,9 +413,18 @@ ${originalBody}`;
 
 		const frontmatterFields = frontmatterMatch[1]
 			.split('\n')
-			.filter((line) => !/^worktree(_color)?:/.test(line.trim()));
+			.filter((line) => !/^worktree(_color|_origin_folder)?:/.test(line.trim()));
 		const updatedFrontmatter = `---\n${frontmatterFields.join('\n')}\n---`;
 		return updatedFrontmatter + content.slice(frontmatterMatch[0].length);
+	};
+
+	const getWorktreeOriginFolder = async (
+		dashboard: DashboardConfig,
+		issueId: string
+	): Promise<string | undefined> => {
+		const { file } = getIssueFileOrThrow(dashboard, issueId);
+		const content = await app.vault.read(file);
+		return getFrontmatterStringField(content, WORKTREE_ORIGIN_FOLDER_FIELD);
 	};
 
 	const clearIssueWorktreeAssociation = async (
@@ -445,14 +506,15 @@ ${originalBody}`;
 		dashboard: DashboardConfig,
 		issueId: string,
 		issueName: string,
-		color?: string
+		color?: string,
+		worktreeOriginFolder?: string
 	): void => {
 		const parsedWorktreeName = issueName.trim() !== '' ? issueName : issueId;
 		const worktreeName = sanitizeGitBranchName(parsedWorktreeName, issueId);
 		platformService.runWorktreeSetupScript(
 			worktreeName,
 			color,
-			dashboard.projectFolder,
+			worktreeOriginFolder ?? dashboard.projectFolder,
 			plugin.settings.worktreeBashPath
 		);
 	};
@@ -462,24 +524,32 @@ ${originalBody}`;
 		issueId: string,
 		options?: { skipScriptConfirmation?: boolean }
 	): void => {
-		const issueColor = plugin.settings.issueColors[issueId];
-		const launchSucceeded = platformService.runWorktreeRemovalScript(
-			issueId,
-			dashboard.projectFolder,
-			plugin.settings.worktreeBashPath,
-			{
-				skipConfirmation: options?.skipScriptConfirmation === true,
-				tabColor: issueColor
-			}
-		);
-		if (!launchSucceeded) {
-			new Notice(
-				'Could not launch remove-worktree script. Worktree association was not cleared.'
-			);
-			return;
-		}
+		void (async () => {
+			const issueColor = plugin.settings.issueColors[issueId];
+			const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
+			const fallbackIssueFolder = plugin.settings.issueFolders[issueFolderKey];
+			const worktreeOriginFolder = await getWorktreeOriginFolder(dashboard, issueId);
+			const removalWorkingDirectory =
+				worktreeOriginFolder ?? fallbackIssueFolder ?? dashboard.projectFolder;
 
-		void clearIssueWorktreeAssociation(dashboard, issueId);
+			const launchSucceeded = platformService.runWorktreeRemovalScript(
+				issueId,
+				removalWorkingDirectory,
+				plugin.settings.worktreeBashPath,
+				{
+					skipConfirmation: options?.skipScriptConfirmation === true,
+					tabColor: issueColor
+				}
+			);
+			if (!launchSucceeded) {
+				new Notice(
+					'Could not launch remove-worktree script. Worktree association was not cleared.'
+				);
+				return;
+			}
+
+			void clearIssueWorktreeAssociation(dashboard, issueId);
+		})();
 	};
 
 	const renameIssue = async (

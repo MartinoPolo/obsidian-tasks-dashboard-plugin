@@ -126,8 +126,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				cssClass: descriptor.cssClass,
 				ariaLabel: descriptor.label,
 				faded: descriptor.faded,
-				onClick: () => {
-					descriptor.onClick();
+				onClick: (event) => {
+					descriptor.onClick(event);
 				},
 				onContextMenu: descriptor.onContextMenu
 			});

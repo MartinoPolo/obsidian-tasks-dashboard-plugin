@@ -5,15 +5,16 @@
 - [x] Control an Obsidian note as a task dashboard
 - [x] Select a note that becomes the dashboard (path and name configurable in settings)
 - [x] Dashboard includes Active Issues, Notes, and Archive sections (H1 headers)
-- [x] Creating an issue from hotkey/button prompts for name, priority, and optional GitHub link
+- [x] Creating an issue from hotkey/button prompts for name, color, priority, and optional GitHub link
 - [x] Creating an issue writes a note in `{dashboard-path}/Issues/Active/` and adds an Active Issues entry
 
 ## Issue Creation Flow (Keyboard-Driven)
 
 - [x] Prompts appear at top of screen (Quick Switcher position)
 - [x] Step 1: name prompt (text input, Enter confirm, confirm/cancel with key hints)
-- [x] Step 2: priority prompt (↑↓ navigation, medium preselected, order: low/medium/high/top)
-- [x] Step 3: optional GitHub linking flow
+- [x] Step 2: color prompt (preset palette + color picker)
+- [x] Step 3: priority prompt (↑↓ navigation, order: low/medium/high/top; first option focused by default)
+- [x] Step 4: optional GitHub linking flow
   - if GitHub is enabled + authenticated: choose Issue/PR, Repository, or Skip
   - if GitHub is enabled but unauthenticated: allow pasted GitHub URL
   - if GitHub is disabled: skip GitHub step
@@ -106,8 +107,12 @@
 - [x] GitHub display mode setting (Minimal/Compact/Full) updates existing cards
 - [x] Per-dashboard linked repository via repository picker
 - [x] Per-dashboard no-GitHub mode toggle
-- [x] Search modal with recent issues, real-time search, and scope selector (linked repo/my repos/all GitHub)
-- [x] Enter in search confirms without selecting first suggestion
+- [x] Search modal with recent issues, real-time search, and scope selector:
+  - issue linked repository (when available)
+  - dashboard linked repository (when available)
+  - my repositories
+  - all GitHub
+- [x] Enter in search selects the currently highlighted result when available (or accepts pasted GitHub URL)
 - [x] Multiple GitHub issues/PRs per dashboard issue
 - [x] Repository links supported in addition to issue/PR links
 - [x] Embedded GitHub cards in dashboard and issue notes
@@ -126,21 +131,30 @@
 - [x] Left-click folder opens explorer when set, else opens `FolderPathModal`
 - [x] Right-click folder opens `FolderPathModal` to reassign/clear
 - [x] Faded folder button indicates no folder assigned
-- [x] Terminal hidden when no folder assigned
+- [x] Terminal button is visible when enabled; faded when no folder and opens folder picker on click
 - [x] Terminal opens Windows Terminal on Windows, Terminal.app on macOS, default emulator on Linux
 - [x] VS Code opens folder via `code` CLI
-- [x] VS Code hidden when no folder assigned
-- [x] Per-dashboard toggle controls folder/terminal button visibility
+- [x] VS Code button is visible when enabled; faded when no folder and opens folder picker on click
+- [x] Per-dashboard toggle controls folder/terminal/VS Code button visibility
 - [x] Issue folder assignment is fully independent per issue/global
 
-## Worktree Integration (Planned)
+### Button Behavior Source of Truth (Concise)
 
-- [ ] Add a new `Add issue in worktree` action in global dashboard actions and/or per-issue actions when GitHub linking is available, with the same visibility logic as the existing GitHub action/button.
-- [ ] Use a GitHub-like icon for `Add issue in worktree` with an additional square-accent treatment (GitHub-inspired icon with extra square framing detail).
-- [ ] Clicking `Add issue in worktree` must launch a keyboard-driven multi-step prompt flow (same interaction pattern as issue creation) that collects: worktree name (free text), worktree color (preset palette options plus custom color picker), priority, and associated GitHub issue/PR selection using the same GitHub linking patterns as issue creation (repository linking is not available in worktree mode).
-- [ ] Reuse the existing add-issue creation system for both standard and worktree-enabled flows, and extend the shared flow to include a color-picking step; the only functional difference for `Add issue in worktree` is that it runs worktree setup after inputs are collected.
-- [ ] After collecting inputs for `Add issue in worktree`, execute `C:\_MP_projects\mxp-claude-code\scripts\setup-worktree.sh` through the existing terminal-spawn approach used by the plugin (Windows Terminal-compatible path), and pass the selected color to the script so worktree tooling uses the same unified color.
-- [ ] When an issue is archived or deleted, show a prompt asking whether to remove its worktree, and if confirmed execute `C:\_MP_projects\mxp-claude-code\scripts\remove-worktree.sh` using the same safe process-launch approach.
+- [x] Folder: left-click opens folder when assigned, otherwise opens picker; context/right click opens picker for reassignment/clear.
+- [x] Terminal: visible when terminal visibility is enabled; faded if no folder; click opens terminal for assigned folder or opens folder picker when missing.
+- [x] VS Code: visible when VS Code visibility is enabled; faded if no folder; click opens VS Code for assigned folder or opens folder picker when missing.
+- [x] Add issue in worktree (global): visible with GitHub actions; faded unless dashboard project folder is a Git repository; click launches worktree issue flow or prompts to set/fix project folder.
+- [x] Add issue in worktree (per issue): visible with GitHub actions; faded unless issue folder is a Git repository; click launches worktree issue flow or prompts to set/fix issue folder.
+
+## Worktree Integration
+
+- [x] `Add issue in worktree` action exists in global dashboard actions and per-issue actions, using the same visibility gate as GitHub action visibility.
+- [x] Worktree action uses dedicated worktree icon button treatment.
+- [x] Clicking `Add issue in worktree` launches keyboard-driven multi-step flow: name, color, priority, optional GitHub issue/PR linking.
+- [x] Worktree flow reuses shared issue creation flow with color prompt; repository-link option is excluded in worktree mode.
+- [x] Worktree setup executes `C:\_MP_projects\mxp-claude-code\scripts\setup-worktree.sh` via existing safe process-launch path and passes selected color.
+- [x] Issue deletion and archive flows prompt for optional worktree removal and run `C:\_MP_projects\mxp-claude-code\scripts\remove-worktree.sh` when confirmed.
+- [x] Worktree origin folder is persisted in issue frontmatter and reused for removal/setup context.
 
 ## Plugin-Wide Dashboard Hotkeys (Planned)
 

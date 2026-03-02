@@ -8,6 +8,8 @@ import {
 	createConfirmCancelButtons,
 	createInputWithEnterHandler
 } from './modal-helpers';
+import { getGitHubLinkType } from '../utils/github';
+import { parseGitHubRepoFullName, parseGitHubUrl } from '../utils/github-url';
 
 interface CreateIssueRequest {
 	name: string;
@@ -15,6 +17,7 @@ interface CreateIssueRequest {
 	dashboard: DashboardConfig;
 	color?: string;
 	worktree?: boolean;
+	worktreeOriginFolder?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
 }
@@ -64,6 +67,32 @@ const GITHUB_LINK_TYPE_OPTIONS: GitHubLinkTypeOption[] = [
 	}
 ];
 
+function getIssueLinkedRepositoryFromLinks(githubLinks: string[] | undefined): string | undefined {
+	if (githubLinks === undefined || githubLinks.length === 0) {
+		return undefined;
+	}
+
+	for (const link of githubLinks) {
+		if (getGitHubLinkType(link) !== 'repository') {
+			continue;
+		}
+
+		const repository = parseGitHubRepoFullName(link);
+		if (repository !== undefined && repository !== '') {
+			return repository;
+		}
+	}
+
+	for (const link of githubLinks) {
+		const parsed = parseGitHubUrl(link);
+		if (parsed !== undefined) {
+			return `${parsed.owner}/${parsed.repo}`;
+		}
+	}
+
+	return undefined;
+}
+
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error && error.message !== '') {
 		return error.message;
@@ -87,7 +116,13 @@ async function createIssueWithNotice(
 			await plugin.saveSettings();
 		}
 		if (request.worktree === true) {
-			plugin.issueManager.setupWorktree(request.dashboard, issue.id, request.name, request.color);
+			plugin.issueManager.setupWorktree(
+				request.dashboard,
+				issue.id,
+				request.name,
+				request.color,
+				request.worktreeOriginFolder
+			);
 		}
 		new Notice(`Created issue: ${request.name}`);
 		await openFileAndFocusEnd(app, issue.filePath);
@@ -104,18 +139,24 @@ export class NamePromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private mode: IssueCreationMode;
+	private worktreeOriginFolder: string | undefined;
+	private sourceIssueLinkedRepository: string | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
 		app: App,
 		plugin: TasksDashboardPlugin,
 		dashboard: DashboardConfig,
-		mode: IssueCreationMode = 'standard'
+		mode: IssueCreationMode = 'standard',
+		worktreeOriginFolder?: string,
+		sourceIssueLinkedRepository?: string
 	) {
 		super(app);
 		this.plugin = plugin;
 		this.dashboard = dashboard;
 		this.mode = mode;
+		this.worktreeOriginFolder = worktreeOriginFolder;
+		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 	}
 
 	onOpen() {
@@ -144,7 +185,9 @@ export class NamePromptModal extends Modal {
 				this.plugin,
 				this.dashboard,
 				value,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder,
+				this.sourceIssueLinkedRepository
 			).open();
 		} else {
 			this.input.addClass('tdc-input-error');
@@ -162,6 +205,8 @@ class ColorPromptModal extends Modal {
 	private dashboard: DashboardConfig;
 	private issueName: string;
 	private mode: IssueCreationMode;
+	private worktreeOriginFolder: string | undefined;
+	private sourceIssueLinkedRepository: string | undefined;
 	private input: HTMLInputElement | undefined;
 	private presetButtons: HTMLButtonElement[] = [];
 	private selectedColor = WORKTREE_COLOR_PRESETS[0];
@@ -171,13 +216,17 @@ class ColorPromptModal extends Modal {
 		plugin: TasksDashboardPlugin,
 		dashboard: DashboardConfig,
 		issueName: string,
-		mode: IssueCreationMode
+		mode: IssueCreationMode,
+		worktreeOriginFolder?: string,
+		sourceIssueLinkedRepository?: string
 	) {
 		super(app);
 		this.plugin = plugin;
 		this.dashboard = dashboard;
 		this.issueName = issueName;
 		this.mode = mode;
+		this.worktreeOriginFolder = worktreeOriginFolder;
+		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 	}
 
 	onOpen(): void {
@@ -263,7 +312,9 @@ class ColorPromptModal extends Modal {
 			this.dashboard,
 			this.issueName,
 			color,
-			this.mode
+			this.mode,
+			this.worktreeOriginFolder,
+			this.sourceIssueLinkedRepository
 		).open();
 	}
 
@@ -343,6 +394,8 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	private issueName: string;
 	private issueColor: string;
 	private mode: IssueCreationMode;
+	private worktreeOriginFolder: string | undefined;
+	private sourceIssueLinkedRepository: string | undefined;
 
 	constructor(
 		app: App,
@@ -350,7 +403,9 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 		dashboard: DashboardConfig,
 		issueName: string,
 		issueColor: string,
-		mode: IssueCreationMode
+		mode: IssueCreationMode,
+		worktreeOriginFolder?: string,
+		sourceIssueLinkedRepository?: string
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -358,6 +413,8 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 		this.issueName = issueName;
 		this.issueColor = issueColor;
 		this.mode = mode;
+		this.worktreeOriginFolder = worktreeOriginFolder;
+		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 		this.setPlaceholder('Select priority');
 	}
 
@@ -395,7 +452,8 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				undefined,
 				undefined,
 				this.issueColor,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder
 			);
 			return;
 		}
@@ -407,7 +465,9 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				this.issueName,
 				priority,
 				this.issueColor,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder,
+				this.sourceIssueLinkedRepository
 			).open();
 		} else {
 			new GithubPromptModal(
@@ -417,7 +477,8 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				this.issueName,
 				priority,
 				this.issueColor,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder
 			).open();
 		}
 	}
@@ -438,6 +499,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 	private priority: Priority;
 	private issueColor: string;
 	private mode: IssueCreationMode;
+	private worktreeOriginFolder: string | undefined;
+	private sourceIssueLinkedRepository: string | undefined;
 
 	constructor(
 		app: App,
@@ -446,7 +509,9 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 		issueName: string,
 		priority: Priority,
 		issueColor: string,
-		mode: IssueCreationMode
+		mode: IssueCreationMode,
+		worktreeOriginFolder?: string,
+		sourceIssueLinkedRepository?: string
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -455,6 +520,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 		this.priority = priority;
 		this.issueColor = issueColor;
 		this.mode = mode;
+		this.worktreeOriginFolder = worktreeOriginFolder;
+		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 		this.setPlaceholder('Choose GitHub link type...');
 	}
 
@@ -483,24 +550,34 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 						undefined,
 						undefined,
 						this.issueColor,
-						this.mode
+						this.mode,
+						this.worktreeOriginFolder
 				);
 				return;
 			}
 			case 'issue-pr': {
-				new GitHubSearchModal(this.app, this.plugin, this.dashboard, (url, metadata) => {
-					void createIssueWithGitHub(
-						this.app,
-						this.plugin,
-						this.dashboard,
-						this.issueName,
-						this.priority,
-						url,
-						metadata,
-						this.issueColor,
-						this.mode
-					);
-				}).open();
+				new GitHubSearchModal(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					(url, metadata) => {
+						void createIssueWithGitHub(
+							this.app,
+							this.plugin,
+							this.dashboard,
+							this.issueName,
+							this.priority,
+							url,
+							metadata,
+							this.issueColor,
+							this.mode,
+							this.worktreeOriginFolder
+						);
+					},
+					{
+						issueRepository: this.sourceIssueLinkedRepository
+					}
+				).open();
 				return;
 			}
 			case 'repository': {
@@ -514,7 +591,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 						undefined,
 						undefined,
 						this.issueColor,
-						this.mode
+						this.mode,
+						this.worktreeOriginFolder
 					);
 					return;
 				}
@@ -537,7 +615,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 				undefined,
 				undefined,
 				this.issueColor,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder
 			);
 			return;
 		}
@@ -551,7 +630,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 				this.priority,
 				repository,
 				this.issueColor,
-				this.mode
+				this.mode,
+				this.worktreeOriginFolder
 			);
 		}).open();
 	}
@@ -626,7 +706,8 @@ export async function createIssueWithRepoLink(
 	priority: Priority,
 	repository: GitHubRepository,
 	color?: string,
-	mode: IssueCreationMode = 'standard'
+	mode: IssueCreationMode = 'standard',
+	worktreeOriginFolder?: string
 ): Promise<void> {
 	const repoUrl = `https://github.com/${repository.fullName}`;
 	await createIssueWithNotice(app, plugin, {
@@ -635,6 +716,7 @@ export async function createIssueWithRepoLink(
 		githubLink: repoUrl,
 		color,
 		worktree: mode === 'worktree',
+		worktreeOriginFolder,
 		dashboard
 	});
 }
@@ -648,7 +730,8 @@ export async function createIssueWithGitHub(
 	githubUrl?: string,
 	githubMetadata?: GitHubIssueMetadata,
 	color?: string,
-	mode: IssueCreationMode = 'standard'
+	mode: IssueCreationMode = 'standard',
+	worktreeOriginFolder?: string
 ): Promise<void> {
 	await createIssueWithNotice(app, plugin, {
 		name: issueName,
@@ -657,6 +740,7 @@ export async function createIssueWithGitHub(
 		githubMetadata,
 		color,
 		worktree: mode === 'worktree',
+		worktreeOriginFolder,
 		dashboard
 	});
 }
@@ -664,9 +748,20 @@ export async function createIssueWithGitHub(
 export const openWorktreeIssueCreationModal = (
 	app: App,
 	plugin: TasksDashboardPlugin,
-	dashboard: DashboardConfig
+	dashboard: DashboardConfig,
+	options?: {
+		worktreeOriginFolder?: string;
+		sourceIssueGitHubLinks?: string[];
+	}
 ): void => {
-	new NamePromptModal(app, plugin, dashboard, 'worktree').open();
+	new NamePromptModal(
+		app,
+		plugin,
+		dashboard,
+		'worktree',
+		options?.worktreeOriginFolder,
+		getIssueLinkedRepositoryFromLinks(options?.sourceIssueGitHubLinks)
+	).open();
 };
 
 class GithubPromptModal extends Modal {
@@ -676,6 +771,7 @@ class GithubPromptModal extends Modal {
 	private priority: Priority;
 	private issueColor: string;
 	private mode: IssueCreationMode;
+	private worktreeOriginFolder: string | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
@@ -685,7 +781,8 @@ class GithubPromptModal extends Modal {
 		issueName: string,
 		priority: Priority,
 		issueColor: string,
-		mode: IssueCreationMode
+		mode: IssueCreationMode,
+		worktreeOriginFolder?: string
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -694,6 +791,7 @@ class GithubPromptModal extends Modal {
 		this.priority = priority;
 		this.issueColor = issueColor;
 		this.mode = mode;
+		this.worktreeOriginFolder = worktreeOriginFolder;
 	}
 
 	onOpen() {
@@ -727,7 +825,8 @@ class GithubPromptModal extends Modal {
 			value !== '' ? value : undefined,
 			undefined,
 			this.issueColor,
-			this.mode
+			this.mode,
+			this.worktreeOriginFolder
 		);
 	}
 

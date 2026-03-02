@@ -6,6 +6,7 @@ export interface CreateIssueParams {
 	priority: Priority;
 	worktree?: boolean;
 	worktreeColor?: string;
+	worktreeOriginFolder?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
 	dashboard: DashboardConfig;
@@ -38,7 +39,8 @@ export interface IssueManagerInstance {
 		dashboard: DashboardConfig,
 		issueId: string,
 		issueName: string,
-		color?: string
+		color?: string,
+		worktreeOriginFolder?: string
 	) => void;
 	removeWorktree: (
 		dashboard: DashboardConfig,

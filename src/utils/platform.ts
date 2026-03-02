@@ -29,6 +29,7 @@ export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
 	openTerminal: (folderPath: string, tabColor?: string) => void;
 	openVSCode: (folderPath: string) => void;
+	isGitRepositoryFolder: (folderPath: string) => boolean;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
@@ -260,6 +261,22 @@ export function createPlatformService(): PlatformService {
 		notifyOnSpawnError(child, 'Could not open VS Code — is it installed and in PATH?');
 	};
 
+	const isGitRepositoryFolder = (folderPath: string): boolean => {
+		if (folderPath.trim() === '') {
+			return false;
+		}
+
+		try {
+			const fsModule = loadModule('fs');
+			const existsSyncFunction = getRequiredFunction(fsModule, 'existsSync');
+			const normalizedPath = folderPath.replace(/[\\/]+$/, '');
+			const gitPath = `${normalizedPath}/.git`;
+			return existsSyncFunction(gitPath) === true;
+		} catch {
+			return false;
+		}
+	};
+
 	const pickFolder = async (defaultPath?: string): Promise<string | undefined> => {
 		try {
 			const remoteDialog = getRemoteDialog();
@@ -442,6 +459,7 @@ export function createPlatformService(): PlatformService {
 		openInFileExplorer,
 		openTerminal,
 		openVSCode,
+		isGitRepositoryFolder,
 		pickFolder,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript

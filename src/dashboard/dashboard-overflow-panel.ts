@@ -199,7 +199,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 				onClick: (event) => {
 					event.preventDefault();
 					event.stopPropagation();
-					descriptor.onClick();
+					descriptor.onClick(event);
 					closePanel();
 				}
 			});

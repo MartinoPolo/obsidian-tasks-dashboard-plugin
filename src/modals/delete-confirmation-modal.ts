@@ -13,6 +13,7 @@ export interface DeleteConfirmationResult {
 export class DeleteConfirmationModal extends Modal {
 	private readonly issueName: string;
 	private readonly hasAssociatedWorktree: boolean;
+	private readonly onRemoveWorktreeChange?: (checked: boolean) => void;
 	private readonly onResult: (result: DeleteConfirmationResult) => void;
 	private removeWorktree = false;
 
@@ -20,11 +21,15 @@ export class DeleteConfirmationModal extends Modal {
 		app: App,
 		issueName: string,
 		hasAssociatedWorktree: boolean,
+		initialRemoveWorktree: boolean,
+		onRemoveWorktreeChange: ((checked: boolean) => void) | undefined,
 		onResult: (result: DeleteConfirmationResult) => void
 	) {
 		super(app);
 		this.issueName = issueName;
 		this.hasAssociatedWorktree = hasAssociatedWorktree;
+		this.removeWorktree = initialRemoveWorktree;
+		this.onRemoveWorktreeChange = onRemoveWorktreeChange;
 		this.onResult = onResult;
 	}
 
@@ -77,12 +82,14 @@ export class DeleteConfirmationModal extends Modal {
 			type: 'checkbox',
 			attr: { id: checkboxId }
 		});
+		checkbox.checked = this.removeWorktree;
 		checkboxContainer.createEl('label', {
 			text: 'Also remove associated worktree',
 			attr: { for: checkboxId }
 		});
 		checkbox.addEventListener('change', () => {
 			this.removeWorktree = checkbox.checked;
+			this.onRemoveWorktreeChange?.(checkbox.checked);
 		});
 	}
 

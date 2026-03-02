@@ -9,7 +9,7 @@ export interface IssueActionDescriptor {
 	cssClass: string;
 	shouldRender: boolean;
 	faded: boolean;
-	onClick: () => void;
+	onClick: (event?: MouseEvent) => void;
 	onContextMenu?: (event: MouseEvent) => void;
 }
 
