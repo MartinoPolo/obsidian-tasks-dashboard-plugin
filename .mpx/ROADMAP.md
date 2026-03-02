@@ -9,7 +9,7 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 ## Current State
 
 - Completed phases: 01-15.
-- Planned phases from unchecked SPEC requirements: 16-18.
+- Planned phases from unchecked SPEC requirements: 16-19 (in active execution).
 
 ## Completed Phases (Concise)
 
@@ -19,7 +19,7 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 
 ### Phase 16 — Worktree Integration
 
-- Status: Planned
+- Status: In Progress (implementation + automated checks complete; manual runtime verification pending)
 - Dependency context: existing issue creation flow, GitHub link selection flow, and safe process launch invariant (`spawn(..., { shell: false })`).
 - Source requirements: `Worktree Integration (Planned)` in `.mpx/SPEC.md`.
 - Deliverables:
@@ -31,7 +31,7 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 
 ### Phase 17 — Optional Overflow UX Improvements
 
-- Status: Planned (Optional / Non-blocking)
+- Status: In Progress (Optional / Non-blocking)
 - Dependency context: Phase 14 overflow/settings layout system.
 - Source requirements: `Optional (Non-Blocking) UX Improvements` in `.mpx/SPEC.md`.
 - Deliverables:
@@ -41,13 +41,25 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 
 ### Phase 18 — Plugin-Wide Dashboard Hotkeys
 
-- Status: Planned
+- Status: In Progress (commands implemented; in-app hotkey verification pending)
 - Dependency context: explicitly depends on completion of Phase 16 worktree integration, including global `Add issue in worktree` behavior.
 - Source requirements: `Plugin-Wide Dashboard Hotkeys (Planned)` in `.mpx/SPEC.md`.
 - Deliverables:
 	- Plugin-wide commands for `Collapse all issues` and `Expand all issues`.
 	- Native Obsidian hotkey registration for both commands so bindings are managed in global Hotkeys settings.
 	- Execution targeting the active dashboard context when command/hotkey is invoked.
+
+### Phase 19 — Dashboard Action and Visibility Improvements
+
+- Status: In Progress (core actions implemented; interactive validation pending)
+- Dependency context: Phase 14 action layout/overflow semantics and full-dashboard state mutation paths.
+- Source requirements: `Dashboard Action and Visibility Improvements (Planned)` in `.mpx/SPEC.md`.
+- Deliverables:
+	- Dashboard-level `Open dashboard settings` action in top dashboard actions, opening plugin settings and focusing current dashboard settings block when API support exists, with graceful fallback.
+	- Per-issue `Change priority` action using the existing priority prompt flow.
+	- `Change priority` hidden by default in visible rows while always available through the 3-dots overflow.
+	- Overflow reliability for all layout-hidden actions so hidden actions remain present and executable.
+	- `Collapse all issues` global behavior updated to target the entire dashboard dataset, not only currently visible/rendered items.
 
 ## Assumptions (Ambiguous SPEC Areas)
 

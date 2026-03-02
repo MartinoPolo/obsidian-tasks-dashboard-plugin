@@ -137,7 +137,7 @@
 
 - [ ] Add a new `Add issue in worktree` action in global dashboard actions and/or per-issue actions when GitHub linking is available, with the same visibility logic as the existing GitHub action/button.
 - [ ] Use a GitHub-like icon for `Add issue in worktree` with an additional square-accent treatment (GitHub-inspired icon with extra square framing detail).
-- [ ] Clicking `Add issue in worktree` must launch a keyboard-driven multi-step prompt flow (same interaction pattern as issue creation) that collects: worktree name (free text), worktree color (preset palette options plus custom color picker), priority, and associated GitHub issue/PR/repository selection using the same GitHub linking patterns as issue creation.
+- [ ] Clicking `Add issue in worktree` must launch a keyboard-driven multi-step prompt flow (same interaction pattern as issue creation) that collects: worktree name (free text), worktree color (preset palette options plus custom color picker), priority, and associated GitHub issue/PR selection using the same GitHub linking patterns as issue creation (repository linking is not available in worktree mode).
 - [ ] Reuse the existing add-issue creation system for both standard and worktree-enabled flows, and extend the shared flow to include a color-picking step; the only functional difference for `Add issue in worktree` is that it runs worktree setup after inputs are collected.
 - [ ] After collecting inputs for `Add issue in worktree`, execute `C:\_MP_projects\mxp-claude-code\scripts\setup-worktree.sh` through the existing terminal-spawn approach used by the plugin (Windows Terminal-compatible path), and pass the selected color to the script so worktree tooling uses the same unified color.
 - [ ] When an issue is archived or deleted, show a prompt asking whether to remove its worktree, and if confirmed execute `C:\_MP_projects\mxp-claude-code\scripts\remove-worktree.sh` using the same safe process-launch approach.
@@ -147,6 +147,14 @@
 - [ ] Add plugin-wide commands and configurable hotkeys for `Collapse all issues` and `Expand all issues` dashboard actions, using native Obsidian hotkey registration so users can bind/change keys in the global Hotkeys settings.
 - [ ] Ensure `Collapse all issues` and `Expand all issues` hotkeys are plugin-level (not dashboard-specific settings), and apply to the active dashboard context when invoked.
 - [ ] Plan the hotkeys phase as dependent on completion of Phase 16 worktree integration, including the previously planned global `Add issue in worktree` behavior.
+
+## Dashboard Action and Visibility Improvements (Planned)
+
+- [ ] Add a dashboard-level `Open dashboard settings` action button in the top dashboard action area alongside existing global actions (for example, `Collapse all`). Clicking it should open this plugin's Obsidian settings, and when supported by available APIs it should focus and/or scroll to the current dashboard's settings block; otherwise it should gracefully fall back to opening the plugin settings tab.
+- [ ] Add a per-issue `Change priority` action that uses the same priority-selection prompt flow used during issue creation, so priority can be changed quickly from the dashboard without opening the issue note.
+- [ ] `Change priority` must be hidden by default in action rows according to existing layout settings semantics (hidden means not shown in header row nor controls row), but it must always remain accessible through the per-issue 3-dots overflow dropdown.
+- [ ] Ensure all actions hidden via layout settings remain correctly present and executable in the 3-dots overflow dropdown (never lost when hidden from visible rows).
+- [ ] Update global `Collapse all issues` behavior so it targets every issue in the dashboard (entire dashboard dataset), not only issues currently visible in the active view/render window.
 
 ## Open / Optional Improvements
 

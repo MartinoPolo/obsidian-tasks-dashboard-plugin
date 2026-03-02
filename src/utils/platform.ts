@@ -30,10 +30,34 @@ export interface PlatformService {
 	openTerminal: (folderPath: string, tabColor?: string) => void;
 	openVSCode: (folderPath: string) => void;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
+	runWorktreeSetupScript: (
+		issueId: string,
+		color?: string,
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string
+	) => void;
+	runWorktreeRemovalScript: (
+		issueId: string,
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string,
+		options?: {
+			skipConfirmation?: boolean;
+			tabColor?: string;
+		}
+	) => boolean;
 }
 
 export function createPlatformService(): PlatformService {
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\setup-worktree.sh';
+	const WORKTREE_REMOVE_SCRIPT =
+		'C:\\_MP_projects\\mxp-claude-code\\scripts\\remove-worktree.sh';
+	const WINDOWS_GIT_BASH_CANDIDATES = [
+		'C:\\_MP_apps\\Git\\bin\\bash.exe',
+		'C:\\Program Files\\Git\\bin\\bash.exe',
+		'C:\\_MP_apps\\Git\\git-bash.exe',
+		'C:\\Program Files\\Git\\git-bash.exe'
+	];
 	const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
 		return typeof value === 'object' && value !== null;
 	};
@@ -253,5 +277,173 @@ export function createPlatformService(): PlatformService {
 		}
 	};
 
-	return { openInFileExplorer, openTerminal, openVSCode, pickFolder };
+	const toWindowsBashPath = (pathValue: string): string => {
+		const normalizedPath = pathValue.replace(/\\/g, '/');
+		const windowsPathMatch = normalizedPath.match(/^([A-Za-z]):\/(.*)$/);
+		if (windowsPathMatch === null) {
+			return normalizedPath;
+		}
+
+		const driveLetter = windowsPathMatch[1].toLowerCase();
+		const remainingPath = windowsPathMatch[2];
+		return `/${driveLetter}/${remainingPath}`;
+	};
+
+	const toBashSingleQuoted = (value: string): string => {
+		return `'${value.replace(/'/g, `'\\''`)}'`;
+	};
+
+	const getScriptWorkingDirectory = (scriptPath: string): string => {
+		return scriptPath.replace(/\\scripts\\[^\\]+$/, '');
+	};
+
+	const resolveScriptWorkingDirectory = (
+		scriptPath: string,
+		dashboardWorkingDirectory?: string
+	): string => {
+		if (dashboardWorkingDirectory !== undefined && dashboardWorkingDirectory.trim() !== '') {
+			return dashboardWorkingDirectory;
+		}
+
+		return getScriptWorkingDirectory(scriptPath);
+	};
+
+	const resolveWindowsBashExecutable = (configuredPath?: string): string | undefined => {
+		if (!Platform.isWin) {
+			return undefined;
+		}
+
+		const fsModule = loadModule('fs');
+		const existsSyncFunction = getRequiredFunction(fsModule, 'existsSync');
+		if (configuredPath !== undefined && configuredPath.trim() !== '') {
+			return configuredPath;
+		}
+
+		const bashCandidates = WINDOWS_GIT_BASH_CANDIDATES;
+		for (const bashCandidate of bashCandidates) {
+			const existsResult = existsSyncFunction(bashCandidate);
+			if (existsResult === true) {
+				return bashCandidate;
+			}
+		}
+
+		return undefined;
+	};
+
+	const buildBashCommand = (scriptPath: string, args: string[]): string => {
+		const quotedScriptPath = toBashSingleQuoted(toWindowsBashPath(scriptPath));
+		const quotedArgs = args.map((arg) => toBashSingleQuoted(arg));
+		return ['bash', quotedScriptPath, ...quotedArgs].join(' ');
+	};
+
+	const buildInteractiveWindowsScriptCommand = (scriptPath: string, args: string[]): string => {
+		const scriptCommand = buildBashCommand(scriptPath, args);
+		return `(${scriptCommand} && echo setup_worktree_completed || echo setup_worktree_failed_exit_${'$'}?) && bash -i || bash -i`;
+	};
+
+	const runScriptWithBash = (
+		scriptPath: string,
+		args: string[],
+		errorMessage: string,
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string,
+		terminalTabColor?: string
+	): boolean => {
+		const spawn = getSpawn();
+		const workingDirectory = resolveScriptWorkingDirectory(
+			scriptPath,
+			dashboardWorkingDirectory
+		);
+		if (Platform.isWin) {
+			const bashExecutable = resolveWindowsBashExecutable(bashExecutablePath);
+			if (bashExecutable === undefined) {
+				new Notice(
+					'Could not find native Git Bash executable on Windows. Install/configure Git Bash to avoid WSL fallback.'
+				);
+				return false;
+			}
+
+			const isGitBashTerminal = bashExecutable.toLowerCase().endsWith('git-bash.exe');
+			const bashArgs = isGitBashTerminal
+				? [
+						`--cd=${workingDirectory}`,
+						'-i',
+						'-l',
+						'-c',
+						buildInteractiveWindowsScriptCommand(scriptPath, args)
+				  ]
+				: ['-i', '-l', '-c', buildInteractiveWindowsScriptCommand(scriptPath, args)];
+			const windowsTerminalArgs = ['-w', '0', 'nt', '-d', workingDirectory];
+			if (terminalTabColor !== undefined && isValidHexColor(terminalTabColor)) {
+				windowsTerminalArgs.push('--tabColor', terminalTabColor);
+			}
+			windowsTerminalArgs.push(bashExecutable, ...bashArgs);
+			const childProcess = spawn('wt', windowsTerminalArgs, {
+				shell: false,
+				cwd: workingDirectory
+			});
+			notifyOnSpawnError(childProcess, errorMessage);
+			return true;
+		}
+
+		const childProcess = spawn('bash', [scriptPath, ...args], {
+				shell: false,
+				cwd: workingDirectory
+		});
+		notifyOnSpawnError(childProcess, errorMessage);
+		return true;
+	};
+
+	const runWorktreeSetupScript = (
+		issueId: string,
+		color?: string,
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string
+	): void => {
+		const scriptArgs = [issueId];
+		if (color !== undefined && color !== '' && isValidHexColor(color)) {
+			scriptArgs.push('--color', color);
+		}
+		runScriptWithBash(
+			WORKTREE_SETUP_SCRIPT,
+			scriptArgs,
+			'Could not run setup-worktree script',
+			dashboardWorkingDirectory,
+			bashExecutablePath,
+			color
+		);
+	};
+
+	const runWorktreeRemovalScript = (
+		issueId: string,
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string,
+		options?: {
+			skipConfirmation?: boolean;
+			tabColor?: string;
+		}
+	): boolean => {
+		const scriptArgs = [issueId];
+		if (options?.skipConfirmation === true) {
+			scriptArgs.push('--skip-confirmation');
+		}
+
+		return runScriptWithBash(
+			WORKTREE_REMOVE_SCRIPT,
+			scriptArgs,
+			'Could not run remove-worktree script',
+			dashboardWorkingDirectory,
+			bashExecutablePath,
+			options?.tabColor
+		);
+	};
+
+	return {
+		openInFileExplorer,
+		openTerminal,
+		openVSCode,
+		pickFolder,
+		runWorktreeSetupScript,
+		runWorktreeRemovalScript
+	};
 }

@@ -9,11 +9,13 @@ export type IssueActionKey =
 	| 'terminal'
 	| 'vscode'
 	| 'github'
+	| 'worktree'
 	| 'move-up'
 	| 'move-down'
 	| 'move-top'
 	| 'move-bottom'
 	| 'rename'
+	| 'change-priority'
 	| 'color'
 	| 'archive'
 	| 'delete';
@@ -118,6 +120,7 @@ export interface TasksDashboardSettings {
 	progressDisplayMode: ProgressDisplayMode;
 	githubAuth: GitHubAuth;
 	githubDisplayMode: GitHubDisplayMode;
+	worktreeBashPath?: string;
 	collapsedIssues: Record<string, boolean>;
 	collapsedDashboardSettings: Record<string, boolean>;
 	issueColors: Record<string, string>;

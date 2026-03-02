@@ -5,20 +5,36 @@ import {
 	setupPromptModal
 } from './modal-helpers';
 
-export class DeleteConfirmationModal extends Modal {
-	private issueName: string;
-	private onConfirm: () => void;
+export interface DeleteConfirmationResult {
+	confirmed: boolean;
+	removeWorktree: boolean;
+}
 
-	constructor(app: App, issueName: string, onConfirm: () => void) {
+export class DeleteConfirmationModal extends Modal {
+	private readonly issueName: string;
+	private readonly hasAssociatedWorktree: boolean;
+	private readonly onResult: (result: DeleteConfirmationResult) => void;
+	private removeWorktree = false;
+
+	constructor(
+		app: App,
+		issueName: string,
+		hasAssociatedWorktree: boolean,
+		onResult: (result: DeleteConfirmationResult) => void
+	) {
 		super(app);
 		this.issueName = issueName;
-		this.onConfirm = onConfirm;
+		this.hasAssociatedWorktree = hasAssociatedWorktree;
+		this.onResult = onResult;
 	}
 
 	onOpen() {
 		setupPromptModal(this, 'Confirm Delete');
 
 		this.renderMessage();
+		if (this.hasAssociatedWorktree) {
+			this.renderRemoveWorktreeCheckbox();
+		}
 
 		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
 		void createPromptShortcutButton(
@@ -54,9 +70,25 @@ export class DeleteConfirmationModal extends Modal {
 		});
 	}
 
+	private renderRemoveWorktreeCheckbox() {
+		const checkboxContainer = this.contentEl.createDiv({ cls: 'tdc-delete-checkbox-row' });
+		const checkboxId = 'tdc-delete-remove-worktree-checkbox';
+		const checkbox = checkboxContainer.createEl('input', {
+			type: 'checkbox',
+			attr: { id: checkboxId }
+		});
+		checkboxContainer.createEl('label', {
+			text: 'Also remove associated worktree',
+			attr: { for: checkboxId }
+		});
+		checkbox.addEventListener('change', () => {
+			this.removeWorktree = checkbox.checked;
+		});
+	}
+
 	private confirmDelete() {
 		this.close();
-		this.onConfirm();
+		this.onResult({ confirmed: true, removeWorktree: this.removeWorktree });
 	}
 
 	private registerEnterKeyConfirmation() {

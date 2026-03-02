@@ -81,6 +81,9 @@ export const getIssueActionLayout = (dashboard: DashboardConfig): RuntimeIssueAc
 	}
 
 	const hiddenSet = new Set(hidden);
+	if (rawLayout === undefined) {
+		hiddenSet.add('change-priority');
+	}
 
 	return {
 		row1: uniqueRow1,

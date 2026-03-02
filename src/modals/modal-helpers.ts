@@ -142,6 +142,13 @@ export function createInputWithEnterHandler(
 		cls: PROMPT_INPUT_CLASS,
 		attr: { placeholder }
 	});
+	input.addEventListener('keydown', (event: KeyboardEvent) => {
+		if (event.key === 'Escape') {
+			return;
+		}
+
+		event.stopPropagation();
+	});
 	input.focus();
 	registerEnterShortcut(input, onEnter);
 	return input;

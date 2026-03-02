@@ -16,11 +16,13 @@ export const ISSUE_ACTION_ORDER: readonly IssueActionKey[] = [
 	'terminal',
 	'vscode',
 	'github',
+	'worktree',
 	'move-up',
 	'move-down',
 	'move-top',
 	'move-bottom',
 	'rename',
+	'change-priority',
 	'color',
 	'archive',
 	'delete'

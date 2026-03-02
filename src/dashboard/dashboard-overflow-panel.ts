@@ -1,7 +1,11 @@
+import { Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import { createActionButton, ICONS } from './header-actions';
-import { ISSUE_ACTION_ORDER } from './dashboard-renderer-constants';
+import {
+	DEFAULT_ROW1_ACTIONS,
+	ISSUE_ACTION_ORDER
+} from './dashboard-renderer-constants';
 import { dedupeIssueActionKeys, saveIssueActionLayout } from './dashboard-renderer-layout';
 import type {
 	IssueActionDescriptor,
@@ -34,6 +38,12 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		draftLayout.row1 = [...options.layout.row1];
 		draftLayout.row2 = [...options.layout.row2];
 		draftLayout.hidden = [...options.layout.hidden];
+	};
+
+	const resetDraftLayoutToDefaults = (): void => {
+		draftLayout.row1 = [...DEFAULT_ROW1_ACTIONS];
+		draftLayout.row2 = ISSUE_ACTION_ORDER.filter((key) => !draftLayout.row1.includes(key));
+		draftLayout.hidden = ['change-priority'];
 	};
 
 	resetDraftLayout();
@@ -75,6 +85,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		options.layout.row2 = [...draftLayout.row2];
 		options.layout.hidden = [...draftLayout.hidden];
 		hasAutoSavedLayoutChanges = true;
+		new Notice('Dashboard action layout saved', 1200);
 	};
 
 	const positionPanel = (): void => {
@@ -383,6 +394,28 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		renderSettingsRows(settingsContainer, 'row1');
 		settingsContainer.createDiv({ cls: 'tdc-overflow-settings-divider' });
 		renderSettingsRows(settingsContainer, 'row2');
+		const footer = settingsContainer.createDiv({ cls: 'tdc-overflow-settings-footer' });
+		const resetButton = footer.createEl('button', {
+			cls: 'tdc-btn tdc-overflow-settings-save',
+			text: 'Reset to default layout'
+		});
+		resetButton.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			resetDraftLayoutToDefaults();
+			persistDraftLayout();
+			renderSettingsView();
+		});
+		const doneButton = footer.createEl('button', {
+			cls: 'tdc-btn tdc-overflow-settings-save',
+			text: 'Done'
+		});
+		doneButton.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			inSettingsMode = false;
+			renderActionsView();
+		});
 	};
 
 	const renderPanel = (): void => {

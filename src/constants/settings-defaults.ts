@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	progressDisplayMode: 'all',
 	githubAuth: { method: 'none' },
 	githubDisplayMode: 'compact',
+	worktreeBashPath: undefined,
 	collapsedIssues: {},
 	collapsedDashboardSettings: {},
 	issueColors: {},

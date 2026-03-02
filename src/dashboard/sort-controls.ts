@@ -5,6 +5,7 @@ import { NamePromptModal } from '../modals/issue-creation-modal';
 import { NoteImportModal } from '../modals/note-import-modal';
 import { parseDashboard } from './DashboardParser';
 import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
+import { hasSettingsTabApi } from '../settings/settings-helpers';
 
 type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
 type SortOption = { label: string; action: () => void };
@@ -59,6 +60,36 @@ function renderDashboardActionButtons(
 		renderedButtons.push(button as HTMLButtonElement);
 	}
 	return renderedButtons;
+}
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
+	return typeof value === 'object' && value !== null;
+};
+
+function openDashboardSettings(plugin: TasksDashboardPlugin, dashboardId: string): void {
+	const settingApi: unknown = Reflect.get(plugin.app, 'setting');
+	if (!isObjectRecord(settingApi)) {
+		return;
+	}
+
+	const openSettings = settingApi.open;
+	if (typeof openSettings === 'function') {
+		Reflect.apply(openSettings, settingApi, []);
+	}
+
+	const openTabById = settingApi.openTabById;
+	if (typeof openTabById === 'function') {
+		Reflect.apply(openTabById, settingApi, [plugin.manifest.id]);
+	}
+
+	window.setTimeout(() => {
+		const selector = `.tdc-dashboard-config[data-dashboard-id="${dashboardId}"]`;
+		const dashboardSettings = document.querySelector(selector);
+		if (dashboardSettings instanceof HTMLElement) {
+			dashboardSettings.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			dashboardSettings.focus({ preventScroll: true });
+		}
+	}, 120);
 }
 
 async function getActiveIssueIds(
@@ -277,6 +308,17 @@ export function renderSortControls(
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
 				void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
+			}
+		},
+		{
+			iconKey: 'folder',
+			label: 'Open Dashboard Settings',
+			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				if (hasSettingsTabApi(plugin.app)) {
+					plugin.app.setting?.openTabById(plugin.manifest.id);
+				}
+				openDashboardSettings(plugin, dashboard.id);
 			}
 		}
 	]);

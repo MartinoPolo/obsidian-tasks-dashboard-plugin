@@ -93,6 +93,21 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 				});
 			});
 
+		new Setting(containerEl)
+			.setName('Worktree Bash Path (Windows)')
+			.setDesc(
+				'Optional full path to bash.exe used for setup/remove worktree scripts on Windows. Leave empty to use default Git Bash locations.'
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder('C:\\_MP_apps\\Git\\bin\\bash.exe')
+					.setValue(this.plugin.settings.worktreeBashPath ?? '')
+					.onChange((value) => {
+						this.plugin.settings.worktreeBashPath = value.trim() !== '' ? value.trim() : undefined;
+						this.saveSettings();
+					})
+			);
+
 		renderGitHubSettings({
 			app: this.app,
 			containerEl,
@@ -165,6 +180,8 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		index: number
 	): void {
 		const dashboardContainer = containerEl.createDiv({ cls: 'tdc-dashboard-config' });
+		dashboardContainer.setAttribute('data-dashboard-id', dashboard.id);
+		dashboardContainer.setAttribute('tabindex', '-1');
 		const displayName = getDashboardDisplayName(dashboard);
 		const isCollapsed = this.isDashboardSettingsCollapsed(dashboard);
 		const dashboardHeader = dashboardContainer.createDiv({

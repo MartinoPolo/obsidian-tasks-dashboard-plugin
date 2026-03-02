@@ -94,8 +94,8 @@ The **How to Use This Dashboard** section is optional and can be removed.
 
 **Auto-cursor**: When you open any active issue file, the cursor automatically positions at the end of the ## Tasks section for quick task entry.
 ### Managing Issues
-- **Archive**: Click the archive icon to move issue to Archive section
-- **Delete**: Click the trash icon to permanently delete (with confirmation)
+- **Archive**: Click the archive icon to move issue to Archive section (if a worktree is linked, you'll only be asked whether to remove that worktree)
+- **Delete**: Click the trash icon to permanently delete (confirmation prompt includes optional worktree removal when associated)
 - **Rename**: Right-click issue header or use rename button
 - **Reorder**: Use ↑ ↓ buttons or move to top/bottom
 - **Sort**: Sort by priority, date created, or date edited

@@ -1,9 +1,14 @@
 import { Menu, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DeleteConfirmationModal } from '../modals/delete-confirmation-modal';
+import { ArchiveConfirmationModal } from '../modals/archive-confirmation-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { GitHubLinksModal } from '../modals/github-links-modal';
 import { GitHubSearchModal } from '../modals/GitHubSearchModal';
+import {
+	openPrioritySelectionModal,
+	openWorktreeIssueCreationModal
+} from '../modals/issue-creation-modal';
 import { RenameIssueModal } from '../modals/rename-issue-modal';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import type { PlatformService } from '../utils/platform';
@@ -190,6 +195,18 @@ export const buildIssueActionDescriptors = (options: {
 				: undefined
 	});
 
+	descriptors.set('worktree', {
+		key: 'worktree',
+		label: 'Add issue in worktree',
+		iconKey: 'worktree',
+		cssClass: 'tdc-btn-worktree',
+		shouldRender: visibility.github,
+		faded: false,
+		onClick: () => {
+			openWorktreeIssueCreationModal(plugin.app, plugin, dashboard);
+		}
+	});
+
 	descriptors.set('move-up', {
 		key: 'move-up',
 		label: 'Move up',
@@ -295,6 +312,20 @@ export const buildIssueActionDescriptors = (options: {
 		}
 	});
 
+	descriptors.set('change-priority', {
+		key: 'change-priority',
+		label: 'Change priority',
+		iconKey: 'priority',
+		cssClass: 'tdc-btn-priority',
+		shouldRender: true,
+		faded: false,
+		onClick: () => {
+			openPrioritySelectionModal(plugin.app, (priority) => {
+				void plugin.issueManager.updateIssuePriority(dashboard, params.issue, priority);
+			});
+		}
+	});
+
 	descriptors.set('archive', {
 		key: 'archive',
 		label: isArchived ? 'Unarchive' : 'Archive',
@@ -305,9 +336,34 @@ export const buildIssueActionDescriptors = (options: {
 		onClick: () => {
 			if (isArchived) {
 				void plugin.issueManager.unarchiveIssue(dashboard, params.issue);
-			} else {
-				void plugin.issueManager.archiveIssue(dashboard, params.issue);
+				return;
 			}
+
+			void plugin.issueManager
+				.hasAssociatedWorktree(dashboard, params.issue)
+				.then((hasAssociatedWorktree) => {
+						if (!hasAssociatedWorktree) {
+							void plugin.issueManager.archiveIssue(dashboard, params.issue);
+							return;
+						}
+
+					const modal = new ArchiveConfirmationModal(
+						plugin.app,
+						params.name,
+						(result) => {
+							if (result.removeWorktree) {
+									void plugin.issueManager.removeWorktree(dashboard, params.issue, {
+										skipScriptConfirmation: true
+									});
+							}
+							void plugin.issueManager.archiveIssue(dashboard, params.issue);
+						}
+					);
+					modal.open();
+				})
+				.catch(() => {
+					new Notice(`Could not archive: ${params.issue}`);
+				});
 		}
 	});
 
@@ -319,10 +375,30 @@ export const buildIssueActionDescriptors = (options: {
 		shouldRender: true,
 		faded: false,
 		onClick: () => {
-			const modal = new DeleteConfirmationModal(plugin.app, params.name, () => {
-				void plugin.issueManager.deleteIssue(dashboard, params.issue);
-			});
-			modal.open();
+			void plugin.issueManager
+				.hasAssociatedWorktree(dashboard, params.issue)
+				.then((hasAssociatedWorktree) => {
+					const modal = new DeleteConfirmationModal(
+						plugin.app,
+						params.name,
+						hasAssociatedWorktree,
+						(result) => {
+							if (!result.confirmed) {
+								return;
+							}
+							if (result.removeWorktree) {
+									void plugin.issueManager.removeWorktree(dashboard, params.issue, {
+										skipScriptConfirmation: true
+									});
+							}
+							void plugin.issueManager.deleteIssue(dashboard, params.issue);
+						}
+					);
+					modal.open();
+				})
+				.catch(() => {
+					new Notice(`Could not delete: ${params.issue}`);
+				});
 		}
 	});
 

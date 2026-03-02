@@ -28,8 +28,9 @@ import {
 	ReactiveRenderChild,
 	type DashboardRendererInstance
 } from './src/dashboard/DashboardRenderer';
-import { initializeDashboardStructure } from './src/dashboard/DashboardParser';
+import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
+import { getDashboardPath } from './src/utils/dashboard-path';
 
 const CURSOR_POSITION_DELAY_MS = 50;
 const REFRESH_DEBOUNCE_MS = 500;
@@ -288,7 +289,71 @@ export default class TasksDashboardPlugin extends Plugin {
 				}
 			});
 			this.registeredCommands.push('tasks-dashboard:create-issue-default');
+
+			this.addCommand({
+				id: 'collapse-all-issues',
+				name: 'Collapse all issues',
+				callback: () => {
+					void this.runDashboardCollapseCommand(true);
+				}
+			});
+			this.registeredCommands.push('tasks-dashboard:collapse-all-issues');
+
+			this.addCommand({
+				id: 'expand-all-issues',
+				name: 'Expand all issues',
+				callback: () => {
+					void this.runDashboardCollapseCommand(false);
+				}
+			});
+			this.registeredCommands.push('tasks-dashboard:expand-all-issues');
 		}
+	}
+
+	private async runDashboardCollapseCommand(collapse: boolean): Promise<void> {
+		const dashboard = this.resolveActiveDashboardContext();
+		if (dashboard === undefined) {
+			new Notice('No active dashboard context found. Open a dashboard or issue file first.');
+			return;
+		}
+
+		const dashboardFile = this.app.vault.getAbstractFileByPath(getDashboardPath(dashboard));
+		if (!(dashboardFile instanceof TFile)) {
+			new Notice('Dashboard file not found for active context.');
+			return;
+		}
+
+		const dashboardContent = await this.app.vault.read(dashboardFile);
+		const parsedDashboard = parseDashboard(dashboardContent);
+		for (const issue of parsedDashboard.activeIssues) {
+			if (collapse) {
+				this.settings.collapsedIssues[issue.id] = true;
+			} else {
+				delete this.settings.collapsedIssues[issue.id];
+			}
+		}
+
+		await this.saveSettings();
+		this.triggerDashboardRefresh();
+	}
+
+	private resolveActiveDashboardContext(): DashboardConfig | undefined {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (activeFile === null) {
+			return undefined;
+		}
+
+		for (const dashboard of this.settings.dashboards) {
+			const dashboardPath = getDashboardPath(dashboard);
+			if (activeFile.path === dashboardPath) {
+				return dashboard;
+			}
+			if (activeFile.path.startsWith(`${dashboard.rootPath}/Issues/`)) {
+				return dashboard;
+			}
+		}
+
+		return undefined;
 	}
 
 	private showDashboardSelector() {
