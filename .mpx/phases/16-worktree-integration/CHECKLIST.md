@@ -1,6 +1,6 @@
 # Phase 16: Worktree Integration - Checklist
 
-**Status:** In Progress
+**Status:** Completed
 **Dependencies:** Phase 03 (GitHub core), Phase 07 (issue UX prompts/actions), Phase 08 (project folder + process launch), Phase 14 (action visibility/layout)
 
 ## Objective
@@ -55,11 +55,11 @@ Add a worktree-enabled issue creation flow and lifecycle cleanup hooks while pre
 - External script runtime behavior (`setup-worktree.sh`, `remove-worktree.sh`) was wired but not executed in this environment.
 
 ## Completion Criteria
-- [ ] Worktree action is discoverable wherever GitHub action is available and respects the same visibility constraints.
-- [ ] Worktree flow completes with keyboard-only operation and captures name/color/priority/GitHub link.
-- [ ] Shared add-issue flow supports color step without regressions in standard issue creation.
-- [ ] Setup and removal scripts execute through safe spawn path with expected arguments.
-- [ ] Archive/delete cleanup prompts appear and execute removal only on confirmation.
+- [x] Worktree action is discoverable wherever GitHub action is available and respects the same visibility constraints.
+- [x] Worktree flow completes with keyboard-only operation and captures name/color/priority/GitHub link.
+- [x] Shared add-issue flow supports color step without regressions in standard issue creation.
+- [x] Setup and removal scripts execute through safe spawn path with expected arguments.
+- [x] Archive/delete cleanup prompts appear and execute removal only on confirmation.
 
 ---
-Progress: 18/23 tasks complete
+Progress: 23/23 tasks complete

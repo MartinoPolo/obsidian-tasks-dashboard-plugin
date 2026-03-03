@@ -1,6 +1,6 @@
 # Phase 19: Dashboard Action and Visibility Improvements - Checklist
 
-**Status:** In Progress
+**Status:** Completed
 **Dependencies:** Phase 14 (action layout and overflow behavior), existing dashboard-wide collapse/expand handlers
 
 ## Objective
@@ -53,10 +53,10 @@ Improve dashboard and per-issue action ergonomics while preserving existing visi
 - UI interaction checks require manual validation inside Obsidian preview/command palette workflows.
 
 ## Completion Criteria
-- [ ] Dashboard-level settings action works with supported focus behavior and graceful fallback.
-- [ ] Per-issue priority can be changed from dashboard actions without opening issue notes.
-- [ ] Hidden-by-layout actions are never lost and remain executable in overflow.
-- [ ] Collapse-all operation consistently targets the full dashboard dataset.
+- [x] Dashboard-level settings action works with supported focus behavior and graceful fallback.
+- [x] Per-issue priority can be changed from dashboard actions without opening issue notes.
+- [x] Hidden-by-layout actions are never lost and remain executable in overflow.
+- [x] Collapse-all operation consistently targets the full dashboard dataset.
 
 ---
-Progress: 15/29 tasks complete
+Progress: 19/29 tasks complete

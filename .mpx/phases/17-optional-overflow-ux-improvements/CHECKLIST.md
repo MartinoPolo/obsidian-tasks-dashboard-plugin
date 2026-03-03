@@ -1,6 +1,6 @@
 # Phase 17: Optional Overflow UX Improvements - Checklist
 
-**Status:** In Progress (Optional / Non-blocking)
+**Status:** Completed (Optional / Non-blocking)
 **Dependencies:** Phase 14 (dashboard action layout and overflow behavior)
 
 ## Objective
@@ -33,9 +33,9 @@ Deliver optional quality-of-life improvements for overflow action usability and 
 - Manual visual verification in Obsidian is still required for tooltip/notice UX polish.
 
 ## Completion Criteria
-- [ ] Optional tooltip hints are available for icon-only overflow actions.
-- [ ] Dashboard-scope one-click reset reliably restores default action layout.
-- [ ] Save action can show lightweight confirmation toast without regressions in layout persistence.
+- [x] Optional tooltip hints are available for icon-only overflow actions.
+- [x] Dashboard-scope one-click reset reliably restores default action layout.
+- [x] Save action can show lightweight confirmation toast without regressions in layout persistence.
 
 ---
-Progress: 7/10 tasks complete
+Progress: 10/10 tasks complete

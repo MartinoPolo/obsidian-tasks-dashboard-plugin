@@ -1,6 +1,6 @@
 # Phase 18: Plugin-Wide Dashboard Hotkeys - Checklist
 
-**Status:** In Progress
+**Status:** Completed
 **Dependencies:** Phase 16 (worktree integration, including global `Add issue in worktree` behavior), Phase 14 (dashboard action execution surfaces)
 
 ## Objective
@@ -40,9 +40,9 @@ Add plugin-wide, user-configurable hotkeys for dashboard-wide collapse/expand ac
 - Command palette and hotkey assignment behavior require manual verification inside Obsidian.
 
 ## Completion Criteria
-- [ ] Plugin-wide `Collapse all issues` and `Expand all issues` commands are registered and hotkey-configurable via native Obsidian Hotkeys.
-- [ ] Command execution consistently targets the active dashboard context.
-- [ ] Phase 16 dependency is satisfied and no regressions exist in global dashboard action behavior.
+- [x] Plugin-wide `Collapse all issues` and `Expand all issues` commands are registered and hotkey-configurable via native Obsidian Hotkeys.
+- [x] Command execution consistently targets the active dashboard context.
+- [x] Phase 16 dependency is satisfied and no regressions exist in global dashboard action behavior.
 
 ---
-Progress: 11/16 tasks complete
+Progress: 14/16 tasks complete

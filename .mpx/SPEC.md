@@ -156,27 +156,27 @@
 - [x] Issue deletion and archive flows prompt for optional worktree removal and run `C:\_MP_projects\mxp-claude-code\scripts\remove-worktree.sh` when confirmed.
 - [x] Worktree origin folder is persisted in issue frontmatter and reused for removal/setup context.
 
-## Plugin-Wide Dashboard Hotkeys (Planned)
+## Plugin-Wide Dashboard Hotkeys
 
-- [ ] Add plugin-wide commands and configurable hotkeys for `Collapse all issues` and `Expand all issues` dashboard actions, using native Obsidian hotkey registration so users can bind/change keys in the global Hotkeys settings.
-- [ ] Ensure `Collapse all issues` and `Expand all issues` hotkeys are plugin-level (not dashboard-specific settings), and apply to the active dashboard context when invoked.
-- [ ] Plan the hotkeys phase as dependent on completion of Phase 16 worktree integration, including the previously planned global `Add issue in worktree` behavior.
+- [x] Add plugin-wide commands and configurable hotkeys for `Collapse all issues` and `Expand all issues` dashboard actions, using native Obsidian hotkey registration so users can bind/change keys in the global Hotkeys settings.
+- [x] Ensure `Collapse all issues` and `Expand all issues` hotkeys are plugin-level (not dashboard-specific settings), and apply to the active dashboard context when invoked.
+- [x] Plan the hotkeys phase as dependent on completion of Phase 16 worktree integration, including the previously planned global `Add issue in worktree` behavior.
 
-## Dashboard Action and Visibility Improvements (Planned)
+## Dashboard Action and Visibility Improvements
 
-- [ ] Add a dashboard-level `Open dashboard settings` action button in the top dashboard action area alongside existing global actions (for example, `Collapse all`). Clicking it should open this plugin's Obsidian settings, and when supported by available APIs it should focus and/or scroll to the current dashboard's settings block; otherwise it should gracefully fall back to opening the plugin settings tab.
-- [ ] Add a per-issue `Change priority` action that uses the same priority-selection prompt flow used during issue creation, so priority can be changed quickly from the dashboard without opening the issue note.
-- [ ] `Change priority` must be hidden by default in action rows according to existing layout settings semantics (hidden means not shown in header row nor controls row), but it must always remain accessible through the per-issue 3-dots overflow dropdown.
-- [ ] Ensure all actions hidden via layout settings remain correctly present and executable in the 3-dots overflow dropdown (never lost when hidden from visible rows).
-- [ ] Update global `Collapse all issues` behavior so it targets every issue in the dashboard (entire dashboard dataset), not only issues currently visible in the active view/render window.
+- [x] Add a dashboard-level `Open dashboard settings` action button in the top dashboard action area alongside existing global actions (for example, `Collapse all`). Clicking it should open this plugin's Obsidian settings, and when supported by available APIs it should focus and/or scroll to the current dashboard's settings block; otherwise it should gracefully fall back to opening the plugin settings tab.
+- [x] Add a per-issue `Change priority` action that uses the same priority-selection prompt flow used during issue creation, so priority can be changed quickly from the dashboard without opening the issue note.
+- [x] `Change priority` must be hidden by default in action rows according to existing layout settings semantics (hidden means not shown in header row nor controls row), but it must always remain accessible through the per-issue 3-dots overflow dropdown.
+- [x] Ensure all actions hidden via layout settings remain correctly present and executable in the 3-dots overflow dropdown (never lost when hidden from visible rows).
+- [x] Update global `Collapse all issues` behavior so it targets every issue in the dashboard (entire dashboard dataset), not only issues currently visible in the active view/render window.
 
 ## Open / Optional Improvements
 
 ### Optional (Non-Blocking) UX Improvements
 
-- [ ] Optional tooltip hints for overflow actions when labels are icon-only
-- [ ] Optional one-click reset to default action layout at dashboard scope
-- [ ] Optional lightweight confirmation toast after saving action layout settings
+- [x] Optional tooltip hints for overflow actions when labels are icon-only
+- [x] Optional one-click reset to default action layout at dashboard scope
+- [x] Optional lightweight confirmation toast after saving action layout settings
 
 ## Code Quality
 
