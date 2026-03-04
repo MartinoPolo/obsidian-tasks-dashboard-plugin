@@ -21,6 +21,19 @@ const ISSUE_ICON =
 const PR_ICON =
 	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>';
 
+function appendSvgIcon(target: HTMLElement, svgMarkup: string): void {
+	const parser = new DOMParser();
+	const parsedDocument = parser.parseFromString(svgMarkup, 'image/svg+xml');
+	if (parsedDocument.querySelector('parsererror') !== null) {
+		return;
+	}
+	const svg = parsedDocument.documentElement;
+	if (svg.tagName.toLowerCase() !== 'svg') {
+		return;
+	}
+	target.appendChild(document.importNode(svg, true));
+}
+
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
 type SearchPair = [GitHubIssueMetadata[], GitHubIssueMetadata[]];
 
@@ -361,7 +374,7 @@ export class GitHubSearchModal extends Modal {
 			});
 
 			const icon = row.createSpan({ cls: 'tdc-gh-result-icon' });
-			icon.innerHTML = item.isPR ? PR_ICON : ISSUE_ICON;
+			appendSvgIcon(icon, item.isPR ? PR_ICON : ISSUE_ICON);
 
 			row.createSpan({
 				cls: 'tdc-gh-result-number',

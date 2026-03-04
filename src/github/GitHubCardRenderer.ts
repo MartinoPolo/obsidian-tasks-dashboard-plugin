@@ -1,11 +1,11 @@
-import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubDisplayMode, GitHubLabel } from '../types';
+import { GitHubDisplayMode, GitHubIssueMetadata, GitHubLabel, GitHubRepoMetadata } from '../types';
 import { parseGitHubUrlInfo } from '../utils/github';
 import {
+	formatRelativeDate,
+	getContrastColor,
 	getStateClass,
 	getStateText,
-	truncateText,
-	formatRelativeDate,
-	getContrastColor
+	truncateText
 } from '../utils/github-helpers';
 
 const ICONS = {
@@ -17,6 +17,19 @@ const ICONS = {
 	star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
 	fork: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></svg>`
 };
+
+function appendSvgIcon(target: HTMLElement, svgMarkup: string): void {
+	const parser = new DOMParser();
+	const parsedDocument = parser.parseFromString(svgMarkup, 'image/svg+xml');
+	if (parsedDocument.querySelector('parsererror') !== null) {
+		return;
+	}
+	const svg = parsedDocument.documentElement;
+	if (svg.tagName.toLowerCase() !== 'svg') {
+		return;
+	}
+	target.appendChild(document.importNode(svg, true));
+}
 
 export interface GitHubCardRendererInstance {
 	render: (
@@ -56,7 +69,7 @@ function renderRefreshButton(parent: HTMLElement, onRefresh: () => void): void {
 		cls: 'tdc-gh-refresh',
 		attr: { 'aria-label': 'Refresh GitHub data' }
 	});
-	refreshBtn.innerHTML = ICONS.refresh;
+	appendSvgIcon(refreshBtn, ICONS.refresh);
 	refreshBtn.addEventListener('click', (e) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -69,7 +82,7 @@ function renderUnlinkButton(parent: HTMLElement, onUnlink: () => void): void {
 		cls: 'tdc-gh-unlink',
 		attr: { 'aria-label': 'Remove GitHub link' }
 	});
-	unlinkBtn.innerHTML = ICONS.unlink;
+	appendSvgIcon(unlinkBtn, ICONS.unlink);
 	unlinkBtn.addEventListener('click', (e) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -123,8 +136,7 @@ function renderIssueHeader(
 	const header = container.createDiv({ cls: 'tdc-gh-header' });
 
 	const link = createExternalLink(header, 'tdc-gh-link', metadata.url);
-
-	link.innerHTML = getIssueIcon(metadata.isPR);
+	appendSvgIcon(link, getIssueIcon(metadata.isPR));
 	link.createSpan({ cls: 'tdc-gh-number', text: `#${metadata.number}` });
 
 	const titleText =
@@ -149,7 +161,7 @@ function renderRepoHeader(container: HTMLElement, metadata: GitHubRepoMetadata):
 	const header = container.createDiv({ cls: 'tdc-gh-header' });
 
 	const link = createExternalLink(header, 'tdc-gh-link', metadata.url);
-	link.innerHTML = ICONS.repo;
+	appendSvgIcon(link, ICONS.repo);
 	link.createSpan({ cls: 'tdc-gh-repo-name', text: metadata.fullName });
 
 	header.createSpan({
@@ -211,7 +223,7 @@ function formatStarCount(count: number): string {
 
 function renderRepoIconStat(parent: HTMLElement, iconSvg: string, valueText: string): void {
 	const statSpan = parent.createSpan({ cls: 'tdc-gh-repo-stat' });
-	statSpan.innerHTML = iconSvg;
+	appendSvgIcon(statSpan, iconSvg);
 	statSpan.createSpan({ text: valueText });
 }
 
@@ -246,8 +258,7 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		const card = container.createDiv({ cls: 'tdc-gh-card tdc-gh-card-minimal' });
 
 		const link = createExternalLink(card, 'tdc-gh-link', metadata.url);
-
-		link.innerHTML = getIssueIcon(metadata.isPR);
+		appendSvgIcon(link, getIssueIcon(metadata.isPR));
 		link.createSpan({ text: `#${metadata.number}` });
 
 		card.createSpan({
@@ -384,12 +395,12 @@ export function createGitHubCardRenderer(): GitHubCardRendererInstance {
 		});
 
 		const link = createExternalLink(card, 'tdc-gh-link', metadata.url);
-		link.innerHTML = ICONS.repo;
+		appendSvgIcon(link, ICONS.repo);
 		link.createSpan({ text: metadata.fullName });
 
 		if (metadata.stars > 0) {
 			const starSpan = card.createSpan({ cls: 'tdc-gh-repo-stars' });
-			starSpan.innerHTML = ICONS.star;
+			appendSvgIcon(starSpan, ICONS.star);
 			starSpan.createSpan({ text: formatStarCount(metadata.stars) });
 		}
 

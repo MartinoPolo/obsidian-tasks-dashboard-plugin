@@ -1,10 +1,10 @@
 import { Menu, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
+import { ArchiveConfirmationModal } from '../modals/archive-confirmation-modal';
 import {
 	DeleteConfirmationModal,
 	type DeleteConfirmationResult
 } from '../modals/delete-confirmation-modal';
-import { ArchiveConfirmationModal } from '../modals/archive-confirmation-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { GitHubLinksModal } from '../modals/github-links-modal';
 import {
@@ -14,10 +14,10 @@ import {
 import { RenameIssueModal } from '../modals/rename-issue-modal';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import type { PlatformService } from '../utils/platform';
-import { getButtonVisibility } from './header-actions';
 import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
+import { getButtonVisibility } from './header-actions';
 
 const isNonEmptyString = (value: string | undefined): value is string => {
 	return value !== undefined && value !== '';
@@ -287,9 +287,7 @@ export const buildIssueActionDescriptors = (options: {
 		onClick: () => {
 			const colorInput = document.createElement('input');
 			colorInput.type = 'color';
-			colorInput.style.position = 'absolute';
-			colorInput.style.opacity = '0';
-			colorInput.style.pointerEvents = 'none';
+			colorInput.className = 'tdc-color-input-hidden';
 			colorInput.value =
 				plugin.settings.issueColors[params.issue] ?? ISSUE_SURFACE_COLOR_FALLBACK;
 			document.body.appendChild(colorInput);

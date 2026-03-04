@@ -1,8 +1,10 @@
 import eslint from '@eslint/js';
+import obsidianmd from 'eslint-plugin-obsidianmd';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
 	eslint.configs.recommended,
+	...obsidianmd.configs.recommended,
 	...tseslint.configs.recommendedTypeChecked,
 	{
 		languageOptions: {
@@ -38,6 +40,13 @@ export default tseslint.config(
 		}
 	},
 	{
-		ignores: ['node_modules/**', 'main.js', 'dist/**', '*.config.js', '*.config.mjs']
+		ignores: [
+			'node_modules/**',
+			'main.js',
+			'dist/**',
+			'*.config.js',
+			'*.config.mjs',
+			'**/*.json'
+		]
 	}
 );

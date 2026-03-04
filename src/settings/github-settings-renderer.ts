@@ -1,6 +1,7 @@
 import { App, Notice, Setting } from 'obsidian';
 import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
 import { DashboardConfig, GitHubRepository, TasksDashboardSettings } from '../types';
+import { addDropdownOptions, isNonEmptyString } from './settings-helpers';
 import {
 	GITHUB_AUTH_METHOD_OPTIONS,
 	GITHUB_DISPLAY_MODE_OPTIONS,
@@ -8,7 +9,6 @@ import {
 	isGitHubAuthMethod,
 	isGitHubDisplayMode
 } from './settings-options';
-import { addDropdownOptions, isNonEmptyString } from './settings-helpers';
 
 interface GitHubRateLimit {
 	limit: number;
@@ -43,10 +43,10 @@ export interface RenderGitHubSettingsOptions {
 export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void {
 	const { containerEl, settings, githubService, saveSettingsAndRefreshDashboard, display } =
 		options;
-	containerEl.createEl('h3', { text: 'GitHub Integration' });
+	containerEl.createEl('h3', { text: 'GitHub integration' });
 
 	const authSetting = new Setting(containerEl)
-		.setName('GitHub Authentication')
+		.setName('GitHub authentication')
 		.setDesc('Connect to GitHub to enable issue search and metadata display');
 
 	const authStatus = containerEl.createDiv({ cls: 'tdc-github-auth-status' });
@@ -73,7 +73,7 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 			cls: `tdc-rate-limit-info ${statusClass}`
 		});
 		rateLimitContainer.createSpan({
-			text: `API Rate Limit: ${currentRateLimit.remaining}/${currentRateLimit.limit} remaining`
+			text: `API rate limit: ${currentRateLimit.remaining}/${currentRateLimit.limit} remaining`
 		});
 		rateLimitContainer.createSpan({
 			cls: 'tdc-rate-limit-reset',
@@ -128,15 +128,13 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 
 	if (settings.githubAuth.method === 'pat') {
 		const tokenSetting = new Setting(containerEl)
-			.setName('Personal Access Token')
-			.setDesc(
-				'Create a token at GitHub → Settings → Developer settings → Personal access tokens'
-			);
+			.setName('Personal access token')
+			.setDesc('Create a personal access token in GitHub settings.');
 
 		tokenSetting.addText((text) => {
 			text.inputEl.type = 'password';
 			text.inputEl.addClass('tdc-token-input');
-			text.setPlaceholder('ghp_xxxxxxxxxxxx')
+			text.setPlaceholder('GitHub personal access token')
 				.setValue(settings.githubAuth.token ?? '')
 				.onChange((value) => {
 					settings.githubAuth.token = value;
@@ -164,7 +162,7 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 	void updateAuthStatus();
 
 	new Setting(containerEl)
-		.setName('GitHub Display Mode')
+		.setName('GitHub display mode')
 		.setDesc('How much GitHub issue detail to show on the dashboard')
 		.addDropdown((dropdown) => {
 			addDropdownOptions(dropdown, GITHUB_DISPLAY_MODE_OPTIONS);
@@ -192,7 +190,7 @@ export function renderRepositoryPicker(
 ): void {
 	const { app, githubService, saveSettings, display } = dependencies;
 	const repoSetting = new Setting(container)
-		.setName('GitHub Repository')
+		.setName('GitHub repository')
 		.setDesc(
 			'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
 		);
@@ -207,7 +205,7 @@ export function renderRepositoryPicker(
 
 		repoSetting.addButton((button) =>
 			button
-				.setButtonText(currentRepo !== '' ? 'Change' : 'Select Repository')
+				.setButtonText(currentRepo !== '' ? 'Change' : 'Select repository')
 				.setCta()
 				.onClick(() => {
 					void openRepositoryPicker({
@@ -232,7 +230,7 @@ export function renderRepositoryPicker(
 	} else {
 		repoSetting.addText((text) =>
 			text
-				.setPlaceholder('owner/repo')
+				.setPlaceholder('Owner/repo')
 				.setValue(currentRepo)
 				.onChange((value) => {
 					dashboard.githubRepo = value !== '' ? value : undefined;
@@ -253,7 +251,7 @@ async function openRepositoryPicker(options: {
 	const repositories = await githubService.getUserRepositories();
 
 	if (repositories.length === 0) {
-		new Notice('No repositories found. Check your GitHub token permissions.');
+		new Notice('No repositories found. Check your token permissions.');
 		return;
 	}
 

@@ -46,6 +46,16 @@
 	color: var(--tdc-priority-color);
 }
 
+.tdc-hidden {
+	display: none !important;
+}
+
+.tdc-color-input-hidden {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
 /* ===== Priority Dots ===== */
 .tdc-priority-dot {
 	width: 12px;

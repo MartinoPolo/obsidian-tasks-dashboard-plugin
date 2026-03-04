@@ -1,11 +1,11 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
-import type { DashboardConfig } from '../types';
 import { NamePromptModal } from '../modals/issue-creation-modal';
 import { NoteImportModal } from '../modals/note-import-modal';
+import { hasSettingsTabApi } from '../settings/settings-helpers';
+import type { DashboardConfig } from '../types';
 import { parseDashboard } from './DashboardParser';
 import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
-import { hasSettingsTabApi } from '../settings/settings-helpers';
 
 type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
 type SortOption = { label: string; action: () => void };
@@ -193,7 +193,7 @@ export function renderSortControls(
 	});
 
 	const sortDropdown = sortWrapper.createDiv({ cls: 'tdc-sort-dropdown' });
-	sortDropdown.style.display = 'none';
+	sortDropdown.classList.add('tdc-hidden');
 	let dropdownOpen = false;
 
 	const sortOptions: SortOption[] = [
@@ -235,7 +235,7 @@ export function renderSortControls(
 
 	const closeSortDropdown = (): void => {
 		dropdownOpen = false;
-		sortDropdown.style.display = 'none';
+		sortDropdown.classList.add('tdc-hidden');
 		window.removeEventListener('scroll', positionSortDropdown, true);
 		window.removeEventListener('resize', positionSortDropdown);
 	};
@@ -247,7 +247,7 @@ export function renderSortControls(
 			document.body.appendChild(sortDropdown);
 			sortDropdown.classList.add('tdc-sort-dropdown-portal');
 		}
-		sortDropdown.style.display = 'block';
+		sortDropdown.classList.remove('tdc-hidden');
 		requestAnimationFrame(positionSortDropdown);
 		window.addEventListener('scroll', positionSortDropdown, true);
 		window.addEventListener('resize', positionSortDropdown);

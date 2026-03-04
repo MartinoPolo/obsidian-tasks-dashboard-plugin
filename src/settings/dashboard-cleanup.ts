@@ -57,7 +57,7 @@ export async function trashDashboardFiles(app: App, dashboard: DashboardConfig):
 	const dashboardFile = app.vault.getAbstractFileByPath(dashboardPath);
 	if (dashboardFile instanceof TFile) {
 		try {
-			await app.vault.trash(dashboardFile, true);
+			await app.fileManager.trashFile(dashboardFile);
 		} catch {
 			new Notice(`Could not delete dashboard file: ${dashboardPath}`);
 		}
@@ -66,7 +66,7 @@ export async function trashDashboardFiles(app: App, dashboard: DashboardConfig):
 	const issuesFolder = app.vault.getAbstractFileByPath(issuesFolderPath);
 	if (issuesFolder instanceof TFolder) {
 		try {
-			await app.vault.trash(issuesFolder, true);
+			await app.fileManager.trashFile(issuesFolder);
 		} catch {
 			new Notice(`Could not delete Issues folder: ${issuesFolderPath}`);
 		}

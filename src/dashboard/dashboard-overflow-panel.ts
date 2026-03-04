@@ -1,10 +1,10 @@
 import { Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, IssueActionKey } from '../types';
-import { createActionButton, ICONS } from './header-actions';
 import { DEFAULT_ROW1_ACTIONS, ISSUE_ACTION_ORDER } from './dashboard-renderer-constants';
 import { dedupeIssueActionKeys, saveIssueActionLayout } from './dashboard-renderer-layout';
 import type { IssueActionDescriptor, RuntimeIssueActionLayout } from './dashboard-renderer-types';
+import { appendInlineSvgIcon, createActionButton, ICONS } from './header-actions';
 
 interface OverflowMenuPanelOptions {
 	plugin: TasksDashboardPlugin;
@@ -49,7 +49,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 
 		const createdPanel = document.createElement('div');
 		createdPanel.className = 'tdc-overflow-panel tdc-overflow-panel-portal';
-		createdPanel.style.display = 'none';
+		createdPanel.classList.add('tdc-hidden');
 		document.body.appendChild(createdPanel);
 		panel = createdPanel;
 		return createdPanel;
@@ -147,7 +147,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		inSettingsMode = false;
 		resetDraftLayout();
 		if (panel !== undefined) {
-			panel.style.display = 'none';
+			panel.classList.add('tdc-hidden');
 			panel.remove();
 			panel = undefined;
 		}
@@ -313,7 +313,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 			const actionRow = container.createDiv({ cls: 'tdc-overflow-settings-row' });
 			const actionInfo = actionRow.createDiv({ cls: 'tdc-overflow-settings-action-info' });
 			const actionIcon = actionInfo.createSpan({ cls: 'tdc-overflow-settings-item-icon' });
-			actionIcon.innerHTML = ICONS[descriptor.iconKey];
+			appendInlineSvgIcon(actionIcon, ICONS[descriptor.iconKey]);
 			actionInfo.createSpan({ text: descriptor.label });
 
 			const actionButtons = actionRow.createDiv({ cls: 'tdc-overflow-settings-actions' });
@@ -429,7 +429,7 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		if (!startInSettingsMode) {
 			resetDraftLayout();
 		}
-		overflowPanel.style.display = 'block';
+		overflowPanel.classList.remove('tdc-hidden');
 		isOpen = true;
 		renderPanel();
 		requestAnimationFrame(positionPanel);

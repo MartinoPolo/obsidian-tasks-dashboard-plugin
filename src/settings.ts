@@ -1,22 +1,13 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import TasksDashboardPlugin from '../main';
-import { DashboardConfig, getDashboardDisplayName } from './types';
-import { generateId } from './utils/slugify';
-import { createPlatformService } from './utils/platform';
+import { ICONS, appendInlineSvgIcon } from './dashboard/header-actions';
 import { DashboardDeleteConfirmationModal } from './modals/dashboard-delete-modal';
-import { ICONS } from './dashboard/header-actions';
 import {
 	cleanupDashboardSettingData,
 	collectDashboardIssueIds,
 	trashDashboardFiles
 } from './settings/dashboard-cleanup';
-import {
-	DASHBOARD_VISIBILITY_TOGGLES,
-	DEFAULT_DASHBOARD_FILENAME,
-	PROGRESS_DISPLAY_OPTIONS,
-	isProgressDisplayMode,
-	type VisibilityToggleKey
-} from './settings/settings-options';
+import { renderGitHubSettings, renderRepositoryPicker } from './settings/github-settings-renderer';
 import {
 	addDropdownOptions,
 	buildVaultPath,
@@ -26,7 +17,16 @@ import {
 	resolveCollapsedDashboardSettingsMap,
 	withMarkdownExtension
 } from './settings/settings-helpers';
-import { renderGitHubSettings, renderRepositoryPicker } from './settings/github-settings-renderer';
+import {
+	DASHBOARD_VISIBILITY_TOGGLES,
+	DEFAULT_DASHBOARD_FILENAME,
+	PROGRESS_DISPLAY_OPTIONS,
+	isProgressDisplayMode,
+	type VisibilityToggleKey
+} from './settings/settings-options';
+import { DashboardConfig, getDashboardDisplayName } from './types';
+import { createPlatformService } from './utils/platform';
+import { generateId } from './utils/slugify';
 
 function createVisibilityToggle(
 	container: HTMLElement,
@@ -69,13 +69,13 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Tasks Dashboard Settings' });
+		new Setting(containerEl).setName('Dashboard configuration').setHeading();
 		containerEl.createEl('p', {
 			text: 'Configure your task dashboards. Each dashboard manages issues in its own folder.',
 			cls: 'setting-item-description'
 		});
 		new Setting(containerEl)
-			.setName('Progress Display')
+			.setName('Progress display')
 			.setDesc('How to show task progress for each issue')
 			.addDropdown((dropdown) => {
 				addDropdownOptions(dropdown, PROGRESS_DISPLAY_OPTIONS);
@@ -91,7 +91,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName('Worktree Bash Path (Windows)')
+			.setName('Worktree bash path (Windows)')
 			.setDesc(
 				'Optional full path to bash.exe used for setup/remove worktree scripts on Windows. Leave empty to use default Git Bash locations.'
 			)
@@ -123,11 +123,11 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl)
-			.setName('Add Dashboard')
+			.setName('Add dashboard')
 			.setDesc('Create a new dashboard configuration')
 			.addButton((btn) =>
 				btn
-					.setButtonText('+ Add Dashboard')
+					.setButtonText('+ add dashboard')
 					.setCta()
 					.onClick(() => {
 						const newDashboard: DashboardConfig = {
@@ -195,9 +195,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					: `Collapse settings for ${displayName}`
 			}
 		});
-		collapseToggle.innerHTML = ICONS.chevron;
+		appendInlineSvgIcon(collapseToggle, ICONS.chevron);
 		const titleContainer = dashboardHeader.createDiv({ cls: 'tdc-dashboard-config-title' });
-		titleContainer.createEl('h3', { text: `Dashboard: ${displayName}` });
+		new Setting(titleContainer).setName(`Dashboard: ${displayName}`).setHeading();
 		collapseToggle.addEventListener('click', () => {
 			this.setDashboardSettingsCollapsed(dashboard, !isCollapsed);
 			this.display();
@@ -208,13 +208,13 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(dashboardContainer)
-			.setName('Root Path')
+			.setName('Root path')
 			.setDesc(
 				'Path to the folder containing your dashboard file. If you rename the folder in Obsidian, update this path to match.'
 			)
 			.addText((text) =>
 				text
-					.setPlaceholder('Projects/MyProject')
+					.setPlaceholder('Projects/my-project')
 					.setValue(dashboard.rootPath)
 					.onChange((value) => {
 						dashboard.rootPath = value;
@@ -222,7 +222,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(dashboardContainer)
-			.setName('Dashboard Filename')
+			.setName('Dashboard filename')
 			.setDesc(
 				'Name of the dashboard file (also used as display name). If you rename the file in Obsidian, update this to match.'
 			)
@@ -237,7 +237,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(dashboardContainer)
-			.setName('GitHub Integration')
+			.setName('GitHub integration')
 			.setDesc('Enable GitHub issue linking for this dashboard')
 			.addToggle((toggle) =>
 				toggle.setValue(dashboard.githubEnabled).onChange((value) => {
@@ -261,13 +261,13 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		}
 
 		const projectFolderSetting = new Setting(dashboardContainer)
-			.setName('Project Folder')
+			.setName('Project folder')
 			.setDesc(
-				'Absolute path to the on-disk project folder. Enables Open Folder and Terminal buttons on the dashboard.'
+				'Absolute path to the on-disk project folder. Enables open folder and terminal buttons on the dashboard.'
 			)
 			.addText((text) =>
 				text
-					.setPlaceholder('C:\\Projects\\MyApp')
+					.setPlaceholder('C:\\projects\\my-app')
 					.setValue(dashboard.projectFolder ?? '')
 					.onChange((value) => {
 						dashboard.projectFolder = value !== '' ? value : undefined;
@@ -298,7 +298,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 		}
 
-		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard Files');
+		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard files');
 
 		const updateDashboardButton = (): void => {
 			const currentFilename = getDashboardFilename(dashboard);
@@ -314,17 +314,17 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			if (exists) {
 				dashboardFilesSetting.setDesc('Dashboard file exists');
 				dashboardFilesSetting.addButton((btn) =>
-					btn.setButtonText('Open Dashboard').onClick(() => {
+					btn.setButtonText('Open dashboard').onClick(() => {
 						void this.app.workspace.openLinkText(currentPath, '', false);
 					})
 				);
 			} else {
 				dashboardFilesSetting.setDesc(
-					`Create ${currentFilename} and Issue folders at the specified path`
+					`Create ${currentFilename} and issue folders at the specified path`
 				);
 				dashboardFilesSetting.addButton((btn) =>
 					btn
-						.setButtonText('Create Files')
+						.setButtonText('Create files')
 						.setCta()
 						.onClick(() => {
 							if (dashboard.rootPath === '') {
@@ -349,17 +349,17 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		new Setting(dashboardContainer)
 			.setName('Hotkey')
 			.setDesc(
-				`Configure hotkey in Obsidian Settings → Hotkeys → Search for "Create Issue: ${displayName}"`
+				`Configure hotkey in Obsidian settings → Hotkeys → search for "Create issue: ${displayName}"`
 			)
 			.addButton((btn) =>
-				btn.setButtonText('Open Hotkeys').onClick(() => {
+				btn.setButtonText('Open hotkeys').onClick(() => {
 					if (hasSettingsTabApi(this.app)) {
 						this.app.setting?.openTabById('hotkeys');
 					}
 				})
 			);
 		new Setting(dashboardContainer)
-			.setName('Rebuild Dashboard')
+			.setName('Rebuild dashboard')
 			.setDesc('Reconstruct dashboard from issue files (fixes corrupted dashboards)')
 			.addButton((btn) =>
 				btn
@@ -378,7 +378,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					})
 			);
 		new Setting(dashboardContainer)
-			.setName('Remove Dashboard')
+			.setName('Remove dashboard')
 			.setDesc('Delete this dashboard configuration and clean up related settings')
 			.addButton((btn) =>
 				btn

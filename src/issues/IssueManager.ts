@@ -472,7 +472,7 @@ ${originalBody}`;
 		await plugin.dashboardWriter.removeIssueFromDashboard(dashboard, issueId);
 
 		// Use system trash for recoverability
-		await app.vault.trash(file, true);
+		await app.fileManager.trashFile(file);
 
 		const settingsChanged = removeIssueSettings(plugin.settings, dashboard.id, issueId);
 		if (settingsChanged) {

@@ -1,12 +1,12 @@
 import { DashboardConfig, GitHubIssueMetadata, GitHubStoredMetadata, Issue } from '../types';
+import { parseGitHubUrlInfo } from '../utils/github';
+import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
 import {
 	appendBeforeFrontmatterClose,
 	escapeForRegExp,
 	getDashboardFilename,
 	getFrontmatterCloseIndex
 } from './issue-manager-shared';
-import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
-import { parseGitHubUrlInfo } from '../utils/github';
 
 function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
 	if (metadata !== undefined) {
@@ -110,12 +110,8 @@ export function generateIssueContent(issue: Issue, dashboard: DashboardConfig): 
 	const filename = getDashboardFilename(dashboard);
 	const relativePath = '../'.repeat(2) + encodeURI(filename);
 
-	const links =
-		issue.githubLinks ??
-		(issue.githubLink !== undefined && issue.githubLink !== '' ? [issue.githubLink] : []);
-	const metadataList =
-		issue.githubMetadataList ??
-		(issue.githubMetadata !== undefined ? [issue.githubMetadata] : []);
+	const links = issue.githubLinks ?? [];
+	const metadataList = issue.githubMetadataList ?? [];
 
 	let frontmatter = `---
 created: ${issue.created}

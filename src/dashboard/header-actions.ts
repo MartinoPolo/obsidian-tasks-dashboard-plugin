@@ -1,10 +1,10 @@
 import { Menu, Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
-import type { DashboardConfig } from '../types';
-import { GitHubLinksModal } from '../modals/github-links-modal';
 import { FolderPathModal } from '../modals/FolderPathModal';
+import { GitHubLinksModal } from '../modals/github-links-modal';
 import { openWorktreeIssueCreationModal } from '../modals/issue-creation-modal';
 import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
+import type { DashboardConfig } from '../types';
 import { createPlatformService, type PlatformService } from '../utils/platform';
 import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 
@@ -34,6 +34,25 @@ export const ICONS = {
 	more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
 	fileInput: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h10"/><path d="M9 18l3-3-3-3"/></svg>`
 };
+
+function parseInlineSvg(iconSvg: string): Element | undefined {
+	const parser = new DOMParser();
+	const documentRoot = parser.parseFromString(iconSvg, 'text/html');
+	const svg = documentRoot.querySelector('svg');
+	if (svg === null) {
+		return undefined;
+	}
+	return svg.cloneNode(true) as Element;
+}
+
+export function appendInlineSvgIcon(target: HTMLElement, iconSvg: string): boolean {
+	const svg = parseInlineSvg(iconSvg);
+	if (svg === undefined) {
+		return false;
+	}
+	target.appendChild(svg);
+	return true;
+}
 
 interface ButtonVisibility {
 	folder: boolean;
@@ -72,10 +91,13 @@ export function createActionButton(config: ActionButtonConfig): HTMLElement {
 		button.setAttribute('title', config.ariaLabel);
 	}
 	const contextMenuHandler = config.onContextMenu;
-	button.innerHTML =
-		config.labelText !== undefined
-			? ICONS[config.iconKey] + ' ' + config.labelText
-			: ICONS[config.iconKey];
+	const hasIcon = appendInlineSvgIcon(button, ICONS[config.iconKey]);
+	if (config.labelText !== undefined) {
+		if (hasIcon) {
+			button.appendChild(document.createTextNode(' '));
+		}
+		button.appendChild(document.createTextNode(config.labelText));
+	}
 	button.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();

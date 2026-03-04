@@ -1,22 +1,22 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { Priority, IssueProgress, DashboardConfig, type IssueActionKey } from '../types';
+import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
 import { createPlatformService } from '../utils/platform';
-import { ICONS, createActionButton } from './header-actions';
-import { renderSortControls } from './sort-controls';
+import { buildIssueActionDescriptors } from './dashboard-issue-actions';
+import { applyIssueSurfaceStyles, setIssueCollapsed } from './dashboard-issue-surface';
+import { createOverflowMenuPanel } from './dashboard-overflow-panel';
 import { HEADER_HOVER_TITLE_MIN_WIDTH } from './dashboard-renderer-constants';
+import { createGitHubCardRefreshRenderer } from './dashboard-renderer-github-cards';
 import { getIssueActionLayout } from './dashboard-renderer-layout';
 import { parseGitHubNoteParams, parseParams } from './dashboard-renderer-params';
-import { applyIssueSurfaceStyles, setIssueCollapsed } from './dashboard-issue-surface';
-import { buildIssueActionDescriptors } from './dashboard-issue-actions';
-import { createOverflowMenuPanel } from './dashboard-overflow-panel';
-import { createGitHubCardRefreshRenderer } from './dashboard-renderer-github-cards';
-export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 import type {
 	ControlParams,
 	IssueActionDescriptor,
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
+import { ICONS, appendInlineSvgIcon, createActionButton } from './header-actions';
+import { renderSortControls } from './sort-controls';
+export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 
 export interface DashboardRendererInstance {
 	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
@@ -74,7 +74,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
 			attr: { 'aria-label': isCollapsed ? 'Expand' : 'Collapse' }
 		});
-		collapseToggle.innerHTML = ICONS.chevron;
+		appendInlineSvgIcon(collapseToggle, ICONS.chevron);
 		collapseToggle.addEventListener('click', (event) => {
 			stopEventAndRun(event, () => {
 				const currentlyCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
@@ -369,7 +369,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	): Promise<void> => {
 		const params = parseGitHubNoteParams(source);
 		if (params === undefined) {
-			el.createEl('span', { text: 'Invalid GitHub block: missing url', cls: 'tdc-error' });
+			el.createEl('span', { text: 'Invalid GitHub block: missing URL', cls: 'tdc-error' });
 			return;
 		}
 

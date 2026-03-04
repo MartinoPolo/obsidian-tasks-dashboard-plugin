@@ -1,35 +1,35 @@
 import {
-	Plugin,
-	MarkdownView,
-	TFile,
-	Notice,
 	FuzzySuggestModal,
+	MarkdownView,
+	Notice,
+	Plugin,
+	TFile,
+	type App,
 	type Editor,
 	type EditorPosition,
-	type MarkdownPostProcessorContext,
-	type App
+	type MarkdownPostProcessorContext
 } from 'obsidian';
-import {
-	TasksDashboardSettings,
-	DEFAULT_SETTINGS,
-	DashboardConfig,
-	getDashboardDisplayName
-} from './src/types';
-import { TasksDashboardSettingTab } from './src/settings';
-import { NamePromptModal } from './src/modals/issue-creation-modal';
-import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
-import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
-import {
-	createDashboardWriter,
-	type DashboardWriterInstance
-} from './src/dashboard/DashboardWriter';
+import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
 import {
 	createDashboardRenderer,
 	ReactiveRenderChild,
 	type DashboardRendererInstance
 } from './src/dashboard/DashboardRenderer';
-import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
+import {
+	createDashboardWriter,
+	type DashboardWriterInstance
+} from './src/dashboard/DashboardWriter';
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
+import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
+import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
+import { NamePromptModal } from './src/modals/issue-creation-modal';
+import { TasksDashboardSettingTab } from './src/settings';
+import {
+	DashboardConfig,
+	DEFAULT_SETTINGS,
+	getDashboardDisplayName,
+	TasksDashboardSettings
+} from './src/types';
 import { getDashboardPath } from './src/utils/dashboard-path';
 
 const CURSOR_POSITION_DELAY_MS = 50;
@@ -143,7 +143,7 @@ export default class TasksDashboardPlugin extends Plugin {
 			);
 			this.registerDashboardCommands();
 			this.addSettingTab(new TasksDashboardSettingTab(this.app, this));
-			this.addRibbonIcon('list-checks', 'Tasks Dashboard', () => {
+			this.addRibbonIcon('list-checks', 'Tasks dashboard', () => {
 				this.showDashboardSelector();
 			});
 			this.registerEvent(
@@ -191,7 +191,7 @@ export default class TasksDashboardPlugin extends Plugin {
 			);
 		} catch (error) {
 			console.error('Tasks Dashboard: failed to initialize', error);
-			new Notice('Tasks Dashboard: initialization failed. Check console for details.');
+			new Notice('Tasks dashboard: initialization failed. Check console for details.');
 		}
 	}
 
@@ -279,7 +279,7 @@ export default class TasksDashboardPlugin extends Plugin {
 			const displayName = getDashboardDisplayName(dashboard);
 			this.addCommand({
 				id: `create-issue-${dashboard.id}`,
-				name: `Create Issue: ${displayName}`,
+				name: `Create issue: ${displayName}`,
 				callback: () => {
 					new NamePromptModal(this.app, this, dashboard).open();
 				}
@@ -289,7 +289,7 @@ export default class TasksDashboardPlugin extends Plugin {
 		if (this.settings.dashboards.length > 0) {
 			this.addCommand({
 				id: 'create-issue-default',
-				name: 'Create Issue (Select Dashboard)',
+				name: 'Create issue (select dashboard)',
 				callback: () => {
 					this.showDashboardSelector();
 				}

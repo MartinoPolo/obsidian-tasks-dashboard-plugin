@@ -208,11 +208,7 @@ export const parsedIssueFileToBlockParams = (
 };
 
 export const toIssueBlockParams = (issue: Issue, dashboard: DashboardConfig): IssueBlockParams => {
-	const links = issue.githubLinks ?? [];
-	const githubLinks =
-		links.length === 0 && issue.githubLink !== undefined && issue.githubLink !== ''
-			? [issue.githubLink]
-			: links;
+	const githubLinks = issue.githubLinks ?? [];
 
 	return {
 		id: issue.id,

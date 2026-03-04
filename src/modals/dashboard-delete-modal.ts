@@ -59,7 +59,7 @@ export class DashboardDeleteConfirmationModal extends Modal {
 			attr: { id: checkboxId }
 		});
 		checkboxContainer.createEl('label', {
-			text: 'Also delete Dashboard file and Issues folder (moved to system trash)',
+			text: 'Also delete dashboard file and issues folder (moved to system trash)',
 			attr: { for: checkboxId }
 		});
 		checkbox.addEventListener('change', () => {

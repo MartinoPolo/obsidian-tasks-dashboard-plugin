@@ -374,7 +374,7 @@ export function createPlatformService(): PlatformService {
 			const bashExecutable = resolveWindowsBashExecutable(bashExecutablePath);
 			if (bashExecutable === undefined) {
 				new Notice(
-					'Could not find native Git Bash executable on Windows. Install/configure Git Bash to avoid WSL fallback.'
+					'Bash executable was not found. Install/configure bash to avoid fallback.'
 				);
 				return false;
 			}

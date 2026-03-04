@@ -85,7 +85,7 @@ export class FolderPathModal extends Modal {
 		const input = contentEl.createEl('input', {
 			type: 'text',
 			cls: 'tdc-prompt-input',
-			attr: { placeholder: 'C:\\Projects\\MyApp' },
+			attr: { placeholder: 'C:\\projects\\my-app' },
 			value: currentValue ?? ''
 		});
 
