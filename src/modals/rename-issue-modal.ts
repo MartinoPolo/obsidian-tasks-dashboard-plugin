@@ -1,10 +1,11 @@
 import { App, Modal, Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
+import { getErrorMessage } from '../settings/settings-helpers';
 import { DashboardConfig } from '../types';
 import {
-	setupPromptModal,
 	createConfirmCancelButtons,
-	createInputWithEnterHandler
+	createInputWithEnterHandler,
+	setupPromptModal
 } from './modal-helpers';
 
 export class RenameIssueModal extends Modal {
@@ -72,8 +73,7 @@ export class RenameIssueModal extends Modal {
 		try {
 			await this.plugin.issueManager.renameIssue(this.dashboard, this.issueId, value);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
-			new Notice(`Error renaming issue: ${message}`);
+			new Notice(`Error renaming issue: ${getErrorMessage(error)}`);
 		}
 	}
 

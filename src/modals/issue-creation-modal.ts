@@ -1,15 +1,26 @@
-import { App, Modal, Notice, SuggestModal, TFile, MarkdownView } from 'obsidian';
+import { App, MarkdownView, Modal, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, Priority, GitHubIssueMetadata, GitHubRepository } from '../types';
-import { GitHubSearchModal } from './GitHubSearchModal';
-import { RepositoryPickerModal } from './RepositoryPickerModal';
-import {
-	setupPromptModal,
-	createConfirmCancelButtons,
-	createInputWithEnterHandler
-} from './modal-helpers';
+import { getErrorMessage } from '../settings/settings-helpers';
+import { DashboardConfig, GitHubIssueMetadata, GitHubRepository, Priority } from '../types';
 import { getGitHubLinkType } from '../utils/github';
 import { parseGitHubRepoFullName, parseGitHubUrl } from '../utils/github-url';
+import { GitHubSearchModal } from './GitHubSearchModal';
+import {
+	createConfirmCancelButtons,
+	createInputWithEnterHandler,
+	createPromptBackButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
+	registerMouseBackShortcut,
+	setupPromptModal
+} from './modal-helpers';
+import {
+	applySingleSelectionPressedState,
+	getWrappedIndex,
+	handleListNavigationKeydown
+} from './modal-keyboard-helpers';
+import { RepositoryPickerModal } from './RepositoryPickerModal';
 
 interface CreateIssueRequest {
 	name: string;
@@ -93,14 +104,6 @@ function getIssueLinkedRepositoryFromLinks(githubLinks: string[] | undefined): s
 	return undefined;
 }
 
-function getErrorMessage(error: unknown): string {
-	if (error instanceof Error && error.message !== '') {
-		return error.message;
-	}
-
-	return 'Unknown error';
-}
-
 async function createIssueWithNotice(
 	app: App,
 	plugin: TasksDashboardPlugin,
@@ -141,6 +144,7 @@ export class NamePromptModal extends Modal {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
+	private initialIssueName: string | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
@@ -149,7 +153,8 @@ export class NamePromptModal extends Modal {
 		dashboard: DashboardConfig,
 		mode: IssueCreationMode = 'standard',
 		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string
+		sourceIssueLinkedRepository?: string,
+		initialIssueName?: string
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -157,6 +162,7 @@ export class NamePromptModal extends Modal {
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
+		this.initialIssueName = initialIssueName;
 	}
 
 	onOpen() {
@@ -164,6 +170,10 @@ export class NamePromptModal extends Modal {
 		this.input = createInputWithEnterHandler(this.contentEl, 'Enter issue name...', () =>
 			this.confirm()
 		);
+		if (this.initialIssueName !== undefined && this.initialIssueName !== '') {
+			this.input.value = this.initialIssueName;
+			this.input.select();
+		}
 		createConfirmCancelButtons(
 			this.contentEl,
 			'Confirm',
@@ -187,7 +197,8 @@ export class NamePromptModal extends Modal {
 				value,
 				this.mode,
 				this.worktreeOriginFolder,
-				this.sourceIssueLinkedRepository
+				this.sourceIssueLinkedRepository,
+				WORKTREE_COLOR_PRESETS[0]
 			).open();
 		} else {
 			this.input.addClass('tdc-input-error');
@@ -207,6 +218,7 @@ class ColorPromptModal extends Modal {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
+	private initialColor: string;
 	private input: HTMLInputElement | undefined;
 	private presetButtons: HTMLButtonElement[] = [];
 	private selectedColor = WORKTREE_COLOR_PRESETS[0];
@@ -218,7 +230,8 @@ class ColorPromptModal extends Modal {
 		issueName: string,
 		mode: IssueCreationMode,
 		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string
+		sourceIssueLinkedRepository?: string,
+		initialColor: string = WORKTREE_COLOR_PRESETS[0]
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -227,6 +240,8 @@ class ColorPromptModal extends Modal {
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
+		this.initialColor = initialColor;
+		this.selectedColor = initialColor;
 	}
 
 	onOpen(): void {
@@ -250,6 +265,11 @@ class ColorPromptModal extends Modal {
 			if (event.key === 'Enter') {
 				event.preventDefault();
 				this.confirm();
+				return;
+			}
+			if (event.key === 'Backspace') {
+				event.preventDefault();
+				this.goBack();
 				return;
 			}
 			if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
@@ -291,13 +311,44 @@ class ColorPromptModal extends Modal {
 			});
 		}
 		this.selectColor(this.selectedColor, false);
+		this.contentEl.addEventListener('keydown', (event) => {
+			if (event.key === 'Backspace') {
+				event.preventDefault();
+				this.goBack();
+				return;
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				this.close();
+			}
+		});
+		registerMouseBackShortcut(this.contentEl, () => {
+			this.goBack();
+		});
 
-		createConfirmCancelButtons(
-			this.contentEl,
-			'Confirm',
-			() => this.confirm(),
-			() => this.close()
-		);
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptBackButton(buttonContainer, () => {
+			this.goBack();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirm();
+		});
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+	}
+
+	private goBack(): void {
+		this.close();
+		new NamePromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.mode,
+			this.worktreeOriginFolder,
+			this.sourceIssueLinkedRepository,
+			this.issueName
+		).open();
 	}
 
 	private confirm(): void {
@@ -323,6 +374,11 @@ class ColorPromptModal extends Modal {
 	}
 
 	private handlePresetArrowNavigation(event: KeyboardEvent, color: string): void {
+		if (event.key === 'Backspace') {
+			event.preventDefault();
+			this.goBack();
+			return;
+		}
 		if (event.key === 'ArrowLeft') {
 			event.preventDefault();
 			this.movePresetSelection(-1);
@@ -360,11 +416,7 @@ class ColorPromptModal extends Modal {
 		}
 
 		const currentIndex = WORKTREE_COLOR_PRESETS.indexOf(this.selectedColor);
-		const safeCurrentIndex = currentIndex >= 0 ? currentIndex : 0;
-		const nextIndex =
-			((safeCurrentIndex + step) % WORKTREE_COLOR_PRESETS.length +
-				WORKTREE_COLOR_PRESETS.length) %
-			WORKTREE_COLOR_PRESETS.length;
+		const nextIndex = getWrappedIndex(currentIndex, step, WORKTREE_COLOR_PRESETS.length);
 		const nextColor = WORKTREE_COLOR_PRESETS[nextIndex];
 		this.selectColor(nextColor, true);
 	}
@@ -388,7 +440,7 @@ class ColorPromptModal extends Modal {
 	}
 }
 
-class PriorityPromptModal extends SuggestModal<Priority> {
+class PriorityPromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private issueName: string;
@@ -396,6 +448,8 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
+	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
+	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(
 		app: App,
@@ -415,40 +469,112 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
-		this.setPlaceholder('Select priority');
 	}
 
 	onOpen() {
-		// SuggestModal.onOpen may return a promise
-		void Promise.resolve(super.onOpen());
-		window.setTimeout(() => {
-			const arrowDownEvent = new KeyboardEvent('keydown', {
-				key: 'ArrowDown',
-				code: 'ArrowDown',
-				bubbles: true
+		setupPromptModal(this, 'Issue Priority');
+		const priorityList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
+
+		for (const priority of PRIORITY_OPTIONS) {
+			const confirmFromMouse = (event: MouseEvent): void => {
+				if (event.button !== 0) {
+					return;
+				}
+				event.preventDefault();
+				this.selectPriority(priority, true);
+				this.confirmSelection();
+			};
+			const optionButton = priorityList.createEl('button', {
+				cls: 'tdc-selectable-option-btn',
+				attr: {
+					type: 'button',
+					'aria-pressed': 'false'
+				}
 			});
-			this.inputEl.dispatchEvent(arrowDownEvent);
-		}, 0);
+			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
+			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
+			container.createSpan({ text: formatPriorityLabel(priority) });
+			optionButton.addEventListener('mouseup', confirmFromMouse);
+			this.priorityButtons.set(priority, optionButton);
+		}
+
+		this.selectPriority(this.selectedPriority, true);
+
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptBackButton(buttonContainer, () => {
+			this.goBack();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
+		});
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			this.handleKeydown(event);
+		});
+		registerMouseBackShortcut(this.contentEl, () => {
+			this.goBack();
+		});
 	}
 
-	getSuggestions(): Priority[] {
-		return PRIORITY_OPTIONS;
+	private handleKeydown(event: KeyboardEvent): void {
+		handleListNavigationKeydown(event, {
+			onNext: () => {
+				this.moveSelection(1);
+			},
+			onPrevious: () => {
+				this.moveSelection(-1);
+			},
+			onBack: () => {
+				this.goBack();
+			},
+			onClose: () => {
+				this.close();
+			},
+			onConfirm: () => {
+				this.confirmSelection();
+			}
+		});
 	}
 
-	renderSuggestion(priority: Priority, el: HTMLElement) {
-		const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
-		container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-		container.createSpan({ text: formatPriorityLabel(priority) });
+	private moveSelection(step: number): void {
+		const currentIndex = PRIORITY_OPTIONS.indexOf(this.selectedPriority);
+		const nextIndex = getWrappedIndex(currentIndex, step, PRIORITY_OPTIONS.length);
+		this.selectPriority(PRIORITY_OPTIONS[nextIndex], true);
 	}
 
-	onChooseSuggestion(priority: Priority) {
+	private selectPriority(priority: Priority, focusButton: boolean): void {
+		this.selectedPriority = priority;
+		applySingleSelectionPressedState(this.priorityButtons, priority, focusButton);
+	}
+
+	private goBack(): void {
+		this.close();
+		new ColorPromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.issueName,
+			this.mode,
+			this.worktreeOriginFolder,
+			this.sourceIssueLinkedRepository,
+			this.issueColor
+		).open();
+	}
+
+	private confirmSelection(): void {
+		const selectedPriority = this.selectedPriority;
+		this.close();
+
 		if (!this.dashboard.githubEnabled) {
 			void createIssueWithGitHub(
 				this.app,
 				this.plugin,
 				this.dashboard,
 				this.issueName,
-				priority,
+				selectedPriority,
 				undefined,
 				undefined,
 				this.issueColor,
@@ -463,7 +589,7 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				this.plugin,
 				this.dashboard,
 				this.issueName,
-				priority,
+				selectedPriority,
 				this.issueColor,
 				this.mode,
 				this.worktreeOriginFolder,
@@ -475,10 +601,11 @@ class PriorityPromptModal extends SuggestModal<Priority> {
 				this.plugin,
 				this.dashboard,
 				this.issueName,
-				priority,
+				selectedPriority,
 				this.issueColor,
 				this.mode,
-				this.worktreeOriginFolder
+				this.worktreeOriginFolder,
+				this.sourceIssueLinkedRepository
 			).open();
 		}
 	}
@@ -492,7 +619,7 @@ interface GitHubLinkTypeOption {
 	description: string;
 }
 
-class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
+class GitHubLinkTypeModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private issueName: string;
@@ -501,6 +628,8 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
+	private selectedOptionType: GitHubLinkType = 'skip';
+	private optionButtons: Map<GitHubLinkType, HTMLButtonElement> = new Map();
 
 	constructor(
 		app: App,
@@ -522,36 +651,150 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
-		this.setPlaceholder('Choose GitHub link type...');
 	}
 
-	getSuggestions(): GitHubLinkTypeOption[] {
-			if (this.mode === 'worktree') {
-				return GITHUB_LINK_TYPE_OPTIONS.filter((option) => option.type !== 'repository');
+	onOpen(): void {
+		setupPromptModal(this, 'Choose GitHub link type');
+		const optionsList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
+
+		const options = this.getOptions();
+		for (const option of options) {
+			const confirmFromMouse = (event: MouseEvent): void => {
+				if (event.button !== 0) {
+					return;
+				}
+				event.preventDefault();
+				this.selectOption(option.type, true);
+				this.confirmSelection();
+			};
+			const optionButton = optionsList.createEl('button', {
+				cls: 'tdc-selectable-option-btn',
+				attr: {
+					type: 'button',
+					'aria-pressed': 'false'
+				}
+			});
+			const contentContainer = optionButton.createDiv({ cls: 'tdc-link-type-suggestion' });
+			contentContainer.createDiv({ cls: 'tdc-link-type-label', text: option.label });
+			contentContainer.createDiv({
+				cls: 'tdc-link-type-description',
+				text: option.description
+			});
+			optionButton.addEventListener('mouseup', confirmFromMouse);
+			this.optionButtons.set(option.type, optionButton);
+		}
+
+		this.selectOption(this.selectedOptionType, true);
+
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptBackButton(buttonContainer, () => {
+			this.goBack();
+		});
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			this.handleKeydown(event);
+		});
+		registerMouseBackShortcut(this.contentEl, () => {
+			this.goBack();
+		});
+	}
+
+	private getOptions(): GitHubLinkTypeOption[] {
+		const options =
+			this.mode === 'worktree'
+				? GITHUB_LINK_TYPE_OPTIONS.filter((option) => option.type !== 'repository')
+				: GITHUB_LINK_TYPE_OPTIONS;
+		const orderedOptions = [...options].sort((left, right) => {
+			if (left.type === 'skip') {
+				return -1;
 			}
-		return GITHUB_LINK_TYPE_OPTIONS;
+			if (right.type === 'skip') {
+				return 1;
+			}
+			return 0;
+		});
+		const hasDefaultOption = orderedOptions.some(
+			(option) => option.type === this.selectedOptionType
+		);
+		if (!hasDefaultOption) {
+			this.selectedOptionType = orderedOptions[0]?.type ?? 'skip';
+		}
+		return orderedOptions;
 	}
 
-	renderSuggestion(option: GitHubLinkTypeOption, el: HTMLElement) {
-		const container = el.createDiv({ cls: 'tdc-link-type-suggestion' });
-		container.createDiv({ cls: 'tdc-link-type-label', text: option.label });
-		container.createDiv({ cls: 'tdc-link-type-description', text: option.description });
+	private handleKeydown(event: KeyboardEvent): void {
+		handleListNavigationKeydown(event, {
+			onNext: () => {
+				this.moveSelection(1);
+			},
+			onPrevious: () => {
+				this.moveSelection(-1);
+			},
+			onBack: () => {
+				this.goBack();
+			},
+			onClose: () => {
+				this.close();
+			},
+			onConfirm: () => {
+				this.confirmSelection();
+			}
+		});
 	}
 
-	onChooseSuggestion(option: GitHubLinkTypeOption) {
-		switch (option.type) {
+	private moveSelection(step: number): void {
+		const options = this.getOptions();
+		if (options.length === 0) {
+			return;
+		}
+		const optionTypes = options.map((option) => option.type);
+		const currentIndex = optionTypes.indexOf(this.selectedOptionType);
+		const nextIndex = getWrappedIndex(currentIndex, step, optionTypes.length);
+		this.selectOption(optionTypes[nextIndex], true);
+	}
+
+	private selectOption(optionType: GitHubLinkType, focusButton: boolean): void {
+		this.selectedOptionType = optionType;
+		applySingleSelectionPressedState(this.optionButtons, optionType, focusButton);
+	}
+
+	private goBack(): void {
+		this.close();
+		new PriorityPromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.issueName,
+			this.issueColor,
+			this.mode,
+			this.worktreeOriginFolder,
+			this.sourceIssueLinkedRepository
+		).open();
+	}
+
+	private confirmSelection(): void {
+		const selectedOptionType = this.selectedOptionType;
+		this.close();
+
+		switch (selectedOptionType) {
 			case 'skip': {
 				void createIssueWithGitHub(
 					this.app,
 					this.plugin,
 					this.dashboard,
 					this.issueName,
-						this.priority,
-						undefined,
-						undefined,
-						this.issueColor,
-						this.mode,
-						this.worktreeOriginFolder
+					this.priority,
+					undefined,
+					undefined,
+					this.issueColor,
+					this.mode,
+					this.worktreeOriginFolder
 				);
 				return;
 			}
@@ -575,27 +818,27 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 						);
 					},
 					{
-						issueRepository: this.sourceIssueLinkedRepository
+						issueRepository: this.sourceIssueLinkedRepository,
+						showBackButton: true,
+						skipButtonLabel: 'Skip',
+						onBack: () => {
+							new GitHubLinkTypeModal(
+								this.app,
+								this.plugin,
+								this.dashboard,
+								this.issueName,
+								this.priority,
+								this.issueColor,
+								this.mode,
+								this.worktreeOriginFolder,
+								this.sourceIssueLinkedRepository
+							).open();
+						}
 					}
 				).open();
 				return;
 			}
 			case 'repository': {
-				if (this.mode === 'worktree') {
-					void createIssueWithGitHub(
-						this.app,
-						this.plugin,
-						this.dashboard,
-						this.issueName,
-						this.priority,
-						undefined,
-						undefined,
-						this.issueColor,
-						this.mode,
-						this.worktreeOriginFolder
-					);
-					return;
-				}
 				void this.openRepositoryPicker();
 				return;
 			}
@@ -621,55 +864,116 @@ class GitHubLinkTypeModal extends SuggestModal<GitHubLinkTypeOption> {
 			return;
 		}
 
-		new RepositoryPickerModal(this.app, repositories, (repository: GitHubRepository) => {
-			void createIssueWithRepoLink(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				this.priority,
-				repository,
-				this.issueColor,
-				this.mode,
-				this.worktreeOriginFolder
-			);
-		}).open();
+		new RepositoryPickerModal(
+			this.app,
+			repositories,
+			(repository: GitHubRepository) => {
+				void createIssueWithRepoLink(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					this.issueName,
+					this.priority,
+					repository,
+					this.issueColor,
+					this.mode,
+					this.worktreeOriginFolder
+				);
+			},
+			() => {
+				new GitHubLinkTypeModal(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					this.issueName,
+					this.priority,
+					this.issueColor,
+					this.mode,
+					this.worktreeOriginFolder,
+					this.sourceIssueLinkedRepository
+				).open();
+			}
+		).open();
 	}
 }
 
-export class PrioritySelectionModal extends SuggestModal<Priority> {
+class PrioritySelectionModal extends Modal {
 	private readonly onSelected: (priority: Priority) => void;
+	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
+	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(app: App, onSelected: (priority: Priority) => void) {
 		super(app);
 		this.onSelected = onSelected;
-		this.setPlaceholder('Select priority');
 	}
 
 	override onOpen(): void {
-		void Promise.resolve(super.onOpen());
-		window.setTimeout(() => {
-			const arrowDownEvent = new KeyboardEvent('keydown', {
-				key: 'ArrowDown',
-				code: 'ArrowDown',
-				bubbles: true
+		setupPromptModal(this, 'Select priority');
+		const priorityList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
+
+		for (const priority of PRIORITY_OPTIONS) {
+			const optionButton = priorityList.createEl('button', {
+				cls: 'tdc-selectable-option-btn',
+				attr: {
+					type: 'button',
+					'aria-pressed': 'false'
+				}
 			});
-			this.inputEl.dispatchEvent(arrowDownEvent);
-		}, 0);
+			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
+			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
+			container.createSpan({ text: formatPriorityLabel(priority) });
+			optionButton.addEventListener('click', () => {
+				this.selectPriority(priority, true);
+			});
+			this.priorityButtons.set(priority, optionButton);
+		}
+
+		this.selectPriority(this.selectedPriority, true);
+
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			this.handleKeydown(event);
+		});
 	}
 
-	override getSuggestions(): Priority[] {
-		return PRIORITY_OPTIONS;
+	private handleKeydown(event: KeyboardEvent): void {
+		handleListNavigationKeydown(event, {
+			onNext: () => {
+				this.moveSelection(1);
+			},
+			onPrevious: () => {
+				this.moveSelection(-1);
+			},
+			onClose: () => {
+				this.close();
+			},
+			onConfirm: () => {
+				this.confirmSelection();
+			}
+		});
 	}
 
-	override renderSuggestion(priority: Priority, el: HTMLElement): void {
-		const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
-		container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-		container.createSpan({ text: formatPriorityLabel(priority) });
+	private moveSelection(step: number): void {
+		const currentIndex = PRIORITY_OPTIONS.indexOf(this.selectedPriority);
+		const nextIndex = getWrappedIndex(currentIndex, step, PRIORITY_OPTIONS.length);
+		this.selectPriority(PRIORITY_OPTIONS[nextIndex], true);
 	}
 
-	override onChooseSuggestion(priority: Priority): void {
-		this.onSelected(priority);
+	private selectPriority(priority: Priority, focusButton: boolean): void {
+		this.selectedPriority = priority;
+		applySingleSelectionPressedState(this.priorityButtons, priority, focusButton);
+	}
+
+	private confirmSelection(): void {
+		this.close();
+		this.onSelected(this.selectedPriority);
 	}
 }
 
@@ -772,6 +1076,7 @@ class GithubPromptModal extends Modal {
 	private issueColor: string;
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
+	private sourceIssueLinkedRepository: string | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
@@ -782,7 +1087,8 @@ class GithubPromptModal extends Modal {
 		priority: Priority,
 		issueColor: string,
 		mode: IssueCreationMode,
-		worktreeOriginFolder?: string
+		worktreeOriginFolder?: string,
+		sourceIssueLinkedRepository?: string
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -792,6 +1098,7 @@ class GithubPromptModal extends Modal {
 		this.issueColor = issueColor;
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
+		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 	}
 
 	onOpen() {
@@ -801,12 +1108,49 @@ class GithubPromptModal extends Modal {
 			'https://github.com/... (or leave empty)',
 			() => void this.confirm()
 		);
-		createConfirmCancelButtons(
-			this.contentEl,
-			'Create Issue',
-			() => void this.confirm(),
-			() => this.close()
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptBackButton(buttonContainer, () => {
+			this.goBack();
+		});
+		void createPromptConfirmButton(
+			buttonContainer,
+			() => {
+				void this.confirm();
+			},
+			'Create Issue'
 		);
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			if (event.key === 'Backspace') {
+				event.preventDefault();
+				this.goBack();
+				return;
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				this.close();
+			}
+		});
+		registerMouseBackShortcut(this.contentEl, () => {
+			this.goBack();
+		});
+	}
+
+	private goBack(): void {
+		this.close();
+		new PriorityPromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.issueName,
+			this.issueColor,
+			this.mode,
+			this.worktreeOriginFolder,
+			this.sourceIssueLinkedRepository
+		).open();
 	}
 
 	private async confirm() {

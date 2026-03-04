@@ -1,16 +1,9 @@
 import { App, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, Issue, IssueStatus, GitHubIssueMetadata, Priority } from '../types';
-import { slugify } from '../utils/slugify';
+import { DashboardConfig, GitHubIssueMetadata, Issue, IssueStatus, Priority } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
-import {
-	appendBeforeFrontmatterClose,
-	findIssueFilesByPath,
-	getFrontmatterCloseIndex,
-	getDashboardFilename,
-	getIssueFolderName,
-	getIssueFolderStorageKey
-} from './issue-manager-shared';
+import { createPlatformService } from '../utils/platform';
+import { slugify } from '../utils/slugify';
 import {
 	generateIssueContent,
 	removeGitHubLinkFromDashboardIssueBlock,
@@ -20,8 +13,15 @@ import {
 	updateFrontmatterWithGitHubLink
 } from './issue-manager-github';
 import { migrateIssueSettings, removeIssueSettings } from './issue-manager-settings';
+import {
+	appendBeforeFrontmatterClose,
+	findIssueFilesByPath,
+	getDashboardFilename,
+	getFrontmatterCloseIndex,
+	getIssueFolderName,
+	getIssueFolderStorageKey
+} from './issue-manager-shared';
 import { CreateIssueParams, ImportNoteParams, IssueManagerInstance } from './issue-manager-types';
-import { createPlatformService } from '../utils/platform';
 
 const EMPTY_BRANCH_NAME = '';
 const CURRENT_DIRECTORY_BRANCH = '.';
@@ -173,7 +173,6 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		}
 		return candidate;
 	};
-
 
 	const findIssueFileInStatus = (
 		dashboard: DashboardConfig,
@@ -491,12 +490,18 @@ ${originalBody}`;
 		const { file } = getIssueFileOrThrow(dashboard, issueId);
 		let content = await app.vault.read(file);
 		if (getFrontmatterCloseIndex(content) !== -1) {
-			content = content.replace(/^priority:\s*(low|medium|high|top)\s*$/m, `priority: ${priority}`);
+			content = content.replace(
+				/^priority:\s*(low|medium|high|top)\s*$/m,
+				`priority: ${priority}`
+			);
 			await app.vault.modify(file, content);
 		}
 
 		await editDashboardIssueBlock(dashboard, issueId, (block) => {
-			return block.replace(/^priority:\s*(low|medium|high|top)\s*$/m, `priority: ${priority}`);
+			return block.replace(
+				/^priority:\s*(low|medium|high|top)\s*$/m,
+				`priority: ${priority}`
+			);
 		});
 
 		new Notice(`Updated priority for ${issueId}`);
@@ -527,7 +532,12 @@ ${originalBody}`;
 		void (async () => {
 			const issueColor = plugin.settings.issueColors[issueId];
 			const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
-			const fallbackIssueFolder = plugin.settings.issueFolders[issueFolderKey];
+			const hasFallbackIssueFolder = Boolean(
+				Object.prototype.hasOwnProperty.call(plugin.settings.issueFolders, issueFolderKey)
+			);
+			const fallbackIssueFolder = hasFallbackIssueFolder
+				? plugin.settings.issueFolders[issueFolderKey]
+				: undefined;
 			const worktreeOriginFolder = await getWorktreeOriginFolder(dashboard, issueId);
 			const removalWorkingDirectory =
 				worktreeOriginFolder ?? fallbackIssueFolder ?? dashboard.projectFolder;
@@ -604,7 +614,6 @@ ${originalBody}`;
 		}
 		new Notice(`Renamed: ${oldIssueId} → ${newIssueId}`);
 	};
-
 
 	const updateDashboardWithGitHubLink = async (
 		dashboard: DashboardConfig,

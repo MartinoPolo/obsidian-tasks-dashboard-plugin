@@ -1,6 +1,8 @@
 import { App, Modal } from 'obsidian';
 import {
-	createPromptShortcutButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
 	registerEnterShortcut,
 	setupPromptModal
 } from './modal-helpers';
@@ -47,26 +49,22 @@ export class ArchiveConfirmationModal extends Modal {
 	}
 
 	private renderActionButtons() {
-		const buttonContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
 
-		void createPromptShortcutButton(
+		void createPromptCancelButton(
 			buttonContainer,
-			'Keep worktree',
-			'Esc',
-			'tdc-prompt-btn-cancel',
 			() => {
 				this.submit(false);
-			}
+			},
+			'Keep worktree'
 		);
 
-		void createPromptShortcutButton(
+		void createPromptConfirmButton(
 			buttonContainer,
-			'Remove worktree',
-			'↵',
-			'tdc-prompt-btn-confirm',
 			() => {
 				this.submit(true);
-			}
+			},
+			'Remove worktree'
 		);
 	}
 

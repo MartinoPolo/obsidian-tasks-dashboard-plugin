@@ -8,6 +8,7 @@ const PROMPT_BUTTON_CLASS = 'tdc-prompt-btn';
 const PROMPT_CONFIRM_CLASS = 'tdc-prompt-btn-confirm';
 const PROMPT_CANCEL_CLASS = 'tdc-prompt-btn-cancel';
 const PROMPT_INPUT_CLASS = 'tdc-prompt-input';
+const MOUSE_BACK_BUTTON = 3;
 
 interface PromptButtonOptions {
 	label: string;
@@ -91,15 +92,65 @@ export function createPromptShortcutButton(
 	});
 }
 
-export function focusFirstSuggestModalItem(inputEl: HTMLInputElement): void {
-	setTimeout(() => {
-		const arrowDownEvent = new KeyboardEvent('keydown', {
-			key: 'ArrowDown',
-			code: 'ArrowDown',
-			bubbles: true
-		});
-		inputEl.dispatchEvent(arrowDownEvent);
-	}, 0);
+export function createPromptButtonsContainer(contentEl: HTMLElement): HTMLDivElement {
+	return contentEl.createDiv({ cls: PROMPT_BUTTONS_CLASS });
+}
+
+export function createPromptBackButton(
+	containerEl: HTMLElement,
+	onClick: () => void,
+	label = 'Back'
+): HTMLButtonElement {
+	return createPromptButton(containerEl, {
+		label,
+		shortcut: '⟵',
+		className: 'tdc-prompt-btn-secondary',
+		onClick
+	});
+}
+
+export function createPromptConfirmButton(
+	containerEl: HTMLElement,
+	onClick: () => void,
+	label = 'Confirm',
+	className: string = PROMPT_CONFIRM_CLASS
+): HTMLButtonElement {
+	return createPromptButton(containerEl, {
+		label,
+		shortcut: '↵',
+		className,
+		onClick
+	});
+}
+
+export function createPromptCancelButton(
+	containerEl: HTMLElement,
+	onClick: () => void,
+	label = 'Cancel',
+	className: string = PROMPT_CANCEL_CLASS
+): HTMLButtonElement {
+	return createPromptButton(containerEl, {
+		label,
+		shortcut: 'Esc',
+		className,
+		onClick
+	});
+}
+
+export function registerMouseBackShortcut(elementEl: HTMLElement, onBack: () => void): void {
+	const handleMouseBack = (event: MouseEvent): void => {
+		if (event.button !== MOUSE_BACK_BUTTON) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		onBack();
+	};
+
+	elementEl.addEventListener('mousedown', handleMouseBack);
+	elementEl.addEventListener('mouseup', handleMouseBack);
+	elementEl.addEventListener('auxclick', handleMouseBack);
 }
 
 /**
@@ -112,19 +163,9 @@ export function createConfirmCancelButtons(
 	onConfirm: () => void,
 	onCancel: () => void
 ): HTMLButtonElement {
-	const buttonContainer = contentEl.createDiv({ cls: PROMPT_BUTTONS_CLASS });
-	const confirmBtn = createPromptButton(buttonContainer, {
-		label: confirmLabel,
-		shortcut: '↵',
-		className: PROMPT_CONFIRM_CLASS,
-		onClick: onConfirm
-	});
-	void createPromptButton(buttonContainer, {
-		label: 'Cancel',
-		shortcut: 'Esc',
-		className: PROMPT_CANCEL_CLASS,
-		onClick: onCancel
-	});
+	const buttonContainer = createPromptButtonsContainer(contentEl);
+	const confirmBtn = createPromptConfirmButton(buttonContainer, onConfirm, confirmLabel);
+	void createPromptCancelButton(buttonContainer, onCancel);
 	return confirmBtn;
 }
 

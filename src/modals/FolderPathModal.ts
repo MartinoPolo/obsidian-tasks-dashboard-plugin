@@ -3,7 +3,9 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig } from '../types';
 import { createPlatformService } from '../utils/platform';
 import {
-	createPromptShortcutButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
 	registerEnterShortcut,
 	setupPromptModal
 } from './modal-helpers';
@@ -59,6 +61,14 @@ export class FolderPathModal extends Modal {
 			return 'Issue Folder';
 		}
 		return 'Project Folder';
+	}
+
+	private getSubjectLabel(): string {
+		if (this.issueId !== undefined) {
+			return 'Issue folder';
+		}
+
+		return 'Project folder';
 	}
 
 	private persistChanges(noticeMessage: string): void {
@@ -119,16 +129,14 @@ export class FolderPathModal extends Modal {
 	}
 
 	private createActionButtons(contentEl: HTMLElement, currentValue: string | undefined): void {
-		const buttonsContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+		const buttonsContainer = createPromptButtonsContainer(contentEl);
 
-		void createPromptShortcutButton(
+		void createPromptConfirmButton(
 			buttonsContainer,
-			'Save',
-			'↵',
-			'tdc-prompt-btn-confirm',
 			() => {
-			this.confirm();
-			}
+				this.confirm();
+			},
+			'Save'
 		);
 
 		if (currentValue !== undefined) {
@@ -138,19 +146,13 @@ export class FolderPathModal extends Modal {
 			clearButton.textContent = 'Clear';
 			clearButton.addEventListener('click', () => {
 				this.setValue(undefined);
-				this.persistChanges('Project folder cleared');
+				this.persistChanges(`${this.getSubjectLabel()} cleared`);
 			});
 		}
 
-		void createPromptShortcutButton(
-			buttonsContainer,
-			'Cancel',
-			'Esc',
-			'tdc-prompt-btn-cancel',
-			() => {
+		void createPromptCancelButton(buttonsContainer, () => {
 			this.close();
-			}
-		);
+		});
 	}
 
 	onOpen() {
@@ -171,12 +173,12 @@ export class FolderPathModal extends Modal {
 		const inputValue = this.input?.value.trim() ?? '';
 		if (inputValue === '') {
 			this.setValue(undefined);
-			this.persistChanges('Project folder cleared');
+			this.persistChanges(`${this.getSubjectLabel()} cleared`);
 			return;
 		}
 
 		this.setValue(inputValue);
-		this.persistChanges(`Project folder set: ${inputValue}`);
+		this.persistChanges(`${this.getSubjectLabel()} set: ${inputValue}`);
 	}
 
 	onClose() {

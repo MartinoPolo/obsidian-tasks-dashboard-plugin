@@ -699,6 +699,15 @@
 	color: white;
 }
 
+.tdc-prompt-btn-secondary {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tdc-prompt-btn-secondary:hover {
+	background: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-modifier-hover));
+}
+
 .tdc-prompt-btn-cancel {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
@@ -747,8 +756,66 @@
 .tdc-priority-suggestion {
 	display: flex;
 	align-items: center;
+	gap: 12px;
+	padding: 6px 0;
+}
+
+.tdc-selectable-option-list {
+	display: flex;
+	flex-direction: column;
 	gap: 10px;
-	padding: 4px 0;
+	margin-top: 6px;
+}
+
+.tdc-selectable-option-btn {
+	width: 100%;
+	height: auto !important;
+	min-height: 56px;
+	padding: 12px 16px;
+	text-align: left !important;
+	display: flex;
+	align-items: stretch;
+	justify-content: flex-start;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	background: var(--background-primary-alt);
+	color: var(--text-normal);
+	font-size: 1.02em;
+	line-height: 1.3;
+	white-space: normal;
+	overflow: hidden;
+	box-sizing: border-box;
+	cursor: pointer;
+	transition: var(--tdc-transition-fast);
+}
+
+.tdc-selectable-option-btn > * {
+	min-width: 0;
+	white-space: normal;
+}
+
+.tdc-selectable-option-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tdc-selectable-option-btn.is-selected {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary-alt));
+}
+
+.tdc-selectable-option-btn:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+.tdc-selectable-option-btn .tdc-priority-dot {
+	width: 14px;
+	height: 14px;
+}
+
+.tdc-selectable-option-btn .tdc-priority-suggestion {
+	justify-content: flex-start;
 }
 
 .tdc-color-preset-row {
@@ -1278,16 +1345,6 @@
 	color: var(--text-muted);
 }
 
-/* Secondary button style */
-.tdc-prompt-btn-secondary {
-	background: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
-
-.tdc-prompt-btn-secondary:hover {
-	background: var(--background-modifier-border);
-}
-
 /* ===== GitHub Repository Card ===== */
 .tdc-gh-card-repo .tdc-gh-repo-name {
 	font-weight: 600;
@@ -1324,18 +1381,28 @@
 
 /* ===== GitHub Link Type Suggestion ===== */
 .tdc-link-type-suggestion {
-	padding: 4px 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	width: 100%;
 }
 
 .tdc-link-type-label {
 	font-weight: 500;
-	font-size: 1em;
+	font-size: 1.08em;
+	line-height: 1.25;
+	width: 100%;
+	margin: 0;
 }
 
 .tdc-link-type-description {
-	font-size: 0.85em;
+	font-size: 0.96em;
 	color: var(--text-muted);
-	margin-top: 2px;
+	margin-top: 0;
+	line-height: 1.35;
+	width: 100%;
+	margin-bottom: 0;
 }
 
 /* ===== Repository Picker Modal ===== */

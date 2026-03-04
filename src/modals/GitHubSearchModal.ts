@@ -3,9 +3,14 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
 import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
 import {
-	createPromptShortcutButton,
-	setupPromptModal
+    createPromptBackButton,
+    createPromptButtonsContainer,
+    createPromptCancelButton,
+    createPromptConfirmButton,
+    registerMouseBackShortcut,
+    setupPromptModal
 } from './modal-helpers';
+import { handleListNavigationKeydown } from './modal-keyboard-helpers';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MAX_COMBINED_RESULTS = 20;
@@ -22,6 +27,10 @@ type SearchPair = [GitHubIssueMetadata[], GitHubIssueMetadata[]];
 interface GitHubSearchModalLinkedRepositories {
 	issueRepository?: string;
 	dashboardRepository?: string;
+	onCancel?: () => void;
+	onBack?: () => void;
+	showBackButton?: boolean;
+	skipButtonLabel?: string;
 }
 
 interface ScopeOption {
@@ -35,6 +44,10 @@ export class GitHubSearchModal extends Modal {
 	private readonly issueLinkedRepository: string | undefined;
 	private readonly dashboardLinkedRepository: string | undefined;
 	private readonly onSelect: OnSelectCallback;
+	private readonly onCancel: (() => void) | undefined;
+	private readonly onBack: (() => void) | undefined;
+	private readonly showBackButton: boolean;
+	private readonly skipButtonLabel: string;
 	private searchInput!: HTMLInputElement;
 	private resultsContainer!: HTMLElement;
 	private searchScopeSelect!: HTMLSelectElement;
@@ -44,6 +57,7 @@ export class GitHubSearchModal extends Modal {
 	private currentResults: GitHubIssueMetadata[] = [];
 	private searchTimeout: ReturnType<typeof setTimeout> | undefined;
 	private activeRequestId = 0;
+	private hasResolved = false;
 
 	constructor(
 		app: App,
@@ -58,6 +72,10 @@ export class GitHubSearchModal extends Modal {
 		this.issueLinkedRepository = linkedRepositories?.issueRepository;
 		this.dashboardLinkedRepository =
 			linkedRepositories?.dashboardRepository ?? dashboard.githubRepo;
+		this.onCancel = linkedRepositories?.onCancel;
+		this.onBack = linkedRepositories?.onBack;
+		this.showBackButton = linkedRepositories?.showBackButton ?? false;
+		this.skipButtonLabel = linkedRepositories?.skipButtonLabel ?? 'Cancel';
 		this.onSelect = onSelect;
 		this.scopeOptions = this.buildScopeOptions();
 		this.searchScope = this.scopeOptions[0]?.value ?? 'my-repos';
@@ -95,28 +113,29 @@ export class GitHubSearchModal extends Modal {
 
 		this.resultsContainer = contentEl.createDiv({ cls: 'tdc-gh-results' });
 
-		const btnContainer = contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+		const btnContainer = createPromptButtonsContainer(contentEl);
 
-		void createPromptShortcutButton(
+		if (this.showBackButton && this.onBack !== undefined) {
+			void createPromptBackButton(btnContainer, () => {
+				this.goBack();
+			});
+			registerMouseBackShortcut(this.contentEl, () => {
+				this.goBack();
+			});
+		}
+
+		void createPromptCancelButton(
 			btnContainer,
-			'Skip',
-			'Esc',
-			'tdc-prompt-btn-secondary',
 			() => {
-				this.close();
-				this.onSelect(undefined);
-			}
+				this.skipSelection();
+			},
+			this.skipButtonLabel,
+			'tdc-prompt-btn-secondary'
 		);
 
-		void createPromptShortcutButton(
-			btnContainer,
-			'Select',
-			'↵',
-			'tdc-prompt-btn-confirm',
-			() => {
-				this.selectCurrent();
-			}
-		);
+		void createPromptConfirmButton(btnContainer, () => {
+			this.selectCurrent();
+		}, 'Select');
 
 		this.setupEventListeners();
 		this.searchInput.focus();
@@ -164,19 +183,27 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private handleKeydown(e: KeyboardEvent): void {
-		if (e.key === 'ArrowDown') {
-			e.preventDefault();
-			this.moveSelection(1);
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault();
-			this.moveSelection(-1);
-		} else if (e.key === 'Enter') {
-			e.preventDefault();
-			this.selectCurrent();
-		} else if (e.key === 'Escape') {
-			this.close();
-			this.onSelect(undefined);
-		}
+		handleListNavigationKeydown(e, {
+			onNext: () => {
+				this.moveSelection(1);
+			},
+			onPrevious: () => {
+				this.moveSelection(-1);
+			},
+			onBack:
+				this.showBackButton && this.onBack !== undefined
+					? () => {
+						this.goBack();
+					}
+					: undefined,
+			onClose: () => {
+				this.skipSelection();
+			},
+			onConfirm: () => {
+				this.selectCurrent();
+			},
+			includeHorizontalArrowKeys: false
+		});
 	}
 
 	private moveSelection(delta: number): void {
@@ -399,7 +426,26 @@ export class GitHubSearchModal extends Modal {
 		item.removeClass('tdc-gh-selected');
 	}
 
+	private goBack(): void {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
+		this.close();
+		this.onBack?.();
+	}
+
+	private skipSelection(): void {
+		this.finishSelection(undefined);
+	}
+
 	private finishSelection(url: string | undefined, metadata?: GitHubIssueMetadata): void {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
 		this.close();
 		this.onSelect(url, metadata);
 	}
@@ -468,6 +514,10 @@ export class GitHubSearchModal extends Modal {
 		if (this.searchTimeout !== undefined) {
 			clearTimeout(this.searchTimeout);
 			this.searchTimeout = undefined;
+		}
+		if (!this.hasResolved) {
+			this.hasResolved = true;
+			this.onCancel?.();
 		}
 		this.contentEl.empty();
 	}

@@ -1,6 +1,8 @@
 import { App, Modal } from 'obsidian';
 import {
-	createPromptShortcutButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
 	registerEnterShortcut,
 	setupPromptModal
 } from './modal-helpers';
@@ -14,6 +16,7 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	private readonly dashboardName: string;
 	private readonly onResult: (result: DashboardDeleteResult) => void;
 	private deleteFiles = false;
+	private hasResolved = false;
 
 	constructor(
 		app: App,
@@ -34,6 +37,10 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	}
 
 	onClose() {
+		if (!this.hasResolved) {
+			this.hasResolved = true;
+			this.onResult({ confirmed: false, deleteFiles: this.deleteFiles });
+		}
 		this.contentEl.empty();
 	}
 
@@ -61,26 +68,19 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	}
 
 	private renderActionButtons() {
-		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
+		const btnContainer = createPromptButtonsContainer(this.contentEl);
 
-		void createPromptShortcutButton(
-			btnContainer,
-			'Cancel',
-			'Esc',
-			'tdc-prompt-btn-cancel',
-			() => {
-				this.handleCancel();
-			}
-		);
+		void createPromptCancelButton(btnContainer, () => {
+			this.handleCancel();
+		});
 
-		void createPromptShortcutButton(
+		void createPromptConfirmButton(
 			btnContainer,
-			'Delete',
-			'↵',
-			'tdc-prompt-btn-delete',
 			() => {
 				this.handleConfirm();
-			}
+			},
+			'Delete',
+			'tdc-prompt-btn-delete'
 		);
 	}
 
@@ -91,10 +91,21 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	}
 
 	private handleCancel() {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
+		this.onResult({ confirmed: false, deleteFiles: this.deleteFiles });
 		this.close();
 	}
 
 	private handleConfirm() {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
 		this.close();
 		this.onResult({ confirmed: true, deleteFiles: this.deleteFiles });
 	}

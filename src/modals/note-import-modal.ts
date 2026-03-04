@@ -1,18 +1,24 @@
-import { App, FuzzySuggestModal, Notice, SuggestModal, TFile } from 'obsidian';
+import { App, FuzzySuggestModal, Modal, Notice, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
+import { getErrorMessage } from '../settings/settings-helpers';
 import type { DashboardConfig, Priority } from '../types';
-import { focusFirstSuggestModalItem } from './modal-helpers';
+import { getDashboardPath } from '../utils/dashboard-path';
+import {
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
+	setupPromptModal
+} from './modal-helpers';
+import {
+	applySingleSelectionPressedState,
+	getWrappedIndex,
+	handleListNavigationKeydown
+} from './modal-keyboard-helpers';
 
-const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
 const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
 
 const isRootPath = (path: string): boolean => {
 	return path === '' || path === '/';
-};
-
-const createDashboardPath = (dashboard: DashboardConfig): string => {
-	const dashboardFilename = dashboard.dashboardFilename || DEFAULT_DASHBOARD_FILENAME;
-	return `${dashboard.rootPath}/${dashboardFilename}`;
 };
 
 const isImportableFile = (file: TFile, issuesPath: string, dashboardPath: string): boolean => {
@@ -30,19 +36,6 @@ const isImportableFile = (file: TFile, issuesPath: string, dashboardPath: string
 const formatPriority = (priority: Priority): string => {
 	return `${priority.charAt(0).toUpperCase()}${priority.slice(1)}`;
 };
-
-const getErrorMessage = (error: unknown): string => {
-	if (error instanceof Error) {
-		return error.message;
-	}
-
-	if (typeof error === 'string') {
-		return error;
-	}
-
-	return 'Unknown error';
-};
-
 export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
@@ -56,7 +49,7 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 
 	override getItems(): TFile[] {
 		const issuesPath = `${this.dashboard.rootPath}/Issues/`;
-		const dashboardPath = createDashboardPath(this.dashboard);
+		const dashboardPath = getDashboardPath(this.dashboard);
 
 		return this.app.vault
 			.getMarkdownFiles()
@@ -82,10 +75,12 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	}
 }
 
-class ImportPriorityModal extends SuggestModal<Priority> {
+class ImportPriorityModal extends Modal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
 	private readonly sourceFile: TFile;
+	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
+	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(
 		app: App,
@@ -97,26 +92,75 @@ class ImportPriorityModal extends SuggestModal<Priority> {
 		this.plugin = plugin;
 		this.dashboard = dashboard;
 		this.sourceFile = sourceFile;
-		this.setPlaceholder('Select priority');
 	}
 
 	override onOpen(): void {
-		void Promise.resolve(super.onOpen());
-		focusFirstSuggestModalItem(this.inputEl);
+		setupPromptModal(this, 'Select priority');
+		const priorityList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
+
+		for (const priority of PRIORITY_OPTIONS) {
+			const optionButton = priorityList.createEl('button', {
+				cls: 'tdc-selectable-option-btn',
+				attr: {
+					type: 'button',
+					'aria-pressed': 'false'
+				}
+			});
+			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
+			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
+			container.createSpan({ text: formatPriority(priority) });
+			optionButton.addEventListener('click', () => {
+				this.selectPriority(priority, true);
+			});
+			this.priorityButtons.set(priority, optionButton);
+		}
+
+		this.selectPriority(this.selectedPriority, true);
+
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			this.handleKeydown(event);
+		});
 	}
 
-	override getSuggestions(): Priority[] {
-		return PRIORITY_OPTIONS;
+	private handleKeydown(event: KeyboardEvent): void {
+		handleListNavigationKeydown(event, {
+			onNext: () => {
+				this.moveSelection(1);
+			},
+			onPrevious: () => {
+				this.moveSelection(-1);
+			},
+			onClose: () => {
+				this.close();
+			},
+			onConfirm: () => {
+				this.confirmSelection();
+			}
+		});
 	}
 
-	override renderSuggestion(priority: Priority, el: HTMLElement): void {
-		const container = el.createDiv({ cls: 'tdc-priority-suggestion' });
-		container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-		container.createSpan({ text: formatPriority(priority) });
+	private moveSelection(step: number): void {
+		const currentIndex = PRIORITY_OPTIONS.indexOf(this.selectedPriority);
+		const nextIndex = getWrappedIndex(currentIndex, step, PRIORITY_OPTIONS.length);
+		this.selectPriority(PRIORITY_OPTIONS[nextIndex], true);
 	}
 
-	override onChooseSuggestion(priority: Priority): void {
-		void this.importNote(priority);
+	private selectPriority(priority: Priority, focusButton: boolean): void {
+		this.selectedPriority = priority;
+		applySingleSelectionPressedState(this.priorityButtons, priority, focusButton);
+	}
+
+	private confirmSelection(): void {
+		this.close();
+		void this.importNote(this.selectedPriority);
 	}
 
 	private async importNote(priority: Priority): Promise<void> {

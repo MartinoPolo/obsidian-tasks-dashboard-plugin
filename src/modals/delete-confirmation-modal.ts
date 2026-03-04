@@ -1,6 +1,8 @@
 import { App, Modal } from 'obsidian';
 import {
-	createPromptShortcutButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
 	registerEnterShortcut,
 	setupPromptModal
 } from './modal-helpers';
@@ -16,6 +18,7 @@ export class DeleteConfirmationModal extends Modal {
 	private readonly onRemoveWorktreeChange?: (checked: boolean) => void;
 	private readonly onResult: (result: DeleteConfirmationResult) => void;
 	private removeWorktree = false;
+	private hasResolved = false;
 
 	constructor(
 		app: App,
@@ -41,30 +44,27 @@ export class DeleteConfirmationModal extends Modal {
 			this.renderRemoveWorktreeCheckbox();
 		}
 
-		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
-		void createPromptShortcutButton(
+		const btnContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptCancelButton(btnContainer, () => {
+			this.cancelDelete();
+		});
+		void createPromptConfirmButton(
 			btnContainer,
-			'Cancel',
-			'Esc',
-			'tdc-prompt-btn-cancel',
-			() => {
-				this.close();
-			}
-		);
-		void createPromptShortcutButton(
-			btnContainer,
-			'Delete',
-			'↵',
-			'tdc-prompt-btn-delete',
 			() => {
 				this.confirmDelete();
-			}
+			},
+			'Delete',
+			'tdc-prompt-btn-delete'
 		);
 
 		this.registerEnterKeyConfirmation();
 	}
 
 	onClose() {
+		if (!this.hasResolved) {
+			this.hasResolved = true;
+			this.onResult({ confirmed: false, removeWorktree: this.removeWorktree });
+		}
 		this.contentEl.empty();
 	}
 
@@ -93,7 +93,22 @@ export class DeleteConfirmationModal extends Modal {
 		});
 	}
 
+	private cancelDelete() {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
+		this.onResult({ confirmed: false, removeWorktree: this.removeWorktree });
+		this.close();
+	}
+
 	private confirmDelete() {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
 		this.close();
 		this.onResult({ confirmed: true, removeWorktree: this.removeWorktree });
 	}

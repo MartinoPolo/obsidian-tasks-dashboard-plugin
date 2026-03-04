@@ -4,7 +4,9 @@ import type { DashboardConfig, GitHubIssueMetadata } from '../types';
 import {
 	createConfirmCancelButtons,
 	createInputWithEnterHandler,
-	createPromptShortcutButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
 	setupPromptModal
 } from './modal-helpers';
 import { GitHubSearchModal } from './GitHubSearchModal';
@@ -428,17 +430,17 @@ export class GitHubLinksModal extends Modal {
 		setupPromptModal(this, 'Edit GitHub Links');
 		this.renderLinks();
 
-		const btnContainer = this.contentEl.createDiv({ cls: 'tdc-prompt-buttons' });
-		void createPromptShortcutButton(btnContainer, 'Confirm', '↵', 'tdc-prompt-btn-confirm', () => {
+		const btnContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptConfirmButton(btnContainer, () => {
 			if (this.hasChanges) {
 				new Notice('GitHub links updated.');
 			}
 			this.close();
 		});
 
-		void createPromptShortcutButton(btnContainer, 'Close', 'Esc', 'tdc-prompt-btn-cancel', () => {
+		void createPromptCancelButton(btnContainer, () => {
 			this.close();
-		});
+		}, 'Close');
 	}
 
 	onClose() {

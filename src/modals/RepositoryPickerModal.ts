@@ -12,11 +12,19 @@ const PUBLIC_BADGE_CLASS = 'tdc-repo-badge-public';
 export class RepositoryPickerModal extends FuzzySuggestModal<GitHubRepository> {
 	private readonly repositories: GitHubRepository[];
 	private readonly onSelectRepository: OnSelectRepository;
+	private readonly onCancelRepositorySelection: (() => void) | undefined;
+	private hasResolved = false;
 
-	constructor(app: App, repositories: GitHubRepository[], onSelect: OnSelectRepository) {
+	constructor(
+		app: App,
+		repositories: GitHubRepository[],
+		onSelect: OnSelectRepository,
+		onCancel?: () => void
+	) {
 		super(app);
 		this.repositories = repositories;
 		this.onSelectRepository = onSelect;
+		this.onCancelRepositorySelection = onCancel;
 		this.setPlaceholder(SEARCH_PLACEHOLDER);
 		this.modalEl.addClass('tdc-repo-picker-modal');
 	}
@@ -39,7 +47,17 @@ export class RepositoryPickerModal extends FuzzySuggestModal<GitHubRepository> {
 	}
 
 	onChooseItem(repository: GitHubRepository): void {
+		this.hasResolved = true;
 		this.onSelectRepository(repository);
+	}
+
+	override onClose(): void {
+		super.onClose();
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.onCancelRepositorySelection?.();
 	}
 
 	private createVisibilityBadgeAttributes(repository: GitHubRepository): {
