@@ -1,4 +1,10 @@
-import { GitHubAuth, GitHubIssueMetadata, GitHubRateLimit, GitHubRepoMetadata, GitHubRepository } from '../types';
+import {
+	GitHubAuth,
+	GitHubIssueMetadata,
+	GitHubRateLimit,
+	GitHubRepoMetadata,
+	GitHubRepository
+} from '../types';
 import { ParsedGitHubUrl } from '../utils/github-url';
 
 export interface CacheEntry<T> {
@@ -16,7 +22,11 @@ export type GitHubIssueState = GitHubIssueMetadata['state'];
 export interface GitHubServiceInstance {
 	setAuth: (auth: GitHubAuth) => void;
 	validateToken: () => Promise<{ valid: boolean; username?: string; error?: string }>;
-	getIssue: (owner: string, repo: string, number: number) => Promise<GitHubIssueMetadata | undefined>;
+	getIssue: (
+		owner: string,
+		repo: string,
+		number: number
+	) => Promise<GitHubIssueMetadata | undefined>;
 	getPullRequest: (
 		owner: string,
 		repo: string,

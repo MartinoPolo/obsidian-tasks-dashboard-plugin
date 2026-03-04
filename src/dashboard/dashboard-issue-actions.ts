@@ -15,10 +15,7 @@ import { RenameIssueModal } from '../modals/rename-issue-modal';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import type { PlatformService } from '../utils/platform';
 import { getButtonVisibility } from './header-actions';
-import {
-	getOpenableGitHubLinks,
-	openGitHubLinkChooser
-} from './dashboard-github-link-actions';
+import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
 
@@ -77,12 +74,12 @@ export const buildIssueActionDescriptors = (options: {
 	platformService: PlatformService;
 	applyIssueSurfaceStyles: (element: HTMLElement, mainColor: string | undefined) => void;
 }): Map<IssueActionKey, IssueActionDescriptor> => {
-	const { plugin, container, params, dashboard, platformService, applyIssueSurfaceStyles } = options;
+	const { plugin, container, params, dashboard, platformService, applyIssueSurfaceStyles } =
+		options;
 	const issueFolderKey = `${dashboard.id}:${params.issue}`;
 	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
 	const hasIssueFolder = isNonEmptyString(issueFolder);
-	const hasIssueGitFolder =
-		hasIssueFolder && platformService.isGitRepositoryFolder(issueFolder);
+	const hasIssueGitFolder = hasIssueFolder && platformService.isGitRepositoryFolder(issueFolder);
 	const hasIssueWorktreeScope = hasIssueGitFolder;
 	const visibility = getButtonVisibility(dashboard);
 	const isArchived = /\/Issues\/Archive(\/|$)/i.test(params.path);
@@ -349,19 +346,19 @@ export const buildIssueActionDescriptors = (options: {
 			void plugin.issueManager
 				.hasAssociatedWorktree(dashboard, params.issue)
 				.then((hasAssociatedWorktree) => {
-						if (!hasAssociatedWorktree) {
-							void plugin.issueManager.archiveIssue(dashboard, params.issue);
-							return;
-						}
+					if (!hasAssociatedWorktree) {
+						void plugin.issueManager.archiveIssue(dashboard, params.issue);
+						return;
+					}
 
 					const modal = new ArchiveConfirmationModal(
 						plugin.app,
 						params.name,
 						(result) => {
 							if (result.removeWorktree) {
-									void plugin.issueManager.removeWorktree(dashboard, params.issue, {
-										skipScriptConfirmation: true
-									});
+								void plugin.issueManager.removeWorktree(dashboard, params.issue, {
+									skipScriptConfirmation: true
+								});
 							}
 							void plugin.issueManager.archiveIssue(dashboard, params.issue);
 						}
@@ -399,9 +396,9 @@ export const buildIssueActionDescriptors = (options: {
 								return;
 							}
 							if (result.removeWorktree) {
-									void plugin.issueManager.removeWorktree(dashboard, params.issue, {
-										skipScriptConfirmation: true
-									});
+								void plugin.issueManager.removeWorktree(dashboard, params.issue, {
+									skipScriptConfirmation: true
+								});
 							}
 							void plugin.issueManager.deleteIssue(dashboard, params.issue);
 						}

@@ -350,7 +350,8 @@ export class GitHubLinksModal extends Modal {
 		url: string | undefined
 	): void {
 		const row = list.createDiv({ cls: 'tdc-gh-links-row' });
-		const labelText = url === undefined ? `${title}: Not assigned` : `${title}: ${formatLinkLabel(url)}`;
+		const labelText =
+			url === undefined ? `${title}: Not assigned` : `${title}: ${formatLinkLabel(url)}`;
 
 		if (url === undefined) {
 			row.createDiv({ cls: 'tdc-gh-links-label', text: labelText });
@@ -416,7 +417,9 @@ export class GitHubLinksModal extends Modal {
 		this.renderTypedLinkRow(list, 'pr', 'Pull Request', assigned.pr);
 		this.renderTypedLinkRow(list, 'repository', 'Repository', assigned.repository);
 
-		const unknownLinks = this.githubLinks.filter((link) => getGitHubLinkType(link) === undefined);
+		const unknownLinks = this.githubLinks.filter(
+			(link) => getGitHubLinkType(link) === undefined
+		);
 		if (unknownLinks.length > 0) {
 			this.contentEl.createEl('h4', { text: 'Other links' });
 			const unknownList = this.contentEl.createDiv({ cls: 'tdc-gh-links-list' });
@@ -438,9 +441,13 @@ export class GitHubLinksModal extends Modal {
 			this.close();
 		});
 
-		void createPromptCancelButton(btnContainer, () => {
-			this.close();
-		}, 'Close');
+		void createPromptCancelButton(
+			btnContainer,
+			() => {
+				this.close();
+			},
+			'Close'
+		);
 	}
 
 	onClose() {

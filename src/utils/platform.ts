@@ -51,8 +51,7 @@ export interface PlatformService {
 export function createPlatformService(): PlatformService {
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\setup-worktree.sh';
-	const WORKTREE_REMOVE_SCRIPT =
-		'C:\\_MP_projects\\mxp-claude-code\\scripts\\remove-worktree.sh';
+	const WORKTREE_REMOVE_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\remove-worktree.sh';
 	const WINDOWS_GIT_BASH_CANDIDATES = [
 		'C:\\_MP_apps\\Git\\bin\\bash.exe',
 		'C:\\Program Files\\Git\\bin\\bash.exe',
@@ -388,7 +387,7 @@ export function createPlatformService(): PlatformService {
 						'-l',
 						'-c',
 						buildInteractiveWindowsScriptCommand(scriptPath, args)
-				  ]
+					]
 				: ['-i', '-l', '-c', buildInteractiveWindowsScriptCommand(scriptPath, args)];
 			const windowsTerminalArgs = ['-w', '0', 'nt', '-d', workingDirectory];
 			if (terminalTabColor !== undefined && isValidHexColor(terminalTabColor)) {
@@ -404,8 +403,8 @@ export function createPlatformService(): PlatformService {
 		}
 
 		const childProcess = spawn('bash', [scriptPath, ...args], {
-				shell: false,
-				cwd: workingDirectory
+			shell: false,
+			cwd: workingDirectory
 		});
 		notifyOnSpawnError(childProcess, errorMessage);
 		return true;

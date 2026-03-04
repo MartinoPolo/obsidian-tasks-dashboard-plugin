@@ -66,7 +66,7 @@ export function createGitHubCardRefreshRenderer(
 			issueId !== undefined && dashboard !== undefined
 				? (): void => {
 						void plugin.issueManager.removeGitHubLink(dashboard, issueId, githubUrl);
-				  }
+					}
 				: undefined;
 		const isRepo = isGitHubRepoUrl(githubUrl);
 

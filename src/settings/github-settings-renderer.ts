@@ -41,13 +41,8 @@ export interface RenderGitHubSettingsOptions {
 }
 
 export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void {
-	const {
-		containerEl,
-		settings,
-		githubService,
-		saveSettingsAndRefreshDashboard,
-		display
-	} = options;
+	const { containerEl, settings, githubService, saveSettingsAndRefreshDashboard, display } =
+		options;
 	containerEl.createEl('h3', { text: 'GitHub Integration' });
 
 	const authSetting = new Setting(containerEl)
@@ -66,7 +61,10 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 
 		const resetDate = new Date(currentRateLimit.resetTimestamp * 1000);
 		const now = new Date();
-		const minutesUntilReset = Math.max(0, Math.ceil((resetDate.getTime() - now.getTime()) / 60000));
+		const minutesUntilReset = Math.max(
+			0,
+			Math.ceil((resetDate.getTime() - now.getTime()) / 60000)
+		);
 
 		const isLow = currentRateLimit.remaining < currentRateLimit.limit * 0.1;
 		const statusClass = isLow ? 'tdc-rate-limit-low' : 'tdc-rate-limit-ok';
@@ -98,7 +96,10 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 			} else {
 				authStatus.createSpan({
 					cls: 'tdc-auth-error',
-					text: result.error !== undefined && result.error !== '' ? result.error : 'Authentication failed'
+					text:
+						result.error !== undefined && result.error !== ''
+							? result.error
+							: 'Authentication failed'
 				});
 			}
 		} else {
@@ -135,8 +136,7 @@ export function renderGitHubSettings(options: RenderGitHubSettingsOptions): void
 		tokenSetting.addText((text) => {
 			text.inputEl.type = 'password';
 			text.inputEl.addClass('tdc-token-input');
-			text
-				.setPlaceholder('ghp_xxxxxxxxxxxx')
+			text.setPlaceholder('ghp_xxxxxxxxxxxx')
 				.setValue(settings.githubAuth.token ?? '')
 				.onChange((value) => {
 					settings.githubAuth.token = value;
@@ -210,7 +210,13 @@ export function renderRepositoryPicker(
 				.setButtonText(currentRepo !== '' ? 'Change' : 'Select Repository')
 				.setCta()
 				.onClick(() => {
-					void openRepositoryPicker({ app, dashboard, githubService, saveSettings, display });
+					void openRepositoryPicker({
+						app,
+						dashboard,
+						githubService,
+						saveSettings,
+						display
+					});
 				})
 		);
 

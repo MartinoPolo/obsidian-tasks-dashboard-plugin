@@ -2,15 +2,9 @@ import { Notice } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import { createActionButton, ICONS } from './header-actions';
-import {
-	DEFAULT_ROW1_ACTIONS,
-	ISSUE_ACTION_ORDER
-} from './dashboard-renderer-constants';
+import { DEFAULT_ROW1_ACTIONS, ISSUE_ACTION_ORDER } from './dashboard-renderer-constants';
 import { dedupeIssueActionKeys, saveIssueActionLayout } from './dashboard-renderer-layout';
-import type {
-	IssueActionDescriptor,
-	RuntimeIssueActionLayout
-} from './dashboard-renderer-types';
+import type { IssueActionDescriptor, RuntimeIssueActionLayout } from './dashboard-renderer-types';
 
 interface OverflowMenuPanelOptions {
 	plugin: TasksDashboardPlugin;

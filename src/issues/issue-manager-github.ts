@@ -245,8 +245,7 @@ export function removeGitHubLinkFromIssueContent(content: string, githubUrl: str
 		const afterFrontmatter = content.slice(frontmatterCloseIndex);
 
 		const entryPattern = new RegExp(
-			`\\n  - url: "${escapeForRegExp(githubUrl)}"` +
-				`(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
+			`\\n  - url: "${escapeForRegExp(githubUrl)}"` + `(?:\\n    [a-zA-Z][a-zA-Z_]*:.*)*`,
 			'g'
 		);
 		let cleanedFrontmatter = frontmatter.replace(entryPattern, '');
@@ -269,10 +268,7 @@ export function removeGitHubLinkFromIssueContent(content: string, githubUrl: str
 	return content.replace(bodyLinkPattern, '');
 }
 
-export function removeGitHubLinkFromDashboardIssueBlock(
-	block: string,
-	githubUrl: string
-): string {
+export function removeGitHubLinkFromDashboardIssueBlock(block: string, githubUrl: string): string {
 	const escapedUrl = escapeForRegExp(githubUrl);
 	return block.replace(new RegExp(`\\ngithub_link: ${escapedUrl}`, 'g'), '');
 }

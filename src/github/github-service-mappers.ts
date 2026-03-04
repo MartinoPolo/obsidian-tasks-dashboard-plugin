@@ -1,8 +1,5 @@
 import { GitHubIssueMetadata, GitHubLabel } from '../types';
-import {
-	GitHubIssueApiResponse,
-	GitHubPullRequestApiResponse
-} from './github-api-types';
+import { GitHubIssueApiResponse, GitHubPullRequestApiResponse } from './github-api-types';
 import { DEFAULT_LABEL_COLOR } from './github-service-constants';
 import { GitHubIssueState } from './github-service-types';
 import { parseRepoFromUrl } from './github-service-search-helpers';
@@ -20,7 +17,8 @@ export const mapLabels = (
 		}
 		return {
 			name: label.name,
-			color: label.color !== undefined && label.color !== '' ? label.color : DEFAULT_LABEL_COLOR
+			color:
+				label.color !== undefined && label.color !== '' ? label.color : DEFAULT_LABEL_COLOR
 		};
 	});
 };

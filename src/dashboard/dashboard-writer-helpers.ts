@@ -1,6 +1,10 @@
 import { TFile } from 'obsidian';
 import { DashboardConfig, Issue, Priority, PRIORITY_ORDER } from '../types';
-import { buildIssueMarkerEnd, buildIssueMarkerStart, DASHBOARD_NOTES_MARKER } from './dashboard-markers';
+import {
+	buildIssueMarkerEnd,
+	buildIssueMarkerStart,
+	DASHBOARD_NOTES_MARKER
+} from './dashboard-markers';
 import {
 	ARCHIVE_HEADER,
 	FORBIDDEN_PROTO_KEYS,
@@ -221,7 +225,10 @@ export const toIssueBlockParams = (issue: Issue, dashboard: DashboardConfig): Is
 	};
 };
 
-export const sortIssueFilesByPriorityAndCreatedDate = (a: ParsedIssueFile, b: ParsedIssueFile): number => {
+export const sortIssueFilesByPriorityAndCreatedDate = (
+	a: ParsedIssueFile,
+	b: ParsedIssueFile
+): number => {
 	const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 	if (priorityDiff !== 0) {
 		return priorityDiff;
@@ -244,7 +251,8 @@ export const extractAndRemoveIssueBlock = (
 	}
 
 	const block = content.substring(startIndex, endIndex + issueEndMarker.length);
-	let cleanedContent = content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
+	let cleanedContent =
+		content.slice(0, startIndex) + content.slice(endIndex + issueEndMarker.length);
 
 	const separatorAfter = cleanedContent.indexOf(SECTION_SEPARATOR, startIndex);
 	if (separatorAfter !== -1 && separatorAfter < startIndex + 10) {

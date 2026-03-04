@@ -16,7 +16,10 @@ import {
 } from './dashboard-writer-helpers';
 import { ParsedIssueFile } from './dashboard-writer-types';
 
-export const readAndParseIssueFiles = async (app: App, files: TFile[]): Promise<ParsedIssueFile[]> => {
+export const readAndParseIssueFiles = async (
+	app: App,
+	files: TFile[]
+): Promise<ParsedIssueFile[]> => {
 	const parsedIssues: ParsedIssueFile[] = [];
 
 	for (const file of files) {
@@ -66,8 +69,7 @@ ${buildSortBlock(dashboard.id)}`;
 
 	for (const issue of activeIssues) {
 		newContent +=
-			buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, false, dashboard)) +
-			'\n';
+			buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, false, dashboard)) + '\n';
 	}
 
 	const notesSection = notesContent !== '' ? `\n${notesContent}\n\n` : '\n\n';
@@ -80,8 +82,7 @@ ${MARKERS.ARCHIVE_START}
 
 	for (const issue of archivedIssues) {
 		newContent +=
-			buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, true, dashboard)) +
-			'\n';
+			buildIssueMarkdownBlock(parsedIssueFileToBlockParams(issue, true, dashboard)) + '\n';
 	}
 
 	newContent += `${MARKERS.ARCHIVE_END}

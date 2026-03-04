@@ -6,7 +6,10 @@ export interface GitHubCacheStore {
 	delete: (key: string) => void;
 	clear: () => void;
 	getOrLoad: <T>(key: string, load: () => Promise<T>) => Promise<T>;
-	getOrLoadOptional: <T>(key: string, load: () => Promise<T | undefined>) => Promise<T | undefined>;
+	getOrLoadOptional: <T>(
+		key: string,
+		load: () => Promise<T | undefined>
+	) => Promise<T | undefined>;
 }
 
 export function createGitHubCacheStore(ttlMs: number, maxSize: number): GitHubCacheStore {

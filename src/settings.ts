@@ -26,10 +26,7 @@ import {
 	resolveCollapsedDashboardSettingsMap,
 	withMarkdownExtension
 } from './settings/settings-helpers';
-import {
-	renderGitHubSettings,
-	renderRepositoryPicker
-} from './settings/github-settings-renderer';
+import { renderGitHubSettings, renderRepositoryPicker } from './settings/github-settings-renderer';
 
 function createVisibilityToggle(
 	container: HTMLElement,
@@ -103,7 +100,8 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 					.setPlaceholder('C:\\_MP_apps\\Git\\bin\\bash.exe')
 					.setValue(this.plugin.settings.worktreeBashPath ?? '')
 					.onChange((value) => {
-						this.plugin.settings.worktreeBashPath = value.trim() !== '' ? value.trim() : undefined;
+						this.plugin.settings.worktreeBashPath =
+							value.trim() !== '' ? value.trim() : undefined;
 						this.saveSettings();
 					})
 			);
@@ -305,7 +303,9 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		const updateDashboardButton = (): void => {
 			const currentFilename = getDashboardFilename(dashboard);
 			const currentPath =
-				dashboard.rootPath !== '' ? buildVaultPath(dashboard.rootPath, currentFilename) : '';
+				dashboard.rootPath !== ''
+					? buildVaultPath(dashboard.rootPath, currentFilename)
+					: '';
 			const exists =
 				currentPath !== '' && this.app.vault.getAbstractFileByPath(currentPath) !== null;
 

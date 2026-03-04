@@ -54,7 +54,9 @@ export const rebuildActiveSectionWithSortedBlocks = async (
 	const activeStart = activeStartIndex + MARKERS.ACTIVE_START.length;
 	const beforeActive = content.slice(0, activeStart);
 	const afterActive = content.slice(activeEndIndex);
-	const cleanedBlocks = sortedIssueBlocks.map((block) => removeLegacyIssueSeparator(block).trim());
+	const cleanedBlocks = sortedIssueBlocks.map((block) =>
+		removeLegacyIssueSeparator(block).trim()
+	);
 	const blocksSection = cleanedBlocks.length > 0 ? `${cleanedBlocks.join('\n')}\n` : '';
 	const newActiveSection = `\n${buildSortBlock(dashboard.id)}${blocksSection}`;
 
@@ -68,7 +70,9 @@ export const sortByDateField = async (
 	getTimestamp: (issue: ParsedDashboardIssue) => number | Promise<number>
 ): Promise<string[]> => {
 	const { content, issues } = dashboardData;
-	const timestamps = await Promise.all(issues.map((issue) => Promise.resolve(getTimestamp(issue))));
+	const timestamps = await Promise.all(
+		issues.map((issue) => Promise.resolve(getTimestamp(issue)))
+	);
 	const issueTimestamps = new Map<string, number>();
 
 	for (const [index, issue] of issues.entries()) {

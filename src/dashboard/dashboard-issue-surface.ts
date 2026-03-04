@@ -1,8 +1,4 @@
-import {
-	deriveIssueSurfaceColors,
-	getIsDarkTheme,
-	sanitizeHexColor
-} from '../utils/color';
+import { deriveIssueSurfaceColors, getIsDarkTheme, sanitizeHexColor } from '../utils/color';
 import {
 	ISSUE_CONTAINER_COLOR_VARIABLES,
 	ISSUE_SURFACE_COLOR_FALLBACK

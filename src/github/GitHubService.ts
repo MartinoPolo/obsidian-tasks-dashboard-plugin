@@ -1,8 +1,4 @@
-import {
-	GitHubIssueMetadata,
-	GitHubRepoMetadata,
-	GitHubRepository
-} from '../types';
+import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubRepository } from '../types';
 import { parseGitHubUrl } from '../utils/github-url';
 import {
 	GitHubIssueApiResponse,
@@ -22,11 +18,7 @@ import {
 	USER_REPOS_PER_PAGE
 } from './github-service-constants';
 import { createGitHubCacheStore } from './github-service-cache';
-import {
-	mapIssueResponse,
-	mapPullRequestResponse,
-	mapSearchItems
-} from './github-service-mappers';
+import { mapIssueResponse, mapPullRequestResponse, mapSearchItems } from './github-service-mappers';
 import { createGitHubRequestClient } from './github-service-request';
 import {
 	buildIssueSearchEndpoint,

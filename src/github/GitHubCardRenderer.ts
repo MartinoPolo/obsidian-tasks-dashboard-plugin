@@ -1,9 +1,4 @@
-import {
-	GitHubIssueMetadata,
-	GitHubRepoMetadata,
-	GitHubDisplayMode,
-	GitHubLabel
-} from '../types';
+import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubDisplayMode, GitHubLabel } from '../types';
 import { parseGitHubUrlInfo } from '../utils/github';
 import {
 	getStateClass,

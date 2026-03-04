@@ -3,12 +3,12 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
 import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
 import {
-    createPromptBackButton,
-    createPromptButtonsContainer,
-    createPromptCancelButton,
-    createPromptConfirmButton,
-    registerMouseBackShortcut,
-    setupPromptModal
+	createPromptBackButton,
+	createPromptButtonsContainer,
+	createPromptCancelButton,
+	createPromptConfirmButton,
+	registerMouseBackShortcut,
+	setupPromptModal
 } from './modal-helpers';
 import { handleListNavigationKeydown } from './modal-keyboard-helpers';
 
@@ -133,9 +133,13 @@ export class GitHubSearchModal extends Modal {
 			'tdc-prompt-btn-secondary'
 		);
 
-		void createPromptConfirmButton(btnContainer, () => {
-			this.selectCurrent();
-		}, 'Select');
+		void createPromptConfirmButton(
+			btnContainer,
+			() => {
+				this.selectCurrent();
+			},
+			'Select'
+		);
 
 		this.setupEventListeners();
 		this.searchInput.focus();
@@ -193,8 +197,8 @@ export class GitHubSearchModal extends Modal {
 			onBack:
 				this.showBackButton && this.onBack !== undefined
 					? () => {
-						this.goBack();
-					}
+							this.goBack();
+						}
 					: undefined,
 			onClose: () => {
 				this.skipSelection();
@@ -483,11 +487,7 @@ export class GitHubSearchModal extends Modal {
 			});
 		}
 
-		if (
-			dashboardRepo !== undefined &&
-			dashboardRepo !== '' &&
-			dashboardRepo !== issueRepo
-		) {
+		if (dashboardRepo !== undefined && dashboardRepo !== '' && dashboardRepo !== issueRepo) {
 			options.push({
 				value: 'linked-dashboard',
 				label: `Dashboard linked repository (${dashboardRepo})`

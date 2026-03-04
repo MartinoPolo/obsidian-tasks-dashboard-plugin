@@ -4,10 +4,7 @@ import {
 	type DashboardIssueActionLayout,
 	type IssueActionKey
 } from '../types';
-import {
-	DEFAULT_ROW1_ACTIONS,
-	ISSUE_ACTION_ORDER
-} from './dashboard-renderer-constants';
+import { DEFAULT_ROW1_ACTIONS, ISSUE_ACTION_ORDER } from './dashboard-renderer-constants';
 import { RuntimeIssueActionLayout } from './dashboard-renderer-types';
 
 const getDefaultRow2Actions = (): IssueActionKey[] => {

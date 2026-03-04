@@ -1,11 +1,6 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import {
-	Priority,
-	IssueProgress,
-	DashboardConfig,
-	type IssueActionKey
-} from '../types';
+import { Priority, IssueProgress, DashboardConfig, type IssueActionKey } from '../types';
 import { createPlatformService } from '../utils/platform';
 import { ICONS, createActionButton } from './header-actions';
 import { renderSortControls } from './sort-controls';
@@ -32,7 +27,6 @@ export interface DashboardRendererInstance {
 		ctx: MarkdownPostProcessorContext
 	) => Promise<void>;
 }
-
 
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const { renderGitHubCardWithRefresh } = createGitHubCardRefreshRenderer(plugin);

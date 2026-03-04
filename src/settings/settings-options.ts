@@ -1,8 +1,4 @@
-import {
-	GitHubAuthMethod,
-	GitHubDisplayMode,
-	ProgressDisplayMode
-} from '../types';
+import { GitHubAuthMethod, GitHubDisplayMode, ProgressDisplayMode } from '../types';
 
 export type VisibilityToggleKey =
 	| 'showGitHubButtons'
