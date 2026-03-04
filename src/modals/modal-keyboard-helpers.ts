@@ -33,6 +33,7 @@ export function handleListNavigationKeydown(
 
 	if (event.key === 'Backspace' && handlers.onBack !== undefined) {
 		event.preventDefault();
+		event.stopPropagation();
 		handlers.onBack();
 		return;
 	}

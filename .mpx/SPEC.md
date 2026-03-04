@@ -188,12 +188,12 @@
 
 ### Page Focus
 
-- [ ] Restrict smart cursor repositioning (jump to end of `## Tasks`) to note-entry events only; when the user directly clicks inside an already-open issue note, preserve the clicked cursor position and do not re-run auto-focus repositioning.
+- [x] Restrict smart cursor repositioning (jump to end of `## Tasks`) to note-entry events only; when the user directly clicks inside an already-open issue note, preserve the clicked cursor position and do not re-run auto-focus repositioning.
 
 ### Event Propagation
 
-- [ ] Consume mouse back-button navigation events inside multi-step issue creation modals so handled back actions (for example step 2 → step 1) never propagate to the dashboard or Obsidian-level page navigation.
-- [ ] While typing in GitHub search input fields (especially issue-creation linking step), consume Backspace so text editing does not trigger parent/browser-like back navigation.
+- [x] Consume mouse back-button navigation events inside multi-step issue creation modals so handled back actions (for example step 2 → step 1) never propagate to the dashboard or Obsidian-level page navigation.
+- [x] While typing in GitHub search input fields (especially issue-creation linking step), consume Backspace so text editing does not trigger parent/browser-like back navigation.
 
 ### Worktrees
 
@@ -264,4 +264,4 @@
 
 ### Tooling
 
-- [ ] Add and configure `eslint-plugin-obsidianmd` so local linting includes Obsidian pre-publish style/check parity where applicable.
+- [x] Add and configure `eslint-plugin-obsidianmd` so local linting includes Obsidian pre-publish style/check parity where applicable.

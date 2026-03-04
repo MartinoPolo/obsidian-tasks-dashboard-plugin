@@ -1,6 +1,6 @@
 # Phase 28: ESLint ObsidianMD Integration - Checklist
 
-**Status:** Planned
+**Status:** Completed
 **Dependencies:** Existing ESLint config/tooling scripts, package-manager lockfile consistency
 
 ## Objective
@@ -14,25 +14,25 @@ Add `eslint-plugin-obsidianmd` to local linting so checks align with Obsidian pr
 ## Tasks
 
 ### A. Dependency + Config
-- [ ] Add `eslint-plugin-obsidianmd` dependency to project tooling.
-- [ ] Update ESLint configuration to load and apply ObsidianMD plugin rules.
-- [ ] Scope/override rules where needed to avoid non-actionable noise.
+- [x] Add `eslint-plugin-obsidianmd` dependency to project tooling.
+- [x] Update ESLint configuration to load and apply ObsidianMD plugin rules.
+- [x] Scope/override rules where needed to avoid non-actionable noise.
 
 ### B. Script and Workflow Alignment
-- [ ] Ensure existing lint scripts run with ObsidianMD plugin active.
-- [ ] Confirm lint output remains actionable for local development workflow.
-- [ ] Document any required lint-command expectations in relevant `.mpx/` phase notes if needed.
+- [x] Ensure existing lint scripts run with ObsidianMD plugin active.
+- [x] Confirm lint output remains actionable for local development workflow.
+- [x] Document any required lint-command expectations in relevant `.mpx/` phase notes if needed.
 
 ## Validation
-- [ ] Verify `pnpm lint` runs with ObsidianMD plugin checks enabled.
-- [ ] Verify no plugin misconfiguration errors in lint/typecheck/build pipeline.
-- [ ] `pnpm typecheck`
-- [ ] `pnpm lint`
-- [ ] `pnpm build`
+- [x] Verify `pnpm lint` runs with ObsidianMD plugin checks enabled.
+- [x] Verify no plugin misconfiguration errors in lint/typecheck/build pipeline.
+- [x] `pnpm typecheck`
+- [x] `pnpm lint`
+- [x] `pnpm build`
 
 ## Completion Criteria
-- [ ] ObsidianMD lint parity is integrated into local lint workflow.
-- [ ] Tooling configuration is stable and maintainable.
+- [x] ObsidianMD lint parity is integrated into local lint workflow.
+- [x] Tooling configuration is stable and maintainable.
 
 ---
-Progress: 0/13 tasks complete
+Progress: 13/13 tasks complete

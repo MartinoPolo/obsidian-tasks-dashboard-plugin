@@ -187,6 +187,11 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private handleKeydown(e: KeyboardEvent): void {
+		if (e.key === 'Backspace') {
+			e.stopPropagation();
+			return;
+		}
+
 		handleListNavigationKeydown(e, {
 			onNext: () => {
 				this.moveSelection(1);
