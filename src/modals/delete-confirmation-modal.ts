@@ -31,7 +31,7 @@ export class DeleteConfirmationModal extends Modal {
 		super(app);
 		this.issueName = issueName;
 		this.hasAssociatedWorktree = hasAssociatedWorktree;
-		this.removeWorktree = initialRemoveWorktree;
+		this.removeWorktree = hasAssociatedWorktree ? initialRemoveWorktree : false;
 		this.onRemoveWorktreeChange = onRemoveWorktreeChange;
 		this.onResult = onResult;
 	}

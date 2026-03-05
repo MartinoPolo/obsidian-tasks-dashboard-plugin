@@ -9,6 +9,7 @@ import {
 	GitHubSearchApiResponse,
 	GitHubUserApiResponse
 } from './github-api-types';
+import { createGitHubCacheStore } from './github-service-cache';
 import {
 	CACHE_TTL_MS,
 	FALLBACK_SEARCH_PER_PAGE,
@@ -17,7 +18,6 @@ import {
 	SEARCH_RESULTS_PER_PAGE,
 	USER_REPOS_PER_PAGE
 } from './github-service-constants';
-import { createGitHubCacheStore } from './github-service-cache';
 import { mapIssueResponse, mapPullRequestResponse, mapSearchItems } from './github-service-mappers';
 import { createGitHubRequestClient } from './github-service-request';
 import {
@@ -299,7 +299,8 @@ export function createGitHubService(): GitHubServiceInstance {
 			return createEmptySearchResult();
 		}
 
-		const cacheKey = `search:my-repos:${issueType}:${query}`;
+		const normalizedQuery = normalizeSearchQuery(query);
+		const cacheKey = `search:my-repos:${issueType}:${normalizedQuery}`;
 		const cached = cacheStore.get<GitHubSearchResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
@@ -315,35 +316,21 @@ export function createGitHubService(): GitHubServiceInstance {
 		);
 
 		const typeQualifier = issueType === 'issue' ? 'is:issue' : 'is:pr';
-		const textQuery = buildTextQuery(query);
-		let allItems: GitHubIssueMetadata[];
-		const searchQuery = `${textQuery} ${typeQualifier}`.trim();
-		const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
-			buildIssueSearchEndpoint(searchQuery, FALLBACK_SEARCH_PER_PAGE)
-		);
+		const textQuery = buildTextQuery(normalizedQuery);
+		let allItems: GitHubIssueMetadata[] = [];
 
-		if (data === undefined) {
-			return createEmptySearchResult();
-		}
-
-		allItems = mapSearchItems(data.items).filter((item) => {
-			return allowedRepositories.has(item.repository.toLowerCase());
-		});
-
-		if (allItems.length === 0 && repositories.length <= MAX_PARALLEL_ORG_QUERIES) {
-			const repoQualifiedQueries = repositories.map((repository) => {
-				return `repo:${repository.fullName} ${textQuery} ${typeQualifier}`.trim();
-			});
-
+		for (let index = 0; index < repositories.length; index += MAX_PARALLEL_ORG_QUERIES) {
+			const batchRepositories = repositories.slice(index, index + MAX_PARALLEL_ORG_QUERIES);
 			const repoSearchResults = await Promise.all(
-				repoQualifiedQueries.map((repoQuery) => {
+				batchRepositories.map((repository) => {
+					const repoQuery =
+						`repo:${repository.fullName} ${textQuery} ${typeQualifier}`.trim();
 					return requestClient.apiRequest<GitHubSearchApiResponse>(
 						buildIssueSearchEndpoint(repoQuery, SEARCH_RESULTS_PER_PAGE)
 					);
 				})
 			);
 
-			allItems = [];
 			for (const repoData of repoSearchResults) {
 				if (repoData === undefined) {
 					continue;
@@ -351,7 +338,12 @@ export function createGitHubService(): GitHubServiceInstance {
 				allItems.push(...mapSearchItems(repoData.items));
 			}
 
-			allItems = uniqueByUrl(allItems);
+			allItems = uniqueByUrl(allItems).filter((item) => {
+				return allowedRepositories.has(item.repository.toLowerCase());
+			});
+			if (allItems.length >= FALLBACK_SEARCH_PER_PAGE) {
+				break;
+			}
 		}
 
 		allItems.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -359,6 +351,40 @@ export function createGitHubService(): GitHubServiceInstance {
 		const result = { items: allItems, totalCount: allItems.length };
 		cacheStore.set(cacheKey, result);
 		return result;
+	};
+
+	const getAssignedIssues = async (
+		repo: string,
+		limit = SEARCH_RESULTS_PER_PAGE
+	): Promise<GitHubIssueMetadata[]> => {
+		if (!isAuthenticated() || repo.trim() === '') {
+			return [];
+		}
+
+		const username = await getAuthenticatedUser();
+		if (username === undefined || username.trim() === '') {
+			return [];
+		}
+
+		const cacheKey = `assigned:${repo}:${username}:${limit}`;
+		const cached = cacheStore.get<GitHubIssueMetadata[]>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const searchQuery = `repo:${repo} is:issue is:open assignee:${username}`;
+		const data = await requestClient.apiRequest<GitHubSearchApiResponse>(
+			buildIssueSearchEndpoint(searchQuery, limit)
+		);
+		if (data === undefined) {
+			return [];
+		}
+
+		const items = mapSearchItems(data.items)
+			.filter((item) => item.isPR === false)
+			.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+		cacheStore.set(cacheKey, items);
+		return items;
 	};
 
 	const searchIssuesInMyRepos = async (query: string): Promise<GitHubSearchResult> => {
@@ -378,6 +404,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		searchPullRequests,
 		searchIssuesInMyRepos,
 		searchPullRequestsInMyRepos,
+		getAssignedIssues,
 		getRecentIssues,
 		parseGitHubUrl,
 		getMetadataFromUrl,

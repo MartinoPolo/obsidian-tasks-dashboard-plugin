@@ -1,12 +1,9 @@
 import { Menu, Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import { FolderPathModal } from '../modals/FolderPathModal';
-import { GitHubLinksModal } from '../modals/github-links-modal';
-import { openWorktreeIssueCreationModal } from '../modals/issue-creation-modal';
 import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
 import type { DashboardConfig } from '../types';
 import { createPlatformService, type PlatformService } from '../utils/platform';
-import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 
 export const ICONS = {
 	trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
@@ -24,15 +21,17 @@ export const ICONS = {
 	rename: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>`,
 	palette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2Z"/></svg>`,
 	github: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`,
-	worktree: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8v8H8z"/><path d="M16 4v4h4"/></svg>`,
+	worktree: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21v-7"/><path d="m8 14 4-8 4 8z"/><path d="m6 14-2.5 4h17L18 14"/></svg>`,
 	priority: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10l-1.5 4L14 12H4z"/><path d="M4 4v16"/></svg>`,
 	folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`,
 	terminal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
 	vscode: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.15 2.587L18.21.21a1.494 1.494 0 0 0-1.705.29l-9.46 8.63-4.12-3.128a.999.999 0 0 0-1.276.057L.327 7.261A1 1 0 0 0 .326 8.74L3.899 12 .326 15.26a1 1 0 0 0 .001 1.479L1.65 17.94a.999.999 0 0 0 1.276.057l4.12-3.128 9.46 8.63a1.492 1.492 0 0 0 1.704.29l4.942-2.377A1.5 1.5 0 0 0 24 20.06V3.939a1.5 1.5 0 0 0-.85-1.352zm-5.146 14.861L10.826 12l7.178-5.448v10.896z"/></svg>`,
 	eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>`,
+	info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`,
 	eyeOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.76 10.76 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>`,
 	more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`,
-	fileInput: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h10"/><path d="M9 18l3-3-3-3"/></svg>`
+	fileInput: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M2 15h10"/><path d="M9 18l3-3-3-3"/></svg>`,
+	settings: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`
 };
 
 function parseInlineSvg(iconSvg: string): Element | undefined {
@@ -85,11 +84,9 @@ interface ActionButtonConfig {
 export function createActionButton(config: ActionButtonConfig): HTMLElement {
 	const button = config.container.createEl('button', {
 		cls: `tdc-btn ${config.cssClass}${config.faded ? ' tdc-btn-faded' : ''}`,
-		attr: { 'aria-label': config.ariaLabel }
+		attr: { 'aria-label': config.ariaLabel, title: '' }
 	});
-	if (config.labelText === undefined) {
-		button.setAttribute('title', config.ariaLabel);
-	}
+	button.removeAttribute('title');
 	const contextMenuHandler = config.onContextMenu;
 	const hasIcon = appendInlineSvgIcon(button, ICONS[config.iconKey]);
 	if (config.labelText !== undefined) {
@@ -212,139 +209,6 @@ function openDashboardGitHubRepoSettings(
 	menu.showAtPosition({ x: event.clientX, y: event.clientY });
 }
 
-interface IssueActionButtonsParams {
-	issueId: string;
-	githubLinks: string[];
-}
-
-/**
- * Render folder/terminal/vscode/github action buttons for an issue header row.
- */
-export function renderIssueActionButtons(
-	headerActions: HTMLElement,
-	params: IssueActionButtonsParams,
-	dashboard: DashboardConfig,
-	plugin: TasksDashboardPlugin
-): void {
-	const visibility = getButtonVisibility(dashboard);
-	const platformService = getPlatformService();
-	const issueFolderKey = dashboard.id + ':' + params.issueId;
-	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
-	const hasIssueFolder = isNonEmptyString(issueFolder);
-	const hasIssueGitFolder = isNonEmptyString(issueFolder)
-		? platformService.isGitRepositoryFolder(issueFolder)
-		: false;
-	const hasIssueWorktreeScope = hasIssueGitFolder;
-	const openIssueFolderModal = () => {
-		new FolderPathModal(plugin.app, plugin, dashboard, params.issueId).open();
-	};
-
-	if (visibility.folder) {
-		renderFolderDependentActionButton({
-			container: headerActions,
-			iconKey: 'folder',
-			cssClass: 'tdc-btn-folder',
-			ariaLabelWithFolder: 'Open issue folder',
-			ariaLabelWithoutFolder: 'Set issue folder',
-			folderPath: issueFolder,
-			onOpenFolder: (folderPath) => {
-				platformService.openInFileExplorer(folderPath);
-			},
-			onSelectFolder: openIssueFolderModal,
-			openFolderSelectorOnContextMenu: 'when-folder-exists'
-		});
-	}
-
-	if (visibility.terminal) {
-		renderFolderDependentActionButton({
-			container: headerActions,
-			iconKey: 'terminal',
-			cssClass: 'tdc-btn-terminal',
-			ariaLabelWithFolder: 'Open terminal',
-			ariaLabelWithoutFolder: 'Set issue folder',
-			folderPath: issueFolder,
-			onOpenFolder: (folderPath) => {
-				const issueColor = plugin.settings.issueColors[params.issueId];
-				platformService.openTerminal(folderPath, issueColor);
-			},
-			onSelectFolder: openIssueFolderModal,
-			openFolderSelectorOnContextMenu: 'always'
-		});
-	}
-
-	if (visibility.vscode) {
-		renderFolderDependentActionButton({
-			container: headerActions,
-			iconKey: 'vscode',
-			cssClass: 'tdc-btn-vscode',
-			ariaLabelWithFolder: 'Open in VS Code',
-			ariaLabelWithoutFolder: 'Set issue folder',
-			folderPath: issueFolder,
-			onOpenFolder: (folderPath) => {
-				platformService.openVSCode(folderPath);
-			},
-			onSelectFolder: openIssueFolderModal,
-			openFolderSelectorOnContextMenu: 'always'
-		});
-	}
-
-	if (visibility.github) {
-		const openableLinks = getOpenableGitHubLinks(params.githubLinks);
-		createActionButton({
-			container: headerActions,
-			iconKey: 'github',
-			cssClass: 'tdc-btn-github-quickopen',
-			ariaLabel: openableLinks.length > 0 ? 'Open or edit GitHub links' : 'Add GitHub link',
-			faded: openableLinks.length === 0,
-			onClick: (event) => {
-				if (openableLinks.length === 1) {
-					window.open(openableLinks[0], '_blank');
-					return;
-				}
-				if (openableLinks.length > 1) {
-					openGitHubLinkChooser(event, openableLinks);
-					return;
-				}
-				new GitHubLinksModal(plugin, dashboard, params.issueId, params.githubLinks).open();
-			},
-			onContextMenu: () => {
-				new GitHubLinksModal(plugin, dashboard, params.issueId, params.githubLinks).open();
-			}
-		});
-	}
-
-	if (visibility.github) {
-		createActionButton({
-			container: headerActions,
-			iconKey: 'worktree',
-			cssClass: 'tdc-btn-worktree',
-			ariaLabel: hasIssueWorktreeScope
-				? 'Add issue in worktree'
-				: 'Configure issue folder (git repository) for worktree',
-			faded: !hasIssueWorktreeScope,
-			onClick: () => {
-				if (!hasIssueWorktreeScope) {
-					if (!hasIssueFolder) {
-						openIssueFolderModal();
-						return;
-					}
-
-					new Notice('Issue folder must point to a Git repository to create worktrees.');
-					return;
-				}
-
-				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
-					worktreeOriginFolder: issueFolder,
-					sourceIssueGitHubLinks: params.githubLinks
-				});
-			},
-			onContextMenu: () => {
-				openIssueFolderModal();
-			}
-		});
-	}
-}
-
 /**
  * Render folder/terminal/vscode/github action buttons for the global sort controls bar.
  */
@@ -355,10 +219,6 @@ export function renderGlobalActionButtons(
 ): void {
 	const visibility = getButtonVisibility(dashboard);
 	const platformService = getPlatformService();
-	const hasProjectFolder = isNonEmptyString(dashboard.projectFolder);
-	const hasProjectGitFolder = isNonEmptyString(dashboard.projectFolder)
-		? platformService.isGitRepositoryFolder(dashboard.projectFolder)
-		: false;
 	const openProjectFolderModal = () => {
 		new FolderPathModal(plugin.app, plugin, dashboard).open();
 	};
@@ -432,37 +292,6 @@ export function renderGlobalActionButtons(
 			},
 			onContextMenu: (event) => {
 				openDashboardGitHubRepoSettings(event, plugin, dashboard);
-			}
-		});
-
-		createActionButton({
-			container,
-			iconKey: 'worktree',
-			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-worktree',
-			ariaLabel: hasProjectGitFolder
-				? 'Add issue in worktree'
-				: 'Set dashboard folder to a Git repository for worktree',
-			faded: !hasProjectGitFolder,
-			labelText: 'Add Worktree Issue',
-			onClick: () => {
-				if (!hasProjectGitFolder) {
-					if (!hasProjectFolder) {
-						openProjectFolderModal();
-						return;
-					}
-
-					new Notice(
-						'Dashboard folder must point to a Git repository to create worktrees.'
-					);
-					return;
-				}
-
-				openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
-					worktreeOriginFolder: dashboard.projectFolder
-				});
-			},
-			onContextMenu: () => {
-				openProjectFolderModal();
 			}
 		});
 	}

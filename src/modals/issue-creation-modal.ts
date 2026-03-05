@@ -4,6 +4,13 @@ import { getErrorMessage } from '../settings/settings-helpers';
 import { DashboardConfig, GitHubIssueMetadata, GitHubRepository, Priority } from '../types';
 import { getGitHubLinkType } from '../utils/github';
 import { parseGitHubRepoFullName, parseGitHubUrl } from '../utils/github-url';
+import {
+	ISSUE_COLOR_PICKER_COLUMNS,
+	collectUsedIssueColors,
+	getNextAvailableIssueColor,
+	getThemeAwareIssueColorPalette,
+	isIssueColorUsed
+} from '../utils/issue-colors';
 import { GitHubSearchModal } from './GitHubSearchModal';
 import {
 	createConfirmCancelButtons,
@@ -20,7 +27,6 @@ import {
 	getWrappedIndex,
 	handleListNavigationKeydown
 } from './modal-keyboard-helpers';
-import { RepositoryPickerModal } from './RepositoryPickerModal';
 
 interface CreateIssueRequest {
 	name: string;
@@ -29,6 +35,18 @@ interface CreateIssueRequest {
 	color?: string;
 	worktree?: boolean;
 	worktreeOriginFolder?: string;
+	worktreeBaseRepository?: string;
+	githubLink?: string;
+	githubMetadata?: GitHubIssueMetadata;
+}
+
+interface WorktreeCreationContext {
+	eligible: boolean;
+	worktreeOriginFolder?: string;
+	sourceIssueLinkedRepository?: string;
+}
+
+interface GitHubSelectionContext {
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
 }
@@ -36,47 +54,6 @@ interface CreateIssueRequest {
 type IssueCreationMode = 'standard' | 'worktree';
 
 const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
-const WORKTREE_COLOR_PRESETS = [
-	'#4a8cc7',
-	'#4caf50',
-	'#ff9800',
-	'#f44336',
-	'#9c27b0',
-	'#00bcd4',
-	'#3f51b5',
-	'#8bc34a',
-	'#ffc107',
-	'#795548',
-	'#607d8b',
-	'#e91e63',
-	'#009688',
-	'#673ab7',
-	'#cddc39',
-	'#2196f3',
-	'#ff5722',
-	'#ff4081',
-	'#b71c1c',
-	'#1b5e20'
-];
-const PRESET_NAVIGATION_COLUMNS = 5;
-
-const GITHUB_LINK_TYPE_OPTIONS: GitHubLinkTypeOption[] = [
-	{
-		type: 'issue-pr',
-		label: 'Link Issue/PR',
-		description: 'Search and link a GitHub issue or pull request'
-	},
-	{
-		type: 'repository',
-		label: 'Link Repository',
-		description: 'Link a GitHub repository to this issue'
-	},
-	{
-		type: 'skip',
-		label: 'Skip',
-		description: 'Create issue without a GitHub link'
-	}
-];
 
 function getIssueLinkedRepositoryFromLinks(githubLinks: string[] | undefined): string | undefined {
 	if (githubLinks === undefined || githubLinks.length === 0) {
@@ -145,6 +122,8 @@ export class NamePromptModal extends Modal {
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
 	private initialIssueName: string | undefined;
+	private githubSelection: GitHubSelectionContext;
+	private worktreeContext: WorktreeCreationContext | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
@@ -154,7 +133,9 @@ export class NamePromptModal extends Modal {
 		mode: IssueCreationMode = 'standard',
 		worktreeOriginFolder?: string,
 		sourceIssueLinkedRepository?: string,
-		initialIssueName?: string
+		initialIssueName?: string,
+		githubSelection: GitHubSelectionContext = {},
+		worktreeContext?: WorktreeCreationContext
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -163,6 +144,8 @@ export class NamePromptModal extends Modal {
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 		this.initialIssueName = initialIssueName;
+		this.githubSelection = githubSelection;
+		this.worktreeContext = worktreeContext;
 	}
 
 	onOpen() {
@@ -170,9 +153,13 @@ export class NamePromptModal extends Modal {
 		this.input = createInputWithEnterHandler(this.contentEl, 'Enter issue name...', () =>
 			this.confirm()
 		);
+		this.input.addEventListener('keydown', (event) => {
+			this.handleNameInputKeydown(event);
+		});
 		if (this.initialIssueName !== undefined && this.initialIssueName !== '') {
 			this.input.value = this.initialIssueName;
-			this.input.select();
+			const inputLength = this.input.value.length;
+			this.input.setSelectionRange(inputLength, inputLength);
 		}
 		createConfirmCancelButtons(
 			this.contentEl,
@@ -180,6 +167,91 @@ export class NamePromptModal extends Modal {
 			() => this.confirm(),
 			() => this.close()
 		);
+	}
+
+	private handleNameInputKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Backspace') {
+			event.stopPropagation();
+			return;
+		}
+
+		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+			return;
+		}
+
+		if (this.shouldOpenSuggestionModalFromNameInput() === false) {
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		this.openSuggestionModalFromNameInput();
+	}
+
+	private shouldOpenSuggestionModalFromNameInput(): boolean {
+		if (this.mode !== 'standard') {
+			return false;
+		}
+		if (
+			!this.dashboard.githubEnabled ||
+			this.plugin.githubService.isAuthenticated() === false
+		) {
+			return false;
+		}
+
+		const trimmedValue = this.input?.value.trim() ?? '';
+		return trimmedValue === '' || /^\d+$/.test(trimmedValue);
+	}
+
+	private openSuggestionModalFromNameInput(): void {
+		const existingNameValue = this.input?.value.trim();
+		this.close();
+
+		new GitHubSearchModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			(url, metadata) => {
+				const prefilledName =
+					getPrefilledIssueName(metadata) ??
+					(existingNameValue !== '' ? existingNameValue : undefined);
+				new NamePromptModal(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					'standard',
+					this.worktreeContext?.worktreeOriginFolder,
+					this.worktreeContext?.sourceIssueLinkedRepository,
+					prefilledName,
+					{
+						githubLink: url,
+						githubMetadata: metadata
+					},
+					this.worktreeContext
+				).open();
+			},
+			{
+				issueRepository: this.worktreeContext?.sourceIssueLinkedRepository,
+				dashboardRepository: this.dashboard.githubRepo,
+				onCancel: () => {
+					new NamePromptModal(
+						this.app,
+						this.plugin,
+						this.dashboard,
+						'standard',
+						this.worktreeContext?.worktreeOriginFolder,
+						this.worktreeContext?.sourceIssueLinkedRepository,
+						existingNameValue !== '' ? existingNameValue : undefined,
+						this.githubSelection,
+						this.worktreeContext
+					).open();
+				},
+				skipButtonLabel: 'Back',
+				selectionLockUntilCleared: true,
+				confirmButtonLabel: 'Use selection',
+				searchMode: 'issues-only'
+			}
+		).open();
 	}
 
 	private confirm() {
@@ -190,6 +262,18 @@ export class NamePromptModal extends Modal {
 		const value = this.input.value.trim();
 		if (value !== '') {
 			this.close();
+			if (this.mode === 'standard' && this.worktreeContext?.eligible === true) {
+				new WorktreeDecisionModal(
+					this.app,
+					this.plugin,
+					this.dashboard,
+					value,
+					this.worktreeContext,
+					this.githubSelection
+				).open();
+				return;
+			}
+
 			new ColorPromptModal(
 				this.app,
 				this.plugin,
@@ -198,7 +282,8 @@ export class NamePromptModal extends Modal {
 				this.mode,
 				this.worktreeOriginFolder,
 				this.sourceIssueLinkedRepository,
-				WORKTREE_COLOR_PRESETS[0]
+				getNextAvailableIssueColor(this.plugin.settings.issueColors),
+				this.githubSelection
 			).open();
 		} else {
 			this.input.addClass('tdc-input-error');
@@ -211,6 +296,173 @@ export class NamePromptModal extends Modal {
 	}
 }
 
+class WorktreeDecisionModal extends Modal {
+	private plugin: TasksDashboardPlugin;
+	private dashboard: DashboardConfig;
+	private issueName: string;
+	private worktreeContext: WorktreeCreationContext;
+	private githubSelection: GitHubSelectionContext;
+	private selectedChoice: 'yes' | 'no' = 'no';
+	private choiceButtons: Map<'yes' | 'no', HTMLButtonElement> = new Map();
+
+	constructor(
+		app: App,
+		plugin: TasksDashboardPlugin,
+		dashboard: DashboardConfig,
+		issueName: string,
+		worktreeContext: WorktreeCreationContext,
+		githubSelection: GitHubSelectionContext
+	) {
+		super(app);
+		this.plugin = plugin;
+		this.dashboard = dashboard;
+		this.issueName = issueName;
+		this.worktreeContext = worktreeContext;
+		this.githubSelection = githubSelection;
+	}
+
+	onOpen(): void {
+		setupPromptModal(this, 'Create in worktree?');
+		const options = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
+
+		this.choiceButtons.set(
+			'no',
+			this.createChoiceButton(
+				options,
+				'no',
+				'No',
+				'Create as regular issue',
+				'tdc-worktree-decision-no'
+			)
+		);
+		this.choiceButtons.set(
+			'yes',
+			this.createChoiceButton(
+				options,
+				'yes',
+				'Yes',
+				'Create in worktree',
+				'tdc-worktree-decision-yes'
+			)
+		);
+
+		this.selectChoice(this.selectedChoice, true);
+
+		const buttonContainer = createPromptButtonsContainer(this.contentEl);
+		void createPromptBackButton(buttonContainer, () => {
+			this.goBack();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
+		});
+		void createPromptCancelButton(buttonContainer, () => {
+			this.close();
+		});
+
+		this.contentEl.addEventListener('keydown', (event) => {
+			handleListNavigationKeydown(event, {
+				onNext: () => {
+					this.moveSelection(1);
+				},
+				onPrevious: () => {
+					this.moveSelection(-1);
+				},
+				onBack: () => {
+					this.goBack();
+				},
+				onClose: () => {
+					this.close();
+				},
+				onConfirm: () => {
+					this.confirmSelection();
+				}
+			});
+		});
+
+		registerMouseBackShortcut(this.contentEl, () => {
+			this.goBack();
+		});
+	}
+
+	private createChoiceButton(
+		container: HTMLElement,
+		choice: 'yes' | 'no',
+		label: string,
+		description: string,
+		cssClass: string
+	): HTMLButtonElement {
+		const optionButton = container.createEl('button', {
+			cls: `tdc-selectable-option-btn ${cssClass}`,
+			attr: {
+				type: 'button',
+				'aria-pressed': 'false'
+			}
+		});
+
+		const content = optionButton.createDiv({ cls: 'tdc-link-type-suggestion' });
+		content.createDiv({ cls: 'tdc-link-type-label', text: label });
+		content.createDiv({ cls: 'tdc-link-type-description', text: description });
+
+		optionButton.addEventListener('click', () => {
+			this.selectChoice(choice, true);
+		});
+
+		optionButton.addEventListener('mouseup', (event) => {
+			if (event.button !== 0) {
+				return;
+			}
+			event.preventDefault();
+			this.selectChoice(choice, true);
+			this.confirmSelection();
+		});
+
+		return optionButton;
+	}
+
+	private moveSelection(step: number): void {
+		const options: Array<'yes' | 'no'> = ['no', 'yes'];
+		const currentIndex = options.indexOf(this.selectedChoice);
+		const nextIndex = getWrappedIndex(currentIndex, step, options.length);
+		this.selectChoice(options[nextIndex], true);
+	}
+
+	private selectChoice(choice: 'yes' | 'no', focusButton: boolean): void {
+		this.selectedChoice = choice;
+		applySingleSelectionPressedState(this.choiceButtons, choice, focusButton);
+	}
+
+	private goBack(): void {
+		this.close();
+		new NamePromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			'standard',
+			this.worktreeContext.worktreeOriginFolder,
+			this.worktreeContext.sourceIssueLinkedRepository,
+			this.issueName,
+			this.githubSelection,
+			this.worktreeContext
+		).open();
+	}
+
+	private confirmSelection(): void {
+		this.close();
+		const shouldCreateWorktree = this.selectedChoice === 'yes';
+		new ColorPromptModal(
+			this.app,
+			this.plugin,
+			this.dashboard,
+			this.issueName,
+			shouldCreateWorktree ? 'worktree' : 'standard',
+			shouldCreateWorktree ? this.worktreeContext.worktreeOriginFolder : undefined,
+			shouldCreateWorktree ? this.worktreeContext.sourceIssueLinkedRepository : undefined,
+			getNextAvailableIssueColor(this.plugin.settings.issueColors),
+			this.githubSelection
+		).open();
+	}
+}
+
 class ColorPromptModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
@@ -219,9 +471,12 @@ class ColorPromptModal extends Modal {
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
 	private initialColor: string;
+	private githubSelection: GitHubSelectionContext;
 	private input: HTMLInputElement | undefined;
 	private presetButtons: HTMLButtonElement[] = [];
-	private selectedColor = WORKTREE_COLOR_PRESETS[0];
+	private selectedColor = getThemeAwareIssueColorPalette()[0].background;
+	private colorPresets: readonly import('../utils/color').IssueColorEntry[] = [];
+	private usedColors = new Set<string>();
 
 	constructor(
 		app: App,
@@ -231,7 +486,8 @@ class ColorPromptModal extends Modal {
 		mode: IssueCreationMode,
 		worktreeOriginFolder?: string,
 		sourceIssueLinkedRepository?: string,
-		initialColor: string = WORKTREE_COLOR_PRESETS[0]
+		initialColor: string = getThemeAwareIssueColorPalette()[0].background,
+		githubSelection: GitHubSelectionContext = {}
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -242,10 +498,17 @@ class ColorPromptModal extends Modal {
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 		this.initialColor = initialColor;
 		this.selectedColor = initialColor;
+		this.githubSelection = githubSelection;
 	}
 
 	onOpen(): void {
 		setupPromptModal(this, 'Issue Color');
+		this.colorPresets = getThemeAwareIssueColorPalette();
+		this.usedColors = collectUsedIssueColors(this.plugin.settings.issueColors);
+		if (isIssueColorUsed(this.plugin.settings.issueColors, this.selectedColor)) {
+			this.selectedColor = getNextAvailableIssueColor(this.plugin.settings.issueColors);
+		}
+		this.contentEl.addClass('tdc-color-preset-row-six-columns');
 		const presets = this.contentEl.createDiv({ cls: 'tdc-color-preset-row' });
 		presets.setAttribute('role', 'radiogroup');
 		presets.setAttribute('aria-label', 'Issue color presets');
@@ -290,24 +553,33 @@ class ColorPromptModal extends Modal {
 		});
 		this.input.value = this.selectedColor;
 		this.input.focus();
-		for (const color of WORKTREE_COLOR_PRESETS) {
+		for (const entry of this.colorPresets) {
+			const isUnavailable = this.usedColors.has(entry.background);
 			const preset = presets.createEl('button', {
 				cls: 'tdc-color-preset-btn',
 				attr: {
 					type: 'button',
-					'aria-label': `Select color ${color}`,
+					'aria-label': `Select color ${entry.background}`,
 					'aria-checked': 'false',
 					role: 'radio',
-					tabindex: '-1'
+					tabindex: '-1',
+					'aria-disabled': isUnavailable ? 'true' : 'false'
 				}
 			});
-			preset.style.backgroundColor = color;
+			preset.style.backgroundColor = entry.background;
+			preset.disabled = isUnavailable;
+			preset.toggleClass('is-disabled', isUnavailable);
+			const indicator = preset.createSpan({ cls: 'tdc-color-preset-indicator', text: 'A' });
+			indicator.style.color = entry.foreground;
 			this.presetButtons.push(preset);
 			preset.addEventListener('click', () => {
-				this.selectColor(color, true);
+				if (isUnavailable) {
+					return;
+				}
+				this.selectColor(entry.background, true);
 			});
 			preset.addEventListener('keydown', (event) => {
-				this.handlePresetArrowNavigation(event, color);
+				this.handlePresetArrowNavigation(event, entry.background);
 			});
 		}
 		this.selectColor(this.selectedColor, false);
@@ -340,6 +612,24 @@ class ColorPromptModal extends Modal {
 
 	private goBack(): void {
 		this.close();
+		const showWorktreeChoice =
+			this.mode === 'standard' && this.worktreeOriginFolder !== undefined;
+		if (showWorktreeChoice) {
+			new WorktreeDecisionModal(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				{
+					eligible: true,
+					worktreeOriginFolder: this.worktreeOriginFolder,
+					sourceIssueLinkedRepository: this.sourceIssueLinkedRepository
+				},
+				this.githubSelection
+			).open();
+			return;
+		}
+
 		new NamePromptModal(
 			this.app,
 			this.plugin,
@@ -347,7 +637,15 @@ class ColorPromptModal extends Modal {
 			this.mode,
 			this.worktreeOriginFolder,
 			this.sourceIssueLinkedRepository,
-			this.issueName
+			this.issueName,
+			this.githubSelection,
+			this.mode === 'standard' && this.worktreeOriginFolder !== undefined
+				? {
+						eligible: true,
+						worktreeOriginFolder: this.worktreeOriginFolder,
+						sourceIssueLinkedRepository: this.sourceIssueLinkedRepository
+					}
+				: undefined
 		).open();
 	}
 
@@ -356,6 +654,10 @@ class ColorPromptModal extends Modal {
 			return;
 		}
 		const color = this.input.value.trim();
+		if (isIssueColorUsed(this.plugin.settings.issueColors, color)) {
+			new Notice('Color already assigned. Pick an available color.');
+			return;
+		}
 		this.close();
 		new PriorityPromptModal(
 			this.app,
@@ -365,7 +667,8 @@ class ColorPromptModal extends Modal {
 			color,
 			this.mode,
 			this.worktreeOriginFolder,
-			this.sourceIssueLinkedRepository
+			this.sourceIssueLinkedRepository,
+			this.githubSelection
 		).open();
 	}
 
@@ -391,12 +694,12 @@ class ColorPromptModal extends Modal {
 		}
 		if (event.key === 'ArrowUp') {
 			event.preventDefault();
-			this.movePresetSelection(-PRESET_NAVIGATION_COLUMNS);
+			this.movePresetSelection(-ISSUE_COLOR_PICKER_COLUMNS);
 			return;
 		}
 		if (event.key === 'ArrowDown') {
 			event.preventDefault();
-			this.movePresetSelection(PRESET_NAVIGATION_COLUMNS);
+			this.movePresetSelection(ISSUE_COLOR_PICKER_COLUMNS);
 			return;
 		}
 		if (event.key === 'Enter') {
@@ -411,14 +714,22 @@ class ColorPromptModal extends Modal {
 	}
 
 	private movePresetSelection(step: number): void {
-		if (WORKTREE_COLOR_PRESETS.length === 0) {
+		if (this.colorPresets.length === 0) {
 			return;
 		}
-
-		const currentIndex = WORKTREE_COLOR_PRESETS.indexOf(this.selectedColor);
-		const nextIndex = getWrappedIndex(currentIndex, step, WORKTREE_COLOR_PRESETS.length);
-		const nextColor = WORKTREE_COLOR_PRESETS[nextIndex];
-		this.selectColor(nextColor, true);
+		const currentIndex = this.colorPresets.findIndex(
+			(entry) => entry.background === this.selectedColor
+		);
+		let nextIndex = currentIndex;
+		for (let index = 0; index < this.colorPresets.length; index += 1) {
+			nextIndex = getWrappedIndex(nextIndex, step, this.colorPresets.length);
+			const nextColor = this.colorPresets[nextIndex].background;
+			if (this.usedColors.has(nextColor)) {
+				continue;
+			}
+			this.selectColor(nextColor, true);
+			return;
+		}
 	}
 
 	private selectColor(color: string, focusPreset: boolean): void {
@@ -429,7 +740,7 @@ class ColorPromptModal extends Modal {
 
 		for (let index = 0; index < this.presetButtons.length; index += 1) {
 			const preset = this.presetButtons[index];
-			const isSelected = WORKTREE_COLOR_PRESETS[index] === color;
+			const isSelected = this.colorPresets[index].background === color;
 			preset.toggleClass('is-selected', isSelected);
 			preset.setAttribute('aria-checked', isSelected ? 'true' : 'false');
 			preset.setAttribute('tabindex', isSelected ? '0' : '-1');
@@ -448,7 +759,8 @@ class PriorityPromptModal extends Modal {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
-	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
+	private githubSelection: GitHubSelectionContext;
+	private selectedPriority: Priority = 'low';
 	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(
@@ -459,7 +771,8 @@ class PriorityPromptModal extends Modal {
 		issueColor: string,
 		mode: IssueCreationMode,
 		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string
+		sourceIssueLinkedRepository?: string,
+		githubSelection: GitHubSelectionContext = {}
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -469,6 +782,7 @@ class PriorityPromptModal extends Modal {
 		this.mode = mode;
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
+		this.githubSelection = githubSelection;
 	}
 
 	onOpen() {
@@ -560,7 +874,8 @@ class PriorityPromptModal extends Modal {
 			this.mode,
 			this.worktreeOriginFolder,
 			this.sourceIssueLinkedRepository,
-			this.issueColor
+			this.issueColor,
+			this.githubSelection
 		).open();
 	}
 
@@ -568,338 +883,25 @@ class PriorityPromptModal extends Modal {
 		const selectedPriority = this.selectedPriority;
 		this.close();
 
-		if (!this.dashboard.githubEnabled) {
-			void createIssueWithGitHub(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				selectedPriority,
-				undefined,
-				undefined,
-				this.issueColor,
-				this.mode,
-				this.worktreeOriginFolder
-			);
-			return;
-		}
-		if (this.plugin.githubService.isAuthenticated()) {
-			new GitHubLinkTypeModal(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				selectedPriority,
-				this.issueColor,
-				this.mode,
-				this.worktreeOriginFolder,
-				this.sourceIssueLinkedRepository
-			).open();
-		} else {
-			new GithubPromptModal(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				selectedPriority,
-				this.issueColor,
-				this.mode,
-				this.worktreeOriginFolder,
-				this.sourceIssueLinkedRepository
-			).open();
-		}
-	}
-}
-
-type GitHubLinkType = 'issue-pr' | 'repository' | 'skip';
-
-interface GitHubLinkTypeOption {
-	type: GitHubLinkType;
-	label: string;
-	description: string;
-}
-
-class GitHubLinkTypeModal extends Modal {
-	private plugin: TasksDashboardPlugin;
-	private dashboard: DashboardConfig;
-	private issueName: string;
-	private priority: Priority;
-	private issueColor: string;
-	private mode: IssueCreationMode;
-	private worktreeOriginFolder: string | undefined;
-	private sourceIssueLinkedRepository: string | undefined;
-	private selectedOptionType: GitHubLinkType = 'skip';
-	private optionButtons: Map<GitHubLinkType, HTMLButtonElement> = new Map();
-
-	constructor(
-		app: App,
-		plugin: TasksDashboardPlugin,
-		dashboard: DashboardConfig,
-		issueName: string,
-		priority: Priority,
-		issueColor: string,
-		mode: IssueCreationMode,
-		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string
-	) {
-		super(app);
-		this.plugin = plugin;
-		this.dashboard = dashboard;
-		this.issueName = issueName;
-		this.priority = priority;
-		this.issueColor = issueColor;
-		this.mode = mode;
-		this.worktreeOriginFolder = worktreeOriginFolder;
-		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
-	}
-
-	onOpen(): void {
-		setupPromptModal(this, 'Choose GitHub link type');
-		const optionsList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
-
-		const options = this.getOptions();
-		for (const option of options) {
-			const confirmFromMouse = (event: MouseEvent): void => {
-				if (event.button !== 0) {
-					return;
-				}
-				event.preventDefault();
-				this.selectOption(option.type, true);
-				this.confirmSelection();
-			};
-			const optionButton = optionsList.createEl('button', {
-				cls: 'tdc-selectable-option-btn',
-				attr: {
-					type: 'button',
-					'aria-pressed': 'false'
-				}
-			});
-			const contentContainer = optionButton.createDiv({ cls: 'tdc-link-type-suggestion' });
-			contentContainer.createDiv({ cls: 'tdc-link-type-label', text: option.label });
-			contentContainer.createDiv({
-				cls: 'tdc-link-type-description',
-				text: option.description
-			});
-			optionButton.addEventListener('mouseup', confirmFromMouse);
-			this.optionButtons.set(option.type, optionButton);
-		}
-
-		this.selectOption(this.selectedOptionType, true);
-
-		const buttonContainer = createPromptButtonsContainer(this.contentEl);
-		void createPromptBackButton(buttonContainer, () => {
-			this.goBack();
-		});
-		void createPromptCancelButton(buttonContainer, () => {
-			this.close();
-		});
-		void createPromptConfirmButton(buttonContainer, () => {
-			this.confirmSelection();
-		});
-
-		this.contentEl.addEventListener('keydown', (event) => {
-			this.handleKeydown(event);
-		});
-		registerMouseBackShortcut(this.contentEl, () => {
-			this.goBack();
-		});
-	}
-
-	private getOptions(): GitHubLinkTypeOption[] {
-		const options =
-			this.mode === 'worktree'
-				? GITHUB_LINK_TYPE_OPTIONS.filter((option) => option.type !== 'repository')
-				: GITHUB_LINK_TYPE_OPTIONS;
-		const orderedOptions = [...options].sort((left, right) => {
-			if (left.type === 'skip') {
-				return -1;
-			}
-			if (right.type === 'skip') {
-				return 1;
-			}
-			return 0;
-		});
-		const hasDefaultOption = orderedOptions.some(
-			(option) => option.type === this.selectedOptionType
-		);
-		if (!hasDefaultOption) {
-			this.selectedOptionType = orderedOptions[0]?.type ?? 'skip';
-		}
-		return orderedOptions;
-	}
-
-	private handleKeydown(event: KeyboardEvent): void {
-		handleListNavigationKeydown(event, {
-			onNext: () => {
-				this.moveSelection(1);
-			},
-			onPrevious: () => {
-				this.moveSelection(-1);
-			},
-			onBack: () => {
-				this.goBack();
-			},
-			onClose: () => {
-				this.close();
-			},
-			onConfirm: () => {
-				this.confirmSelection();
-			}
-		});
-	}
-
-	private moveSelection(step: number): void {
-		const options = this.getOptions();
-		if (options.length === 0) {
-			return;
-		}
-		const optionTypes = options.map((option) => option.type);
-		const currentIndex = optionTypes.indexOf(this.selectedOptionType);
-		const nextIndex = getWrappedIndex(currentIndex, step, optionTypes.length);
-		this.selectOption(optionTypes[nextIndex], true);
-	}
-
-	private selectOption(optionType: GitHubLinkType, focusButton: boolean): void {
-		this.selectedOptionType = optionType;
-		applySingleSelectionPressedState(this.optionButtons, optionType, focusButton);
-	}
-
-	private goBack(): void {
-		this.close();
-		new PriorityPromptModal(
+		void createIssueWithGitHub(
 			this.app,
 			this.plugin,
 			this.dashboard,
 			this.issueName,
+			selectedPriority,
+			this.githubSelection.githubLink,
+			this.githubSelection.githubMetadata,
 			this.issueColor,
 			this.mode,
 			this.worktreeOriginFolder,
 			this.sourceIssueLinkedRepository
-		).open();
-	}
-
-	private confirmSelection(): void {
-		const selectedOptionType = this.selectedOptionType;
-		this.close();
-
-		switch (selectedOptionType) {
-			case 'skip': {
-				void createIssueWithGitHub(
-					this.app,
-					this.plugin,
-					this.dashboard,
-					this.issueName,
-					this.priority,
-					undefined,
-					undefined,
-					this.issueColor,
-					this.mode,
-					this.worktreeOriginFolder
-				);
-				return;
-			}
-			case 'issue-pr': {
-				new GitHubSearchModal(
-					this.app,
-					this.plugin,
-					this.dashboard,
-					(url, metadata) => {
-						void createIssueWithGitHub(
-							this.app,
-							this.plugin,
-							this.dashboard,
-							this.issueName,
-							this.priority,
-							url,
-							metadata,
-							this.issueColor,
-							this.mode,
-							this.worktreeOriginFolder
-						);
-					},
-					{
-						issueRepository: this.sourceIssueLinkedRepository,
-						showBackButton: true,
-						skipButtonLabel: 'Skip',
-						onBack: () => {
-							new GitHubLinkTypeModal(
-								this.app,
-								this.plugin,
-								this.dashboard,
-								this.issueName,
-								this.priority,
-								this.issueColor,
-								this.mode,
-								this.worktreeOriginFolder,
-								this.sourceIssueLinkedRepository
-							).open();
-						}
-					}
-				).open();
-				return;
-			}
-			case 'repository': {
-				void this.openRepositoryPicker();
-				return;
-			}
-		}
-	}
-
-	private async openRepositoryPicker(): Promise<void> {
-		const repositories = await this.plugin.githubService.getUserRepositories();
-		if (repositories.length === 0) {
-			new Notice('No repositories found. Check your GitHub token.');
-			void createIssueWithGitHub(
-				this.app,
-				this.plugin,
-				this.dashboard,
-				this.issueName,
-				this.priority,
-				undefined,
-				undefined,
-				this.issueColor,
-				this.mode,
-				this.worktreeOriginFolder
-			);
-			return;
-		}
-
-		new RepositoryPickerModal(
-			this.app,
-			repositories,
-			(repository: GitHubRepository) => {
-				void createIssueWithRepoLink(
-					this.app,
-					this.plugin,
-					this.dashboard,
-					this.issueName,
-					this.priority,
-					repository,
-					this.issueColor,
-					this.mode,
-					this.worktreeOriginFolder
-				);
-			},
-			() => {
-				new GitHubLinkTypeModal(
-					this.app,
-					this.plugin,
-					this.dashboard,
-					this.issueName,
-					this.priority,
-					this.issueColor,
-					this.mode,
-					this.worktreeOriginFolder,
-					this.sourceIssueLinkedRepository
-				).open();
-			}
-		).open();
+		);
 	}
 }
 
 class PrioritySelectionModal extends Modal {
 	private readonly onSelected: (priority: Priority) => void;
-	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
+	private selectedPriority: Priority = 'low';
 	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(app: App, onSelected: (priority: Priority) => void) {
@@ -1062,7 +1064,8 @@ export async function createIssueWithRepoLink(
 	repository: GitHubRepository,
 	color?: string,
 	mode: IssueCreationMode = 'standard',
-	worktreeOriginFolder?: string
+	worktreeOriginFolder?: string,
+	worktreeBaseRepository?: string
 ): Promise<void> {
 	const repoUrl = `https://github.com/${repository.fullName}`;
 	await createIssueWithNotice(app, plugin, {
@@ -1072,6 +1075,7 @@ export async function createIssueWithRepoLink(
 		color,
 		worktree: mode === 'worktree',
 		worktreeOriginFolder,
+		worktreeBaseRepository,
 		dashboard
 	});
 }
@@ -1086,7 +1090,8 @@ export async function createIssueWithGitHub(
 	githubMetadata?: GitHubIssueMetadata,
 	color?: string,
 	mode: IssueCreationMode = 'standard',
-	worktreeOriginFolder?: string
+	worktreeOriginFolder?: string,
+	worktreeBaseRepository?: string
 ): Promise<void> {
 	await createIssueWithNotice(app, plugin, {
 		name: issueName,
@@ -1096,6 +1101,7 @@ export async function createIssueWithGitHub(
 		color,
 		worktree: mode === 'worktree',
 		worktreeOriginFolder,
+		worktreeBaseRepository,
 		dashboard
 	});
 }
@@ -1107,125 +1113,175 @@ export const openWorktreeIssueCreationModal = (
 	options?: {
 		worktreeOriginFolder?: string;
 		sourceIssueGitHubLinks?: string[];
+		sourceIssueLinkedRepository?: string;
 	}
 ): void => {
+	const linkedRepositoryFromLinks = getIssueLinkedRepositoryFromLinks(
+		options?.sourceIssueGitHubLinks
+	);
+	const sourceIssueLinkedRepository =
+		options?.sourceIssueLinkedRepository ?? linkedRepositoryFromLinks;
 	new NamePromptModal(
 		app,
 		plugin,
 		dashboard,
 		'worktree',
 		options?.worktreeOriginFolder,
-		getIssueLinkedRepositoryFromLinks(options?.sourceIssueGitHubLinks)
+		sourceIssueLinkedRepository,
+		undefined,
+		{},
+		undefined
 	).open();
 };
 
-class GithubPromptModal extends Modal {
+function getPrefilledIssueName(metadata: GitHubIssueMetadata | undefined): string | undefined {
+	if (metadata === undefined) {
+		return undefined;
+	}
+
+	const firstFourWords = metadata.title
+		.trim()
+		.split(/\s+/)
+		.filter((word) => word !== '')
+		.slice(0, 4)
+		.join(' ');
+	return firstFourWords === '' ? `${metadata.number}` : `${metadata.number} ${firstFourWords}`;
+}
+
+export const openIssueCreationModal = (
+	app: App,
+	plugin: TasksDashboardPlugin,
+	dashboard: DashboardConfig,
+	options?: {
+		worktreeContext?: WorktreeCreationContext;
+	}
+): void => {
+	const worktreeContext = options?.worktreeContext;
+	if (!dashboard.githubEnabled) {
+		new NamePromptModal(
+			app,
+			plugin,
+			dashboard,
+			'standard',
+			worktreeContext?.worktreeOriginFolder,
+			worktreeContext?.sourceIssueLinkedRepository,
+			undefined,
+			{},
+			worktreeContext
+		).open();
+		return;
+	}
+
+	if (plugin.githubService.isAuthenticated()) {
+		new GitHubSearchModal(
+			app,
+			plugin,
+			dashboard,
+			(url, metadata) => {
+				new NamePromptModal(
+					app,
+					plugin,
+					dashboard,
+					'standard',
+					worktreeContext?.worktreeOriginFolder,
+					worktreeContext?.sourceIssueLinkedRepository,
+					getPrefilledIssueName(metadata),
+					{
+						githubLink: url,
+						githubMetadata: metadata
+					},
+					worktreeContext
+				).open();
+			},
+			{
+				issueRepository: worktreeContext?.sourceIssueLinkedRepository,
+				dashboardRepository: dashboard.githubRepo,
+				skipButtonLabel: 'Skip',
+				selectionLockUntilCleared: false,
+				confirmButtonLabel: 'Next',
+				searchMode: 'issues-only',
+				enterSkipsWithoutSelection: true,
+				separateSkipAndCancelButtons: false,
+				enterSkipLabel: 'Skip',
+				showSkipButton: false
+			}
+		).open();
+		return;
+	}
+
+	new ManualGitHubLinkFirstModal(app, plugin, dashboard, worktreeContext).open();
+};
+
+class ManualGitHubLinkFirstModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
-	private issueName: string;
-	private priority: Priority;
-	private issueColor: string;
-	private mode: IssueCreationMode;
-	private worktreeOriginFolder: string | undefined;
-	private sourceIssueLinkedRepository: string | undefined;
+	private worktreeContext: WorktreeCreationContext | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
 		app: App,
 		plugin: TasksDashboardPlugin,
 		dashboard: DashboardConfig,
-		issueName: string,
-		priority: Priority,
-		issueColor: string,
-		mode: IssueCreationMode,
-		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string
+		worktreeContext: WorktreeCreationContext | undefined
 	) {
 		super(app);
 		this.plugin = plugin;
 		this.dashboard = dashboard;
-		this.issueName = issueName;
-		this.priority = priority;
-		this.issueColor = issueColor;
-		this.mode = mode;
-		this.worktreeOriginFolder = worktreeOriginFolder;
-		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
+		this.worktreeContext = worktreeContext;
 	}
 
-	onOpen() {
+	onOpen(): void {
 		setupPromptModal(this, 'GitHub Link (optional)');
 		this.input = createInputWithEnterHandler(
 			this.contentEl,
 			'https://github.com/... (or leave empty)',
-			() => void this.confirm()
+			() => {
+				this.confirm();
+			}
 		);
+
 		const buttonContainer = createPromptButtonsContainer(this.contentEl);
-		void createPromptBackButton(buttonContainer, () => {
-			this.goBack();
-		});
+		void createPromptCancelButton(
+			buttonContainer,
+			() => {
+				this.close();
+			},
+			'Skip'
+		);
 		void createPromptConfirmButton(
 			buttonContainer,
 			() => {
-				void this.confirm();
+				this.confirm();
 			},
-			'Create Issue'
+			'Next'
 		);
-		void createPromptCancelButton(buttonContainer, () => {
-			this.close();
-		});
 
 		this.contentEl.addEventListener('keydown', (event) => {
 			if (event.key === 'Backspace') {
-				event.preventDefault();
-				this.goBack();
-				return;
+				event.stopPropagation();
 			}
-			if (event.key === 'Escape') {
-				event.preventDefault();
-				this.close();
-			}
-		});
-		registerMouseBackShortcut(this.contentEl, () => {
-			this.goBack();
 		});
 	}
 
-	private goBack(): void {
+	private confirm(): void {
+		const value = this.input?.value.trim();
 		this.close();
-		new PriorityPromptModal(
+		new NamePromptModal(
 			this.app,
 			this.plugin,
 			this.dashboard,
-			this.issueName,
-			this.issueColor,
-			this.mode,
-			this.worktreeOriginFolder,
-			this.sourceIssueLinkedRepository
+			'standard',
+			this.worktreeContext?.worktreeOriginFolder,
+			this.worktreeContext?.sourceIssueLinkedRepository,
+			undefined,
+			{
+				githubLink: value !== '' ? value : undefined
+			},
+			this.worktreeContext
 		).open();
 	}
 
-	private async confirm() {
-		if (this.input === undefined) {
-			return;
-		}
-
-		const value = this.input.value.trim();
-		this.close();
-		await createIssueWithGitHub(
-			this.app,
-			this.plugin,
-			this.dashboard,
-			this.issueName,
-			this.priority,
-			value !== '' ? value : undefined,
-			undefined,
-			this.issueColor,
-			this.mode,
-			this.worktreeOriginFolder
-		);
-	}
-
-	onClose() {
+	onClose(): void {
 		this.contentEl.empty();
 	}
 }

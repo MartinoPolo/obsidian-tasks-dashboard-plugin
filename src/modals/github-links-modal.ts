@@ -2,6 +2,14 @@ import { Menu, Modal, Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import type { DashboardConfig, GitHubIssueMetadata } from '../types';
 import {
+	getGitHubLinkType,
+	isGitHubWebUrl,
+	parseGitHubUrlInfo,
+	type GitHubLinkType
+} from '../utils/github';
+import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
+import { GitHubSearchModal } from './GitHubSearchModal';
+import {
 	createConfirmCancelButtons,
 	createInputWithEnterHandler,
 	createPromptButtonsContainer,
@@ -9,17 +17,7 @@ import {
 	createPromptConfirmButton,
 	setupPromptModal
 } from './modal-helpers';
-import { GitHubSearchModal } from './GitHubSearchModal';
-import {
-	getGitHubLinkType,
-	isGitHubWebUrl,
-	parseGitHubUrlInfo,
-	type GitHubLinkType
-} from '../utils/github';
-import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
 import { RepositoryPickerModal } from './RepositoryPickerModal';
-
-type AssignableGitHubLinkType = GitHubLinkType;
 
 interface AssignedGitHubLinks {
 	issue: string | undefined;
@@ -46,7 +44,7 @@ function toRepoUrl(fullName: string): string {
 	return `https://github.com/${fullName}`;
 }
 
-function isValidGitHubUrlForType(url: string, type: AssignableGitHubLinkType): boolean {
+function isValidGitHubUrlForType(url: string, type: GitHubLinkType): boolean {
 	const parsedType = getGitHubLinkType(url);
 	return parsedType === type;
 }
@@ -161,7 +159,7 @@ export class GitHubLinksModal extends Modal {
 		});
 	}
 
-	private openAssignmentMenuNearModal(type: AssignableGitHubLinkType): void {
+	private openAssignmentMenuNearModal(type: GitHubLinkType): void {
 		const modalRect = this.modalEl.getBoundingClientRect();
 		const syntheticEvent = new MouseEvent('click', {
 			clientX: modalRect.left + 24,
@@ -223,7 +221,7 @@ export class GitHubLinksModal extends Modal {
 		return parseGitHubRepoFullName(assigned.repository);
 	}
 
-	private async removeLinkByType(type: AssignableGitHubLinkType): Promise<void> {
+	private async removeLinkByType(type: GitHubLinkType): Promise<void> {
 		const linksToRemove = this.githubLinks.filter((link) => getGitHubLinkType(link) === type);
 		for (const link of linksToRemove) {
 			await this.plugin.issueManager.removeGitHubLink(this.dashboard, this.issueId, link);
@@ -233,7 +231,7 @@ export class GitHubLinksModal extends Modal {
 	}
 
 	private async assignLinkByType(
-		type: AssignableGitHubLinkType,
+		type: GitHubLinkType,
 		url: string,
 		metadata?: GitHubIssueMetadata
 	): Promise<void> {
@@ -250,7 +248,7 @@ export class GitHubLinksModal extends Modal {
 		}
 	}
 
-	private openManualAssignmentModal(type: AssignableGitHubLinkType): void {
+	private openManualAssignmentModal(type: GitHubLinkType): void {
 		const typeLabel = type === 'pr' ? 'PR' : type === 'issue' ? 'Issue' : 'Repository';
 		const placeholder =
 			type === 'repository'
@@ -319,12 +317,13 @@ export class GitHubLinksModal extends Modal {
 				});
 			},
 			{
-				issueRepository: linkedRepository
+				issueRepository: linkedRepository,
+				searchMode: type === 'issue' ? 'issues-only' : 'prs-only'
 			}
 		).open();
 	}
 
-	private openAssignmentMenu(event: MouseEvent, type: AssignableGitHubLinkType): void {
+	private openAssignmentMenu(event: MouseEvent, type: GitHubLinkType): void {
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle('Pick from GitHub').onClick(() => {
@@ -345,7 +344,7 @@ export class GitHubLinksModal extends Modal {
 
 	private renderTypedLinkRow(
 		list: HTMLElement,
-		type: AssignableGitHubLinkType,
+		type: GitHubLinkType,
 		title: string,
 		url: string | undefined
 	): void {

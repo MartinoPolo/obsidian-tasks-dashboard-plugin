@@ -28,7 +28,14 @@ const CURRENT_DIRECTORY_BRANCH = '.';
 const PARENT_DIRECTORY_BRANCH = '..';
 const LEADING_DASH_PATTERN = /^-+/;
 const TRAILING_DASH_PATTERN = /-+$/;
+const WORKTREE_FIELD = 'worktree';
+const WORKTREE_BRANCH_FIELD = 'worktree_branch';
 const WORKTREE_ORIGIN_FOLDER_FIELD = 'worktree_origin_folder';
+const WORKTREE_EXPECTED_FOLDER_FIELD = 'worktree_expected_folder';
+const WORKTREE_SETUP_STATE_FIELD = 'worktree_setup_state';
+const WORKTREE_BASE_REPOSITORY_FIELD = 'worktree_base_repository';
+const WORKTREE_SETUP_POLL_INTERVAL_MS = 1000;
+const WORKTREE_SETUP_TIMEOUT_MS = 10_000;
 
 function quoteYamlString(value: string): string {
 	return `'${value.replace(/'/g, "''")}'`;
@@ -70,6 +77,41 @@ function getFrontmatterStringField(content: string, fieldName: string): string |
 	return rawValue;
 }
 
+function upsertFrontmatterField(content: string, fieldName: string, rawValue: string): string {
+	const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+	if (frontmatterMatch === null) {
+		return content;
+	}
+
+	const frontmatterBody = frontmatterMatch[1];
+	const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const fieldPattern = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
+	const updatedFrontmatterBody = fieldPattern.test(frontmatterBody)
+		? frontmatterBody.replace(fieldPattern, `${fieldName}: ${rawValue}`)
+		: `${frontmatterBody}\n${fieldName}: ${rawValue}`;
+	const updatedFrontmatter = `---\n${updatedFrontmatterBody}\n---`;
+
+	return updatedFrontmatter + content.slice(frontmatterMatch[0].length);
+}
+
+function getExpectedWorktreeFolder(
+	worktreeOriginFolder: string | undefined,
+	worktreeBranch: string
+): string | undefined {
+	if (worktreeOriginFolder === undefined || worktreeOriginFolder.trim() === '') {
+		return undefined;
+	}
+
+	const normalizedOrigin = worktreeOriginFolder.replace(/[\\/]+$/, '');
+	const parentFolder = normalizedOrigin.replace(/[\\/][^\\/]+$/, '');
+	if (parentFolder === '') {
+		return undefined;
+	}
+
+	const separator = parentFolder.includes('\\') ? '\\' : '/';
+	return `${parentFolder}${separator}${worktreeBranch}`;
+}
+
 function isValidGitBranchName(branchName: string): boolean {
 	if (branchName === EMPTY_BRANCH_NAME) {
 		return false;
@@ -109,6 +151,15 @@ export type { CreateIssueParams, ImportNoteParams, IssueManagerInstance };
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
 	const platformService = createPlatformService();
 	const activeOperationLocks = new Set<string>();
+	const activeWorktreeSetupLocks = new Set<string>();
+
+	const isMissingIssueOrFileError = (error: unknown): boolean => {
+		if (!(error instanceof Error)) {
+			return false;
+		}
+
+		return /issue not found|no such file|enoent|not found/i.test(error.message);
+	};
 
 	const acquireOperationLock = (dashboardId: string, issueId: string): boolean => {
 		const lockKey = getIssueFolderStorageKey(dashboardId, issueId);
@@ -155,6 +206,28 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 
 	const getDashboardFile = (dashboard: DashboardConfig): TFile | undefined => {
 		return getFileByPath(getDashboardPath(dashboard));
+	};
+
+	const isAbsolutePath = (path: string): boolean => {
+		return /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('/');
+	};
+
+	const doesPathExist = async (path: string): Promise<boolean> => {
+		if (isAbsolutePath(path)) {
+			return platformService.pathExists(path);
+		}
+		return app.vault.adapter.exists(path);
+	};
+
+	const assignIssueFolderLikeManual = (
+		dashboardId: string,
+		issueId: string,
+		folderPath: string
+	): void => {
+		const issueFolderKey = getIssueFolderStorageKey(dashboardId, issueId);
+		plugin.settings.issueFolders[issueFolderKey] = folderPath;
+		void plugin.saveSettings();
+		plugin.triggerDashboardRefresh();
 	};
 
 	const ensureFolderExists = async (path: string): Promise<void> => {
@@ -217,6 +290,33 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		await app.vault.modify(dashboardFile, dashboardContent);
 	};
 
+	const upsertDashboardIssueBlockField = (
+		block: string,
+		fieldName: string,
+		fieldValue: string
+	): string => {
+		const controlsStart = block.indexOf('```tasks-dashboard-controls');
+		if (controlsStart === -1) {
+			return block;
+		}
+		const firstFenceEnd = block.indexOf(
+			'```',
+			controlsStart + '```tasks-dashboard-controls'.length
+		);
+		if (firstFenceEnd === -1) {
+			return block;
+		}
+
+		const controlsSection = block.slice(controlsStart, firstFenceEnd);
+		const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
+		const updatedControlsSection = fieldRegex.test(controlsSection)
+			? controlsSection.replace(fieldRegex, `${fieldName}: ${fieldValue}`)
+			: `${controlsSection}${fieldName}: ${fieldValue}\n`;
+
+		return block.slice(0, controlsStart) + updatedControlsSection + block.slice(firstFenceEnd);
+	};
+
 	const moveIssueState = async (
 		dashboard: DashboardConfig,
 		issueId: string,
@@ -253,10 +353,39 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 			dashboard,
 			worktree,
 			worktreeColor,
-			worktreeOriginFolder
+			worktreeBranch,
+			worktreeOriginFolder,
+			worktreeExpectedFolder,
+			worktreeSetupState,
+			worktreeBaseRepository
 		} = params;
 		const issueId = slugify(name);
 		const activePath = getIssuePathByStatus(dashboard, 'active');
+		const trimmedName = name.trim();
+		const githubNumberPrefix =
+			githubMetadata?.number !== undefined ? `#${githubMetadata.number} ` : '';
+		const preferredWorktreeName =
+			trimmedName !== ''
+				? githubNumberPrefix !== '' && trimmedName.startsWith('#')
+					? trimmedName
+					: `${githubNumberPrefix}${trimmedName}`.trim()
+				: `${githubNumberPrefix}${issueId}`.trim();
+		const derivedWorktreeBranch =
+			worktree === true
+				? (worktreeBranch ?? sanitizeGitBranchName(preferredWorktreeName, issueId))
+				: undefined;
+		const resolvedWorktreeOriginFolder =
+			worktree === true ? (worktreeOriginFolder ?? dashboard.projectFolder) : undefined;
+		const derivedWorktreeExpectedFolder =
+			worktree === true
+				? (worktreeExpectedFolder ??
+					getExpectedWorktreeFolder(
+						resolvedWorktreeOriginFolder,
+						derivedWorktreeBranch ?? issueId
+					))
+				: undefined;
+		const derivedWorktreeSetupState =
+			worktree === true ? (worktreeSetupState ?? 'pending') : undefined;
 
 		await ensureFolderExists(activePath);
 
@@ -277,17 +406,38 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 			githubMetadata: storedMetadata,
 			githubLinks,
 			githubMetadataList,
+			worktree,
+			worktreeBranch: derivedWorktreeBranch,
+			worktreeOriginFolder: resolvedWorktreeOriginFolder,
+			worktreeExpectedFolder: derivedWorktreeExpectedFolder,
+			worktreeSetupState: derivedWorktreeSetupState,
+			worktreeBaseRepository,
 			filePath
 		};
 
 		let content = generateIssueContent(issue, dashboard);
 		if (worktree === true) {
-			let worktreeFrontmatter = '\nworktree: true';
+			let worktreeFrontmatter = `\n${WORKTREE_FIELD}: true`;
 			if (worktreeColor !== undefined && worktreeColor !== '') {
 				worktreeFrontmatter += `\nworktree_color: "${worktreeColor}"`;
 			}
-			if (worktreeOriginFolder !== undefined && worktreeOriginFolder !== '') {
-				worktreeFrontmatter += `\n${WORKTREE_ORIGIN_FOLDER_FIELD}: ${quoteYamlString(worktreeOriginFolder)}`;
+			if (derivedWorktreeBranch !== undefined && derivedWorktreeBranch !== '') {
+				worktreeFrontmatter += `\n${WORKTREE_BRANCH_FIELD}: ${quoteYamlString(derivedWorktreeBranch)}`;
+			}
+			if (resolvedWorktreeOriginFolder !== undefined && resolvedWorktreeOriginFolder !== '') {
+				worktreeFrontmatter += `\n${WORKTREE_ORIGIN_FOLDER_FIELD}: ${quoteYamlString(resolvedWorktreeOriginFolder)}`;
+			}
+			if (
+				derivedWorktreeExpectedFolder !== undefined &&
+				derivedWorktreeExpectedFolder !== ''
+			) {
+				worktreeFrontmatter += `\n${WORKTREE_EXPECTED_FOLDER_FIELD}: ${quoteYamlString(derivedWorktreeExpectedFolder)}`;
+			}
+			if (derivedWorktreeSetupState !== undefined) {
+				worktreeFrontmatter += `\n${WORKTREE_SETUP_STATE_FIELD}: ${derivedWorktreeSetupState}`;
+			}
+			if (worktreeBaseRepository !== undefined && worktreeBaseRepository !== '') {
+				worktreeFrontmatter += `\n${WORKTREE_BASE_REPOSITORY_FIELD}: ${quoteYamlString(worktreeBaseRepository)}`;
 			}
 			content = appendBeforeFrontmatterClose(content, worktreeFrontmatter);
 		}
@@ -401,7 +551,99 @@ ${originalBody}`;
 			return false;
 		}
 
-		return /^worktree:\s*true\s*$/m.test(frontmatter);
+		return new RegExp(`^${WORKTREE_FIELD}:\\s*true\\s*$`, 'm').test(frontmatter);
+	};
+
+	interface IssueWorktreeMetadata {
+		worktree: boolean;
+		worktreeBranch?: string;
+		worktreeOriginFolder?: string;
+		worktreeExpectedFolder?: string;
+		worktreeSetupState?: 'pending' | 'active' | 'failed';
+		worktreeBaseRepository?: string;
+	}
+
+	const getIssueWorktreeMetadata = async (
+		dashboard: DashboardConfig,
+		issueId: string
+	): Promise<IssueWorktreeMetadata> => {
+		const { file } = getIssueFileOrThrow(dashboard, issueId);
+		const content = await app.vault.read(file);
+		const worktree = getFrontmatterStringField(content, WORKTREE_FIELD) === 'true';
+		const setupStateValue = getFrontmatterStringField(content, WORKTREE_SETUP_STATE_FIELD);
+
+		return {
+			worktree,
+			worktreeBranch: getFrontmatterStringField(content, WORKTREE_BRANCH_FIELD),
+			worktreeOriginFolder: getFrontmatterStringField(content, WORKTREE_ORIGIN_FOLDER_FIELD),
+			worktreeExpectedFolder: getFrontmatterStringField(
+				content,
+				WORKTREE_EXPECTED_FOLDER_FIELD
+			),
+			worktreeSetupState:
+				setupStateValue === 'pending' ||
+				setupStateValue === 'active' ||
+				setupStateValue === 'failed'
+					? setupStateValue
+					: undefined,
+			worktreeBaseRepository: getFrontmatterStringField(
+				content,
+				WORKTREE_BASE_REPOSITORY_FIELD
+			)
+		};
+	};
+
+	const WORKTREE_STRING_FIELD_MAPPINGS: Array<{
+		key: keyof IssueWorktreeMetadata;
+		field: string;
+		quoted: boolean;
+		requireNonEmpty: boolean;
+	}> = [
+		{ key: 'worktreeBranch', field: WORKTREE_BRANCH_FIELD, quoted: true, requireNonEmpty: true },
+		{ key: 'worktreeOriginFolder', field: WORKTREE_ORIGIN_FOLDER_FIELD, quoted: true, requireNonEmpty: true },
+		{ key: 'worktreeExpectedFolder', field: WORKTREE_EXPECTED_FOLDER_FIELD, quoted: true, requireNonEmpty: true },
+		{ key: 'worktreeSetupState', field: WORKTREE_SETUP_STATE_FIELD, quoted: false, requireNonEmpty: false },
+		{ key: 'worktreeBaseRepository', field: WORKTREE_BASE_REPOSITORY_FIELD, quoted: true, requireNonEmpty: true },
+	];
+
+	const applyWorktreeFieldUpdates = (
+		text: string,
+		metadata: Partial<IssueWorktreeMetadata>,
+		upsertField: (content: string, field: string, value: string) => string,
+		formatQuotedValue: (value: string) => string
+	): string => {
+		let result = text;
+		if (metadata.worktree === true) {
+			result = upsertField(result, WORKTREE_FIELD, 'true');
+		}
+		for (const { key, field, quoted, requireNonEmpty } of WORKTREE_STRING_FIELD_MAPPINGS) {
+			const value = metadata[key];
+			if (value === undefined) {
+				continue;
+			}
+			if (requireNonEmpty && value === '') {
+				continue;
+			}
+			result = upsertField(result, field, quoted ? formatQuotedValue(String(value)) : String(value));
+		}
+		return result;
+	};
+
+	const updateIssueWorktreeMetadata = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		metadata: Partial<IssueWorktreeMetadata>
+	): Promise<void> => {
+		const { file } = getIssueFileOrThrow(dashboard, issueId);
+		let content = await app.vault.read(file);
+
+		content = applyWorktreeFieldUpdates(content, metadata, upsertFrontmatterField, quoteYamlString);
+
+		await app.vault.modify(file, content);
+
+		await editDashboardIssueBlock(dashboard, issueId, (block) => {
+			return applyWorktreeFieldUpdates(block, metadata, upsertDashboardIssueBlockField, (v) => v);
+		});
 	};
 
 	const removeWorktreeFrontmatterFields = (content: string): string => {
@@ -412,7 +654,12 @@ ${originalBody}`;
 
 		const frontmatterFields = frontmatterMatch[1]
 			.split('\n')
-			.filter((line) => !/^worktree(_color|_origin_folder)?:/.test(line.trim()));
+			.filter(
+				(line) =>
+					!/^worktree(_color|_origin_folder|_branch|_expected_folder|_setup_state|_base_repository)?:/.test(
+						line.trim()
+					)
+			);
 		const updatedFrontmatter = `---\n${frontmatterFields.join('\n')}\n---`;
 		return updatedFrontmatter + content.slice(frontmatterMatch[0].length);
 	};
@@ -449,6 +696,10 @@ ${originalBody}`;
 				plugin.dashboardWriter.moveIssueToArchive,
 				'Archived'
 			);
+			if (issueId in plugin.settings.issueColors) {
+				delete plugin.settings.issueColors[issueId];
+				void plugin.saveSettings();
+			}
 		});
 	};
 
@@ -515,12 +766,149 @@ ${originalBody}`;
 		worktreeOriginFolder?: string
 	): void => {
 		const parsedWorktreeName = issueName.trim() !== '' ? issueName : issueId;
-		const worktreeName = sanitizeGitBranchName(parsedWorktreeName, issueId);
-		platformService.runWorktreeSetupScript(
-			worktreeName,
-			color,
-			worktreeOriginFolder ?? dashboard.projectFolder,
-			plugin.settings.worktreeBashPath
+		const worktreeBranch = sanitizeGitBranchName(parsedWorktreeName, issueId);
+		runWorktreeSetup(dashboard, issueId, worktreeBranch, color, worktreeOriginFolder);
+	};
+
+	const runWorktreeSetup = (
+		dashboard: DashboardConfig,
+		issueId: string,
+		worktreeBranch: string,
+		color?: string,
+		worktreeOriginFolder?: string
+	): void => {
+		const worktreeSetupLockKey = getIssueFolderStorageKey(dashboard.id, issueId);
+		if (activeWorktreeSetupLocks.has(worktreeSetupLockKey)) {
+			new Notice(`Worktree setup already in progress for ${issueId}`);
+			return;
+		}
+		activeWorktreeSetupLocks.add(worktreeSetupLockKey);
+
+		const resolvedWorktreeOriginFolder = worktreeOriginFolder ?? dashboard.projectFolder;
+		const expectedWorktreeFolder = getExpectedWorktreeFolder(
+			resolvedWorktreeOriginFolder,
+			worktreeBranch
+		);
+		const resolveDetectedWorktreeFolder = (
+			fallbackExpectedFolder: string | undefined
+		): string | undefined => {
+			if (
+				resolvedWorktreeOriginFolder !== undefined &&
+				resolvedWorktreeOriginFolder.trim() !== ''
+			) {
+				const detectedByGit = platformService.findWorktreePathForBranch(
+					resolvedWorktreeOriginFolder,
+					worktreeBranch
+				);
+				if (detectedByGit !== undefined && detectedByGit !== '') {
+					return detectedByGit;
+				}
+			}
+
+			return fallbackExpectedFolder;
+		};
+		const markSetupFailedIfIssueExists = async (): Promise<void> => {
+			try {
+				await updateIssueWorktreeMetadata(dashboard, issueId, {
+					worktree: true,
+					worktreeSetupState: 'failed'
+				});
+			} catch (error) {
+				if (isMissingIssueOrFileError(error)) {
+					return;
+				}
+
+				throw error;
+			}
+		};
+
+		const handlePollingTerminalError = async (error: unknown): Promise<void> => {
+			if (isMissingIssueOrFileError(error)) {
+				return;
+			}
+
+			await markSetupFailedIfIssueExists();
+		};
+
+		void (async () => {
+			try {
+				const initialDetectedFolder = resolveDetectedWorktreeFolder(expectedWorktreeFolder);
+				await updateIssueWorktreeMetadata(dashboard, issueId, {
+					worktree: true,
+					worktreeBranch,
+					worktreeOriginFolder: resolvedWorktreeOriginFolder,
+					worktreeExpectedFolder: initialDetectedFolder,
+					worktreeSetupState: 'pending'
+				});
+
+				platformService.runWorktreeSetupScript(
+					worktreeBranch,
+					color,
+					resolvedWorktreeOriginFolder,
+					plugin.settings.worktreeBashPath
+				);
+
+				const pollIterations = Math.floor(
+					WORKTREE_SETUP_TIMEOUT_MS / WORKTREE_SETUP_POLL_INTERVAL_MS
+				);
+				for (let iteration = 0; iteration < pollIterations; iteration += 1) {
+					await new Promise((resolve) => {
+						setTimeout(resolve, WORKTREE_SETUP_POLL_INTERVAL_MS);
+					});
+
+					const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
+					const expectedFolder = metadata.worktreeExpectedFolder;
+					const detectedFolder = resolveDetectedWorktreeFolder(expectedFolder);
+					if (detectedFolder === undefined || detectedFolder === '') {
+						continue;
+					}
+
+					const detectedFolderExists = await doesPathExist(detectedFolder);
+					if (!detectedFolderExists) {
+						continue;
+					}
+
+					assignIssueFolderLikeManual(dashboard.id, issueId, detectedFolder);
+					const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
+					const isFolderAssigned =
+						plugin.settings.issueFolders[issueFolderKey] === detectedFolder;
+					if (!isFolderAssigned) {
+						continue;
+					}
+
+					await updateIssueWorktreeMetadata(dashboard, issueId, {
+						worktree: true,
+						worktreeExpectedFolder: detectedFolder,
+						worktreeSetupState: 'active'
+					});
+					return;
+				}
+
+				await markSetupFailedIfIssueExists();
+			} catch (error) {
+				await handlePollingTerminalError(error);
+			} finally {
+				activeWorktreeSetupLocks.delete(worktreeSetupLockKey);
+			}
+		})();
+	};
+
+	const retryWorktreeSetup = async (
+		dashboard: DashboardConfig,
+		issueId: string
+	): Promise<void> => {
+		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
+		const worktreeBranch =
+			metadata.worktreeBranch !== undefined && metadata.worktreeBranch !== ''
+				? metadata.worktreeBranch
+				: sanitizeGitBranchName(issueId, issueId);
+		const issueColor = plugin.settings.issueColors[issueId];
+		runWorktreeSetup(
+			dashboard,
+			issueId,
+			worktreeBranch,
+			issueColor,
+			metadata.worktreeOriginFolder
 		);
 	};
 
@@ -687,6 +1075,7 @@ ${originalBody}`;
 		updateIssuePriority,
 		renameIssue,
 		setupWorktree,
+		retryWorktreeSetup,
 		removeWorktree,
 		addGitHubLink,
 		removeGitHubLink

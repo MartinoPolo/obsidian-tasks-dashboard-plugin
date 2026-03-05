@@ -1,5 +1,5 @@
 const HEX_COLOR_PATTERN = /^#([0-9a-f]{6})$/i;
-const DEFAULT_MAIN_COLOR = '#4a8cc7';
+export const DEFAULT_ISSUE_COLOR = '#4a8cc7';
 export const BLACK_HEX = '#000000';
 export const WHITE_HEX = '#ffffff';
 
@@ -19,8 +19,14 @@ interface ThemeMixConfig {
 	checklistBorderWeight: number;
 }
 
+export interface IssueColorEntry {
+	background: string;
+	foreground: string;
+}
+
 export interface DerivedIssueSurfaceColors {
 	headerBackground: string;
+	headerText: string;
 	controlsBackground: string;
 	checklistBackground: string;
 	controlsBorder: string;
@@ -37,7 +43,7 @@ const clampChannel = (value: number): number => {
 	return Math.round(value);
 };
 
-const normalizeHex = (color: string, fallback: string): string => {
+export const sanitizeHexColor = (color: string, fallback: string): string => {
 	const trimmed = color.trim();
 	if (!HEX_COLOR_PATTERN.test(trimmed)) {
 		return fallback;
@@ -46,7 +52,7 @@ const normalizeHex = (color: string, fallback: string): string => {
 };
 
 const hexToRgb = (hex: string): RgbColor => {
-	const normalized = normalizeHex(hex, DEFAULT_MAIN_COLOR);
+	const normalized = sanitizeHexColor(hex, DEFAULT_ISSUE_COLOR);
 	return {
 		r: parseInt(normalized.slice(1, 3), 16),
 		g: parseInt(normalized.slice(3, 5), 16),
@@ -78,8 +84,11 @@ const mixHex = (baseHex: string, targetHex: string, targetWeight: number): strin
 
 export const getIsDarkTheme = (): boolean => document.body.classList.contains('theme-dark');
 
-export const sanitizeHexColor = (color: string, fallback: string): string =>
-	normalizeHex(color, fallback);
+export const getContrastingForegroundColor = (backgroundHex: string): string => {
+	const rgb = hexToRgb(backgroundHex);
+	const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+	return luminance > 0.5 ? BLACK_HEX : WHITE_HEX;
+};
 
 const THEME_MIX_CONFIG: Record<ThemeVariant, ThemeMixConfig> = {
 	dark: {
@@ -100,14 +109,16 @@ const THEME_MIX_CONFIG: Record<ThemeVariant, ThemeMixConfig> = {
 
 export const deriveIssueSurfaceColors = (
 	mainColor: string,
-	isDarkTheme: boolean
+	isDarkTheme: boolean,
+	foregroundColor?: string
 ): DerivedIssueSurfaceColors => {
-	const normalizedMainColor = normalizeHex(mainColor, DEFAULT_MAIN_COLOR);
+	const normalizedMainColor = sanitizeHexColor(mainColor, DEFAULT_ISSUE_COLOR);
 	const themeVariant: ThemeVariant = isDarkTheme ? 'dark' : 'light';
 	const mixConfig = THEME_MIX_CONFIG[themeVariant];
 
 	return {
 		headerBackground: normalizedMainColor,
+		headerText: foregroundColor ?? getContrastingForegroundColor(normalizedMainColor),
 		controlsBackground: mixHex(
 			normalizedMainColor,
 			mixConfig.targetHex,

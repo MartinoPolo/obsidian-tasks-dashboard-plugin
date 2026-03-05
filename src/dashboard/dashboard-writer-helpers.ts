@@ -1,5 +1,5 @@
 import { TFile } from 'obsidian';
-import { DashboardConfig, Issue, Priority, PRIORITY_ORDER } from '../types';
+import { DashboardConfig, Issue, Priority, PRIORITY_ORDER, WorktreeSetupState } from '../types';
 import {
 	buildIssueMarkerEnd,
 	buildIssueMarkerStart,
@@ -21,6 +21,18 @@ import {
 	ParsedDashboardIssue,
 	ParsedIssueFile
 } from './dashboard-writer-types';
+
+export const hasDashboardLinkedRepository = (dashboard: DashboardConfig): boolean => {
+	return dashboard.githubEnabled && (dashboard.githubRepo?.trim() ?? '') !== '';
+};
+
+export const buildAssignedIssuesSection = (dashboardId: string): string => {
+	return `# Assigned Issues
+\x60\x60\x60tasks-dashboard-assigned
+dashboard: ${dashboardId}
+\x60\x60\x60
+`;
+};
 
 export const buildIssueRelativePath = (issueId: string, isArchived: boolean): string => {
 	const folder = isArchived ? ISSUE_ARCHIVE_FOLDER : ISSUE_ACTIVE_FOLDER;
@@ -51,6 +63,31 @@ export const getFrontmatterText = (content: string): string | undefined => {
 export const buildIssueMarkdownBlock = (params: IssueBlockParams): string => {
 	const relativePath = buildIssueRelativePath(params.id, params.isArchived);
 	const githubLines = params.githubLinks.map((url) => `github_link: ${url}\n`).join('');
+	const worktreeLines =
+		params.worktree === true
+			? [
+					'worktree: true',
+					params.worktreeBranch !== undefined
+						? `worktree_branch: ${params.worktreeBranch}`
+						: undefined,
+					params.worktreeOriginFolder !== undefined
+						? `worktree_origin_folder: ${params.worktreeOriginFolder}`
+						: undefined,
+					params.worktreeExpectedFolder !== undefined
+						? `worktree_expected_folder: ${params.worktreeExpectedFolder}`
+						: undefined,
+					params.worktreeSetupState !== undefined
+						? `worktree_setup_state: ${params.worktreeSetupState}`
+						: undefined,
+					params.worktreeBaseRepository !== undefined
+						? `worktree_base_repository: ${params.worktreeBaseRepository}`
+						: undefined,
+					params.worktreeSafeDelete === true ? 'worktree_safe_delete: true' : undefined
+				]
+					.filter((line): line is string => line !== undefined)
+					.map((line) => `${line}\n`)
+					.join('')
+			: '';
 
 	return `${buildIssueMarkerStart(params.id)}
 \`\`\`tasks-dashboard-controls
@@ -59,7 +96,7 @@ name: ${params.name}
 path: ${params.filePath}
 dashboard: ${params.dashboardId}
 priority: ${params.priority}
-${githubLines}\`\`\`
+${githubLines}${worktreeLines}\`\`\`
 \`\`\`tasks
 path includes ${relativePath}
 not done
@@ -98,6 +135,24 @@ export const parseYamlFrontmatter = (content: string): Record<string, string> =>
 	}
 
 	return result;
+};
+
+const stripYamlQuotes = (value: string | undefined): string | undefined => {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	const singleQuotedMatch = value.match(/^'(.*)'$/);
+	if (singleQuotedMatch !== null) {
+		return singleQuotedMatch[1].replace(/''/g, "'");
+	}
+
+	const doubleQuotedMatch = value.match(/^"(.*)"$/);
+	if (doubleQuotedMatch !== null) {
+		return doubleQuotedMatch[1].replace(/\\"/g, '"');
+	}
+
+	return value;
 };
 
 export const extractIssueName = (content: string): string | undefined => {
@@ -164,8 +219,20 @@ export const extractNotesSection = (existingContent: string): string => {
 	return cleanedNotesContent.trim();
 };
 
+const WORKTREE_SETUP_STATES: readonly WorktreeSetupState[] = ['pending', 'active', 'failed'];
+
+const parseWorktreeSetupState = (value: string | undefined): WorktreeSetupState | undefined => {
+	if (value === undefined) {
+		return undefined;
+	}
+	return WORKTREE_SETUP_STATES.includes(value as WorktreeSetupState)
+		? (value as WorktreeSetupState)
+		: undefined;
+};
+
 export const parseIssueFile = (file: TFile, content: string): ParsedIssueFile | undefined => {
 	const frontmatter = parseYamlFrontmatter(content);
+	const frontmatterText = getFrontmatterText(content) ?? '';
 	const name = extractIssueName(content);
 
 	if (name === undefined) {
@@ -181,13 +248,30 @@ export const parseIssueFile = (file: TFile, content: string): ParsedIssueFile | 
 			? priorityValue
 			: 'medium';
 
+	const hasMergedPullRequestMetadata =
+		/-\s+url:\s*"https?:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+"[\s\S]*?merged:\s*"?true"?/m.test(
+			frontmatterText
+		);
+
 	return {
 		id: file.basename,
 		name,
 		priority,
 		created: frontmatter['created'] || new Date().toISOString(),
 		filePath: file.path,
-		githubLinks: extractGithubLinksFromFrontmatter(content)
+		githubLinks: extractGithubLinksFromFrontmatter(content),
+		worktree: frontmatter['worktree'] === 'true',
+		worktreeBranch: stripYamlQuotes(frontmatter['worktree_branch']),
+		worktreeOriginFolder: stripYamlQuotes(frontmatter['worktree_origin_folder']),
+		worktreeExpectedFolder: stripYamlQuotes(frontmatter['worktree_expected_folder']),
+		worktreeSetupState:
+			frontmatter['worktree_setup_state'] === 'pending' ||
+			frontmatter['worktree_setup_state'] === 'active' ||
+			frontmatter['worktree_setup_state'] === 'failed'
+				? frontmatter['worktree_setup_state']
+				: undefined,
+		worktreeBaseRepository: stripYamlQuotes(frontmatter['worktree_base_repository']),
+		worktreeSafeDelete: hasMergedPullRequestMetadata
 	};
 };
 
@@ -203,6 +287,13 @@ export const parsedIssueFileToBlockParams = (
 		dashboardId: dashboard.id,
 		priority: issueFile.priority,
 		githubLinks: issueFile.githubLinks,
+		worktree: issueFile.worktree,
+		worktreeBranch: issueFile.worktreeBranch,
+		worktreeOriginFolder: issueFile.worktreeOriginFolder,
+		worktreeExpectedFolder: issueFile.worktreeExpectedFolder,
+		worktreeSetupState: issueFile.worktreeSetupState,
+		worktreeBaseRepository: issueFile.worktreeBaseRepository,
+		worktreeSafeDelete: issueFile.worktreeSafeDelete,
 		isArchived
 	};
 };
@@ -217,6 +308,13 @@ export const toIssueBlockParams = (issue: Issue, dashboard: DashboardConfig): Is
 		dashboardId: dashboard.id,
 		priority: issue.priority,
 		githubLinks,
+		worktree: issue.worktree === true,
+		worktreeBranch: issue.worktreeBranch,
+		worktreeOriginFolder: issue.worktreeOriginFolder,
+		worktreeExpectedFolder: issue.worktreeExpectedFolder,
+		worktreeSetupState: issue.worktreeSetupState,
+		worktreeBaseRepository: issue.worktreeBaseRepository,
+		worktreeSafeDelete: issue.worktreeSafeDelete,
 		isArchived: false
 	};
 };

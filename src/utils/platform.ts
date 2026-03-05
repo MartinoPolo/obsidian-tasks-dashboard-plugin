@@ -30,6 +30,9 @@ export interface PlatformService {
 	openTerminal: (folderPath: string, tabColor?: string) => void;
 	openVSCode: (folderPath: string) => void;
 	isGitRepositoryFolder: (folderPath: string) => boolean;
+	isGitBranchMissing: (folderPath: string, branchName: string) => boolean;
+	pathExists: (targetPath: string) => boolean;
+	findWorktreePathForBranch: (repositoryFolder: string, branchName: string) => string | undefined;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
@@ -49,6 +52,7 @@ export interface PlatformService {
 }
 
 export function createPlatformService(): PlatformService {
+	// TODO MP: Before deployment, let's remove all these absolute paths and maybe add the script to the project.
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\setup-worktree.sh';
 	const WORKTREE_REMOVE_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\remove-worktree.sh';
@@ -154,6 +158,60 @@ export function createPlatformService(): PlatformService {
 			const spawnedProcess = spawnFunction(command, args, options);
 			return toChildProcessApi(spawnedProcess);
 		};
+	};
+
+	const runGitCommandStatus = (folderPath: string, args: string[]): number | undefined => {
+		try {
+			const childProcessModule = loadModule('child_process');
+			const spawnSyncFunction = getRequiredFunction(childProcessModule, 'spawnSync');
+			const spawnResult = spawnSyncFunction('git', args, {
+				shell: false,
+				cwd: folderPath,
+				windowsHide: true
+			});
+			if (!isObjectRecord(spawnResult)) {
+				return undefined;
+			}
+
+			const statusCandidate = spawnResult.status;
+			if (typeof statusCandidate !== 'number') {
+				return undefined;
+			}
+
+			return statusCandidate;
+		} catch {
+			return undefined;
+		}
+	};
+
+	const runGitCommandOutput = (folderPath: string, args: string[]): string | undefined => {
+		try {
+			const childProcessModule = loadModule('child_process');
+			const spawnSyncFunction = getRequiredFunction(childProcessModule, 'spawnSync');
+			const spawnResult = spawnSyncFunction('git', args, {
+				shell: false,
+				cwd: folderPath,
+				windowsHide: true,
+				encoding: 'utf8'
+			});
+			if (!isObjectRecord(spawnResult)) {
+				return undefined;
+			}
+
+			const statusCandidate = spawnResult.status;
+			if (typeof statusCandidate !== 'number' || statusCandidate !== 0) {
+				return undefined;
+			}
+
+			const stdoutCandidate = spawnResult.stdout;
+			if (typeof stdoutCandidate !== 'string') {
+				return undefined;
+			}
+
+			return stdoutCandidate;
+		} catch {
+			return undefined;
+		}
 	};
 
 	const isFolderDialogResult = (value: unknown): value is FolderDialogResult => {
@@ -274,6 +332,99 @@ export function createPlatformService(): PlatformService {
 		} catch {
 			return false;
 		}
+	};
+
+	const pathExists = (targetPath: string): boolean => {
+		if (targetPath.trim() === '') {
+			return false;
+		}
+
+		try {
+			const fsModule = loadModule('fs');
+			const existsSyncFunction = getRequiredFunction(fsModule, 'existsSync');
+			return existsSyncFunction(targetPath) === true;
+		} catch {
+			return false;
+		}
+	};
+
+	const findWorktreePathForBranch = (
+		repositoryFolder: string,
+		branchName: string
+	): string | undefined => {
+		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
+			return undefined;
+		}
+		if (!isGitRepositoryFolder(repositoryFolder)) {
+			return undefined;
+		}
+
+		const output = runGitCommandOutput(repositoryFolder, ['worktree', 'list', '--porcelain']);
+		if (output === undefined || output.trim() === '') {
+			return undefined;
+		}
+
+		let currentWorktreePath: string | undefined;
+		let currentBranch: string | undefined;
+		const lines = output.split(/\r?\n/);
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (trimmedLine === '') {
+				if (currentBranch === branchName && currentWorktreePath !== undefined) {
+					return currentWorktreePath;
+				}
+				currentWorktreePath = undefined;
+				currentBranch = undefined;
+				continue;
+			}
+
+			if (trimmedLine.startsWith('worktree ')) {
+				currentWorktreePath = trimmedLine.slice('worktree '.length).trim();
+				continue;
+			}
+
+			if (trimmedLine.startsWith('branch refs/heads/')) {
+				currentBranch = trimmedLine.slice('branch refs/heads/'.length).trim();
+			}
+		}
+
+		if (currentBranch === branchName && currentWorktreePath !== undefined) {
+			return currentWorktreePath;
+		}
+
+		return undefined;
+	};
+
+	const isGitBranchMissing = (folderPath: string, branchName: string): boolean => {
+		if (folderPath.trim() === '' || branchName.trim() === '') {
+			return false;
+		}
+		if (!isGitRepositoryFolder(folderPath)) {
+			return false;
+		}
+
+		const gitVersionStatus = runGitCommandStatus(folderPath, ['--version']);
+		if (gitVersionStatus !== 0) {
+			return false;
+		}
+
+		const localBranchStatus = runGitCommandStatus(folderPath, [
+			'rev-parse',
+			'--verify',
+			'--quiet',
+			`refs/heads/${branchName}`
+		]);
+		if (localBranchStatus === 0) {
+			return false;
+		}
+
+		const remoteBranchStatus = runGitCommandStatus(folderPath, [
+			'rev-parse',
+			'--verify',
+			'--quiet',
+			`refs/remotes/origin/${branchName}`
+		]);
+		return remoteBranchStatus !== 0;
 	};
 
 	const pickFolder = async (defaultPath?: string): Promise<string | undefined> => {
@@ -459,6 +610,9 @@ export function createPlatformService(): PlatformService {
 		openTerminal,
 		openVSCode,
 		isGitRepositoryFolder,
+		isGitBranchMissing,
+		pathExists,
+		findWorktreePathForBranch,
 		pickFolder,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript

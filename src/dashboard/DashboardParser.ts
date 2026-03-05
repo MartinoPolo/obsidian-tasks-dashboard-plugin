@@ -1,4 +1,5 @@
 import { Priority } from '../types';
+import { buildHowToSection } from './dashboard-howto-section';
 import { DASHBOARD_MARKERS } from './dashboard-markers';
 import { parsePriority } from './priority-utils';
 
@@ -124,25 +125,28 @@ export function hasMarkers(content: string): boolean {
 	return Object.values(MARKERS).every((marker) => content.includes(marker));
 }
 
-export function initializeDashboardStructure(dashboardId: string): string {
+export function initializeDashboardStructure(
+	dashboardId: string,
+	includeAssignedIssuesSection = false
+): string {
+	const assignedIssuesSection = includeAssignedIssuesSection
+		? `# Assigned Issues
+\`\`\`tasks-dashboard-assigned
+dashboard: ${dashboardId}
+\`\`\`
+`
+		: '';
+
 	return `# Active Issues
 ${MARKERS.ACTIVE_START}
 \`\`\`tasks-dashboard-sort
 dashboard: ${dashboardId}
 \`\`\`
 ${MARKERS.ACTIVE_END}
-# Notes
+${assignedIssuesSection}# Notes
 %% TASKS-DASHBOARD:NOTES %%
 # Archive
 ${MARKERS.ARCHIVE_START}
 ${MARKERS.ARCHIVE_END}
-# How to Use This Dashboard
-- Press "+ Add issue" or use your dashboard hotkey
-- Use Row 1 actions in each issue header; hidden actions are available in the always-visible 3-dots menu
-- Use overflow "Layout settings" to configure dashboard-wide Row 1/Row 2 action placement and show/hide actions
-- Use ↑/↓ to reorder quickly; right-click ↑ for move-to-top and right-click ↓ for move-to-bottom
-- Use archive to move issues to Archive, and use delete/rename/recolor/folder link actions as needed
-- Terminal and VS Code actions require an assigned issue folder
-- This How to Use section is optional and can be removed if you prefer
-- Add tasks in issue notes using \`- [ ] Task name\``;
+${buildHowToSection()}`;
 }

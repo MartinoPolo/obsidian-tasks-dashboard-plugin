@@ -123,6 +123,20 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		});
 
 		new Setting(containerEl)
+			.setName('Release all issue colors')
+			.setDesc('Clear all color assignments so they can be reused')
+			.addButton((btn) =>
+				btn
+					.setButtonText('Release all colors')
+					.setWarning()
+					.onClick(() => {
+						this.plugin.settings.issueColors = {};
+						this.saveSettingsAndRefreshDashboard();
+						new Notice('All issue colors released');
+					})
+			);
+
+		new Setting(containerEl)
 			.setName('Add dashboard')
 			.setDesc('Create a new dashboard configuration')
 			.addButton((btn) =>

@@ -1,6 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { DashboardConfig } from '../types';
 import { MARKERS } from './DashboardParser';
+import { buildHowToSection } from './dashboard-howto-section';
 import { DASHBOARD_NOTES_MARKER } from './dashboard-markers';
 import {
 	ISSUE_ACTIVE_FOLDER,
@@ -8,8 +9,10 @@ import {
 	ISSUE_SECTION_ROOT
 } from './dashboard-writer-constants';
 import {
+	buildAssignedIssuesSection,
 	buildIssueMarkdownBlock,
 	buildSortBlock,
+	hasDashboardLinkedRepository,
 	parseIssueFile,
 	parsedIssueFileToBlockParams,
 	sortIssueFilesByPriorityAndCreatedDate
@@ -63,6 +66,10 @@ export const buildRebuiltDashboardContent = (
 	archivedIssues: ParsedIssueFile[],
 	notesContent: string
 ): string => {
+	const assignedIssuesSection = hasDashboardLinkedRepository(dashboard)
+		? buildAssignedIssuesSection(dashboard.id)
+		: '';
+
 	let newContent = `# Active Issues
 ${MARKERS.ACTIVE_START}
 ${buildSortBlock(dashboard.id)}`;
@@ -75,7 +82,7 @@ ${buildSortBlock(dashboard.id)}`;
 	const notesSection = notesContent !== '' ? `\n${notesContent}\n\n` : '\n\n';
 
 	newContent += `${MARKERS.ACTIVE_END}
-# Notes
+${assignedIssuesSection}# Notes
 ${DASHBOARD_NOTES_MARKER}${notesSection}# Archive
 ${MARKERS.ARCHIVE_START}
 `;
@@ -86,12 +93,7 @@ ${MARKERS.ARCHIVE_START}
 	}
 
 	newContent += `${MARKERS.ARCHIVE_END}
-# How to Use This Dashboard
-- Press "+ Add issue" or keyboard shortcut (set your hotkey in settings)
-- Use arrows to reorder issues
-- Click archive to archive completed issues
-- Click "Sort by Priority" to auto-organize
-- Add tasks in issue notes using \`- [ ] Task name\``;
+${buildHowToSection()}`;
 
 	return newContent;
 };

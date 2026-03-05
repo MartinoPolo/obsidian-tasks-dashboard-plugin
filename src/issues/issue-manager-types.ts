@@ -1,12 +1,16 @@
 import { TFile } from 'obsidian';
-import { DashboardConfig, GitHubIssueMetadata, Issue, Priority } from '../types';
+import { DashboardConfig, GitHubIssueMetadata, Issue, Priority, WorktreeSetupState } from '../types';
 
 export interface CreateIssueParams {
 	name: string;
 	priority: Priority;
 	worktree?: boolean;
 	worktreeColor?: string;
+	worktreeBranch?: string;
 	worktreeOriginFolder?: string;
+	worktreeExpectedFolder?: string;
+	worktreeSetupState?: WorktreeSetupState;
+	worktreeBaseRepository?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
 	dashboard: DashboardConfig;
@@ -42,6 +46,7 @@ export interface IssueManagerInstance {
 		color?: string,
 		worktreeOriginFolder?: string
 	) => void;
+	retryWorktreeSetup: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 	removeWorktree: (
 		dashboard: DashboardConfig,
 		issueId: string,

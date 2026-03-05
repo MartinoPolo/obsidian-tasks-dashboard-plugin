@@ -1,8 +1,12 @@
 import { App, Notice, TAbstractFile, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, PRIORITY_ORDER } from '../types';
-import { hasMarkers, initializeDashboardStructure, MARKERS } from './DashboardParser';
 import { getDashboardPath } from '../utils/dashboard-path';
+import {
+	getActiveIssueBlocksFromDashboard,
+	sortByDateField as getSortedBlocksByDateField,
+	rebuildActiveSectionWithSortedBlocks
+} from './dashboard-writer-active-section';
 import {
 	ISSUE_ACTIVE_FOLDER,
 	ISSUE_ARCHIVE_FOLDER,
@@ -14,23 +18,20 @@ import {
 	escapeRegExp,
 	extractAndRemoveIssueBlock,
 	extractNotesSection,
+	hasDashboardLinkedRepository,
 	insertBeforeMarker,
 	parseYamlFrontmatter,
 	removeLegacyIssueSeparator,
 	toIssueBlockParams
 } from './dashboard-writer-helpers';
 import {
-	getActiveIssueBlocksFromDashboard,
-	rebuildActiveSectionWithSortedBlocks,
-	sortByDateField as getSortedBlocksByDateField
-} from './dashboard-writer-active-section';
-import {
 	buildRebuiltDashboardContent,
 	scanIssueFilesForRebuilding
 } from './dashboard-writer-rebuild';
+import type { DashboardWriterInstance } from './dashboard-writer-types';
+import { hasMarkers, initializeDashboardStructure, MARKERS } from './DashboardParser';
 
 export type { DashboardWriterInstance, SortDirection } from './dashboard-writer-types';
-import type { DashboardWriterInstance } from './dashboard-writer-types';
 
 export function createDashboardWriter(
 	app: App,
@@ -166,7 +167,10 @@ export function createDashboardWriter(
 		let file = getDashboardFile(dashboard);
 
 		if (file === undefined) {
-			const content = initializeDashboardStructure(dashboard.id);
+			const content = initializeDashboardStructure(
+				dashboard.id,
+				hasDashboardLinkedRepository(dashboard)
+			);
 			await app.vault.create(dashboardPath, content);
 			file = getDashboardFile(dashboard);
 
@@ -177,7 +181,10 @@ export function createDashboardWriter(
 
 		let content = await app.vault.read(file);
 		if (!hasMarkers(content)) {
-			content = initializeDashboardStructure(dashboard.id);
+			content = initializeDashboardStructure(
+				dashboard.id,
+				hasDashboardLinkedRepository(dashboard)
+			);
 		}
 
 		const issueEntry = buildIssueMarkdownBlock(toIssueBlockParams(issue, dashboard));

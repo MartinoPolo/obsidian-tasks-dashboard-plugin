@@ -1,4 +1,5 @@
 import { deriveIssueSurfaceColors, getIsDarkTheme, sanitizeHexColor } from '../utils/color';
+import { getForegroundForIssueColor } from '../utils/issue-colors';
 import {
 	ISSUE_CONTAINER_COLOR_VARIABLES,
 	ISSUE_SURFACE_COLOR_FALLBACK
@@ -88,9 +89,11 @@ export const applyIssueSurfaceStyles = (
 		mainColor !== undefined
 			? sanitizeHexColor(mainColor, ISSUE_SURFACE_COLOR_FALLBACK)
 			: undefined;
+	const foregroundColor =
+		normalizedColor !== undefined ? getForegroundForIssueColor(normalizedColor) : undefined;
 	const derivedColors =
 		normalizedColor !== undefined
-			? deriveIssueSurfaceColors(normalizedColor, getIsDarkTheme())
+			? deriveIssueSurfaceColors(normalizedColor, getIsDarkTheme(), foregroundColor)
 			: undefined;
 
 	const issueContainer = controlBlock.querySelector('.tdc-issue-container');
@@ -98,6 +101,7 @@ export const applyIssueSurfaceStyles = (
 		if (derivedColors !== undefined) {
 			applyColorVariables(issueContainer, {
 				'--tdc-issue-main-color': derivedColors.headerBackground,
+				'--tdc-issue-header-link-color': derivedColors.headerText,
 				'--tdc-issue-controls-bg': derivedColors.controlsBackground,
 				'--tdc-issue-checklist-bg': derivedColors.checklistBackground,
 				'--tdc-issue-controls-border': derivedColors.controlsBorder,

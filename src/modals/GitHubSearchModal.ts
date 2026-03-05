@@ -1,6 +1,11 @@
 import { App, Modal } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, GitHubIssueMetadata, GitHubSearchScope } from '../types';
+import {
+	DashboardConfig,
+	GitHubIssueMetadata,
+	GitHubRepository,
+	GitHubSearchScope
+} from '../types';
 import { getStateClass, getStateText, truncateText } from '../utils/github-helpers';
 import {
 	createPromptBackButton,
@@ -14,7 +19,7 @@ import { handleListNavigationKeydown } from './modal-keyboard-helpers';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MAX_COMBINED_RESULTS = 20;
-const RECENT_ISSUES_LIMIT = 10;
+const RECENT_ISSUES_LIMIT = 20;
 const TITLE_TRUNCATION_LENGTH = 50;
 const ISSUE_ICON =
 	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
@@ -35,7 +40,7 @@ function appendSvgIcon(target: HTMLElement, svgMarkup: string): void {
 }
 
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
-type SearchPair = [GitHubIssueMetadata[], GitHubIssueMetadata[]];
+type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
 
 interface GitHubSearchModalLinkedRepositories {
 	issueRepository?: string;
@@ -44,12 +49,21 @@ interface GitHubSearchModalLinkedRepositories {
 	onBack?: () => void;
 	showBackButton?: boolean;
 	skipButtonLabel?: string;
+	confirmButtonLabel?: string;
+	selectionLockUntilCleared?: boolean;
+	searchMode?: GitHubSearchMode;
+	enterSkipsWithoutSelection?: boolean;
+	separateSkipAndCancelButtons?: boolean;
+	enterSkipLabel?: string;
+	showSkipButton?: boolean;
 }
 
 interface ScopeOption {
 	value: GitHubSearchScope;
 	label: string;
 }
+
+const OTHER_REPOSITORY_SCOPE: GitHubSearchScope = 'other-repo';
 
 export class GitHubSearchModal extends Modal {
 	private readonly plugin: TasksDashboardPlugin;
@@ -61,9 +75,19 @@ export class GitHubSearchModal extends Modal {
 	private readonly onBack: (() => void) | undefined;
 	private readonly showBackButton: boolean;
 	private readonly skipButtonLabel: string;
+	private readonly confirmButtonLabel: string;
+	private readonly selectionLockUntilCleared: boolean;
+	private readonly searchMode: GitHubSearchMode;
+	private readonly enterSkipsWithoutSelection: boolean;
+	private readonly separateSkipAndCancelButtons: boolean;
+	private readonly enterSkipLabel: string;
+	private readonly showSkipButton: boolean;
 	private searchInput!: HTMLInputElement;
 	private resultsContainer!: HTMLElement;
 	private searchScopeSelect!: HTMLSelectElement;
+	private enterButton: HTMLButtonElement | undefined;
+	private otherRepositoryScopeLabel: HTMLElement | undefined;
+	private otherRepositoryScopeSelect: HTMLSelectElement | undefined;
 	private searchScope: GitHubSearchScope;
 	private readonly scopeOptions: ScopeOption[];
 	private selectedIndex = -1;
@@ -71,6 +95,12 @@ export class GitHubSearchModal extends Modal {
 	private searchTimeout: ReturnType<typeof setTimeout> | undefined;
 	private activeRequestId = 0;
 	private hasResolved = false;
+	private authenticatedUsername: string | undefined;
+	private authenticatedUsernamePromise: Promise<void> | undefined;
+	private userRepositories: GitHubRepository[] | undefined;
+	private userRepositoriesPromise: Promise<void> | undefined;
+	private selectedOtherRepository: string | undefined;
+	private lockedSelection: GitHubIssueMetadata | undefined;
 
 	constructor(
 		app: App,
@@ -89,6 +119,14 @@ export class GitHubSearchModal extends Modal {
 		this.onBack = linkedRepositories?.onBack;
 		this.showBackButton = linkedRepositories?.showBackButton ?? false;
 		this.skipButtonLabel = linkedRepositories?.skipButtonLabel ?? 'Cancel';
+		this.confirmButtonLabel = linkedRepositories?.confirmButtonLabel ?? 'Select';
+		this.selectionLockUntilCleared = linkedRepositories?.selectionLockUntilCleared ?? false;
+		this.searchMode = linkedRepositories?.searchMode ?? 'issues-and-prs';
+		this.enterSkipsWithoutSelection = linkedRepositories?.enterSkipsWithoutSelection ?? false;
+		this.separateSkipAndCancelButtons =
+			linkedRepositories?.separateSkipAndCancelButtons ?? false;
+		this.enterSkipLabel = linkedRepositories?.enterSkipLabel ?? this.skipButtonLabel;
+		this.showSkipButton = linkedRepositories?.showSkipButton ?? true;
 		this.onSelect = onSelect;
 		this.scopeOptions = this.buildScopeOptions();
 		this.searchScope = this.scopeOptions[0]?.value ?? 'my-repos';
@@ -96,7 +134,7 @@ export class GitHubSearchModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
-		setupPromptModal(this, 'GitHub Issue/PR (optional)', {
+		setupPromptModal(this, this.getModalTitle(), {
 			additionalModalClasses: ['tdc-github-search-modal']
 		});
 
@@ -105,7 +143,7 @@ export class GitHubSearchModal extends Modal {
 		this.searchInput = searchContainer.createEl('input', {
 			type: 'text',
 			cls: 'tdc-prompt-input tdc-gh-search-input',
-			attr: { placeholder: 'Search issues or paste URL...' }
+			attr: { placeholder: this.getSearchPlaceholder() }
 		});
 
 		const optionsContainer = contentEl.createDiv({ cls: 'tdc-gh-options' });
@@ -124,6 +162,18 @@ export class GitHubSearchModal extends Modal {
 
 		this.searchScopeSelect.value = this.searchScope;
 
+		this.otherRepositoryScopeLabel = optionsContainer.createEl('label', {
+			cls: 'tdc-gh-scope-label'
+		});
+		this.otherRepositoryScopeLabel.createSpan({ text: 'Repository' });
+		this.otherRepositoryScopeSelect = this.otherRepositoryScopeLabel.createEl('select', {
+			cls: 'tdc-gh-scope-select'
+		});
+		this.otherRepositoryScopeSelect.createEl('option', {
+			value: '',
+			text: 'Loading repositories...'
+		});
+
 		this.resultsContainer = contentEl.createDiv({ cls: 'tdc-gh-results' });
 
 		const btnContainer = createPromptButtonsContainer(contentEl);
@@ -137,32 +187,157 @@ export class GitHubSearchModal extends Modal {
 			});
 		}
 
-		void createPromptCancelButton(
-			btnContainer,
-			() => {
-				this.skipSelection();
-			},
-			this.skipButtonLabel,
-			'tdc-prompt-btn-secondary'
-		);
+		if (this.separateSkipAndCancelButtons) {
+			if (this.showSkipButton) {
+				const skipButton = btnContainer.createEl('button', {
+					cls: 'tdc-prompt-btn tdc-prompt-btn-secondary',
+					text: this.skipButtonLabel
+				});
+				skipButton.addEventListener('click', () => {
+					this.skipSelection();
+				});
+			}
 
-		void createPromptConfirmButton(
+			void createPromptCancelButton(btnContainer, () => {
+				this.cancelSelection();
+			});
+		} else {
+			if (this.showSkipButton) {
+				void createPromptCancelButton(
+					btnContainer,
+					() => {
+						this.skipSelection();
+					},
+					this.skipButtonLabel,
+					'tdc-prompt-btn-secondary'
+				);
+			}
+		}
+
+		this.enterButton = createPromptConfirmButton(
 			btnContainer,
 			() => {
 				this.selectCurrent();
 			},
-			'Select'
+			this.confirmButtonLabel
 		);
 
 		this.setupEventListeners();
+		this.updateOtherRepositorySelectorVisibility();
+		this.updateEnterButtonLabel();
 		this.searchInput.focus();
+		void this.ensureAuthenticatedUsernameLoaded();
 
 		void this.loadRecentIssues(this.nextRequestId());
 	}
 
+	private async loadAuthenticatedUsername(): Promise<void> {
+		this.authenticatedUsername = await this.plugin.githubService.getAuthenticatedUser();
+	}
+
+	private async ensureAuthenticatedUsernameLoaded(): Promise<void> {
+		if (this.plugin.githubService.isAuthenticated() === false) {
+			return;
+		}
+		if (this.authenticatedUsername !== undefined) {
+			return;
+		}
+		if (this.authenticatedUsernamePromise === undefined) {
+			this.authenticatedUsernamePromise = this.loadAuthenticatedUsername().finally(() => {
+				this.authenticatedUsernamePromise = undefined;
+			});
+		}
+
+		await this.authenticatedUsernamePromise;
+	}
+
+	private async loadUserRepositories(): Promise<void> {
+		this.userRepositories = await this.plugin.githubService.getUserRepositories();
+		if (this.userRepositories.length > 0) {
+			const nextRepository = this.userRepositories[0].fullName;
+			if (nextRepository !== '') {
+				this.selectedOtherRepository = nextRepository;
+			}
+		}
+	}
+
+	private async ensureUserRepositoriesLoaded(): Promise<void> {
+		if (this.userRepositories !== undefined) {
+			this.populateOtherRepositoryOptions();
+			return;
+		}
+
+		if (this.userRepositoriesPromise === undefined) {
+			this.userRepositoriesPromise = this.loadUserRepositories().finally(() => {
+				this.userRepositoriesPromise = undefined;
+			});
+		}
+
+		await this.userRepositoriesPromise;
+		this.populateOtherRepositoryOptions();
+	}
+
+	private populateOtherRepositoryOptions(): void {
+		if (this.otherRepositoryScopeSelect === undefined) {
+			return;
+		}
+
+		this.otherRepositoryScopeSelect.empty();
+		const repositories = this.userRepositories ?? [];
+		if (repositories.length === 0) {
+			this.selectedOtherRepository = undefined;
+			this.otherRepositoryScopeSelect.createEl('option', {
+				value: '',
+				text: 'No repositories available'
+			});
+			return;
+		}
+
+		for (const repository of repositories) {
+			this.otherRepositoryScopeSelect.createEl('option', {
+				value: repository.fullName,
+				text: repository.fullName
+			});
+		}
+
+		const hasSelectedRepository =
+			this.selectedOtherRepository !== undefined &&
+			repositories.some((repository) => repository.fullName === this.selectedOtherRepository);
+		const fallbackRepository = repositories[0]?.fullName;
+		const nextSelection = hasSelectedRepository
+			? this.selectedOtherRepository
+			: fallbackRepository;
+		if (nextSelection !== undefined) {
+			this.selectedOtherRepository = nextSelection;
+			this.otherRepositoryScopeSelect.value = nextSelection;
+		}
+	}
+
+	private updateOtherRepositorySelectorVisibility(): void {
+		if (this.otherRepositoryScopeLabel === undefined) {
+			return;
+		}
+
+		const showOtherRepositorySelector = this.searchScope === OTHER_REPOSITORY_SCOPE;
+		this.otherRepositoryScopeLabel.style.display = showOtherRepositorySelector ? '' : 'none';
+	}
+
+	private handleSearchScopeChange(): void {
+		this.searchScope = this.parseSearchScope(this.searchScopeSelect.value);
+		this.updateOtherRepositorySelectorVisibility();
+		if (this.searchScope === OTHER_REPOSITORY_SCOPE) {
+			void this.ensureUserRepositoriesLoaded().then(() => {
+				this.handleSearchInput('scope');
+			});
+			return;
+		}
+
+		this.handleSearchInput('scope');
+	}
+
 	private setupEventListeners(): void {
 		this.searchInput.addEventListener('input', () => {
-			this.handleSearchInput();
+			this.handleSearchInput('typing');
 		});
 
 		this.searchInput.addEventListener('keydown', (event) => {
@@ -170,33 +345,53 @@ export class GitHubSearchModal extends Modal {
 		});
 
 		this.searchScopeSelect.addEventListener('change', () => {
-			this.searchScope = this.parseSearchScope(this.searchScopeSelect.value);
-			this.handleSearchInput();
+			this.handleSearchScopeChange();
+		});
+
+		const otherRepositoryScopeSelect = this.otherRepositoryScopeSelect;
+		otherRepositoryScopeSelect?.addEventListener('change', () => {
+			this.selectedOtherRepository = otherRepositoryScopeSelect.value;
+			this.handleSearchInput('repository');
 		});
 	}
 
-	private handleSearchInput(): void {
+	private handleSearchInput(trigger: 'typing' | 'scope' | 'repository'): void {
 		if (this.searchTimeout !== undefined) {
 			clearTimeout(this.searchTimeout);
 		}
 
 		const requestId = this.nextRequestId();
 
-		const query = this.searchInput.value.trim();
+		const query = this.searchInput.value.trim().replace(/^#/, '');
+
+		if (this.selectionLockUntilCleared && this.lockedSelection !== undefined && query !== '') {
+			this.renderLockedSelection();
+			this.updateEnterButtonLabel();
+			return;
+		}
+
+		if (this.selectionLockUntilCleared && this.lockedSelection !== undefined && query === '') {
+			this.lockedSelection = undefined;
+		}
 
 		if (this.isGitHubUrl(query)) {
 			this.showUrlPreview(query);
+			this.updateEnterButtonLabel();
 			return;
 		}
 
 		if (query === '') {
 			void this.loadRecentIssues(requestId);
+			this.updateEnterButtonLabel();
 			return;
 		}
 
+		const preselectFirstResult = trigger === 'typing';
+
 		this.searchTimeout = setTimeout(() => {
-			void this.performSearch(query, requestId);
+			void this.performSearch(query, requestId, preselectFirstResult);
 		}, SEARCH_DEBOUNCE_MS);
+		this.updateEnterButtonLabel();
 	}
 
 	private handleKeydown(e: KeyboardEvent): void {
@@ -219,6 +414,14 @@ export class GitHubSearchModal extends Modal {
 						}
 					: undefined,
 			onClose: () => {
+				if (!this.showSkipButton) {
+					this.cancelSelection();
+					return;
+				}
+				if (this.separateSkipAndCancelButtons) {
+					this.cancelSelection();
+					return;
+				}
 				this.skipSelection();
 			},
 			onConfirm: () => {
@@ -229,6 +432,10 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private moveSelection(delta: number): void {
+		if (this.selectionLockUntilCleared && this.lockedSelection !== undefined) {
+			return;
+		}
+
 		const items = this.getResultItems();
 		if (items.length === 0) {
 			return;
@@ -239,6 +446,7 @@ export class GitHubSearchModal extends Modal {
 		const currentItem = items[this.selectedIndex];
 		this.addSelectionClass(currentItem);
 		currentItem.scrollIntoView({ block: 'nearest' });
+		this.updateEnterButtonLabel();
 	}
 
 	private selectCurrent(): void {
@@ -249,9 +457,23 @@ export class GitHubSearchModal extends Modal {
 			return;
 		}
 
+		if (this.selectionLockUntilCleared && this.lockedSelection !== undefined) {
+			this.finishSelection(this.lockedSelection.url, this.lockedSelection);
+			return;
+		}
+
 		if (this.selectedIndex >= 0 && this.selectedIndex < this.currentResults.length) {
 			const selected = this.currentResults[this.selectedIndex];
+			if (this.selectionLockUntilCleared) {
+				this.lockSelection(selected);
+				return;
+			}
 			this.finishSelection(selected.url, selected);
+			return;
+		}
+
+		if (this.enterSkipsWithoutSelection) {
+			this.skipSelection();
 			return;
 		}
 
@@ -265,56 +487,154 @@ export class GitHubSearchModal extends Modal {
 	private async loadRecentIssues(requestId: number): Promise<void> {
 		this.showLoading('Loading recent issues...');
 		this.selectedIndex = -1;
+		this.updateEnterButtonLabel();
+		await this.ensureAuthenticatedUsernameLoaded();
 
 		let results: GitHubIssueMetadata[] = [];
 		if (this.searchScope === 'my-repos') {
-			const [issueItems, prItems] = await this.searchIssuesAndPullRequests('');
-			results = [...issueItems, ...prItems]
-				.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-				.slice(0, RECENT_ISSUES_LIMIT);
+			results = this.rankResults(await this.searchByMode('')).slice(0, RECENT_ISSUES_LIMIT);
 		} else {
 			const repo = this.getRepoForCurrentScope();
-			results = await this.plugin.githubService.getRecentIssues(repo, RECENT_ISSUES_LIMIT);
+			if (repo === undefined || repo === '') {
+				if (!this.isLatestRequest(requestId)) {
+					return;
+				}
+				this.renderResultsWithSelection([], 'Recent Issues', false);
+				return;
+			}
+			const recentResults = await this.plugin.githubService.getRecentIssues(
+				repo,
+				RECENT_ISSUES_LIMIT * 3
+			);
+			results = this.rankResults(
+				recentResults.filter((item) => this.isResultAllowedByMode(item))
+			).slice(0, RECENT_ISSUES_LIMIT);
 		}
 
 		if (!this.isLatestRequest(requestId)) {
 			return;
 		}
 
-		this.renderResultsAndSelectFirst(results, 'Recent Issues');
+		this.renderResultsWithSelection(results, 'Recent Issues', false);
 	}
 
-	private async performSearch(query: string, requestId: number): Promise<void> {
+	private async performSearch(
+		query: string,
+		requestId: number,
+		preselectFirstResult: boolean
+	): Promise<void> {
 		this.showLoading('Searching...');
 		this.selectedIndex = -1;
+		this.updateEnterButtonLabel();
+		await this.ensureAuthenticatedUsernameLoaded();
 
-		const [issueItems, prItems] = await this.searchIssuesAndPullRequests(query);
+		const searchResults = await this.searchByMode(query);
+		const numericMatches = await this.getNumericRepositoryMatches(query);
 
 		if (!this.isLatestRequest(requestId)) {
 			return;
 		}
 
-		const combined = [...issueItems, ...prItems]
-			.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-			.slice(0, MAX_COMBINED_RESULTS);
-		this.renderResultsAndSelectFirst(combined, `Search Results (${combined.length})`);
+		const unique = new Map<string, GitHubIssueMetadata>();
+		for (const match of numericMatches) {
+			unique.set(match.url, match);
+		}
+		for (const result of this.rankResults(searchResults)) {
+			unique.set(result.url, result);
+		}
+
+		const combined = Array.from(unique.values()).slice(0, MAX_COMBINED_RESULTS);
+		this.renderResultsWithSelection(
+			combined,
+			`Search Results (${combined.length})`,
+			preselectFirstResult
+		);
 	}
 
-	private async searchIssuesAndPullRequests(query: string): Promise<SearchPair> {
+	private async getNumericRepositoryMatches(query: string): Promise<GitHubIssueMetadata[]> {
+		if (!/^\d+$/.test(query)) {
+			return [];
+		}
+
+		const scopedRepository = this.getRepoForCurrentScope();
+		if (scopedRepository === undefined || scopedRepository === '') {
+			return [];
+		}
+
+		const recent = await this.plugin.githubService.getRecentIssues(scopedRepository, 100);
+		return recent.filter((item) => {
+			return String(item.number).includes(query) && this.isResultAllowedByMode(item);
+		});
+	}
+
+	private isResultAllowedByMode(item: GitHubIssueMetadata): boolean {
+		if (this.searchMode === 'issues-only') {
+			return item.isPR === false;
+		}
+		if (this.searchMode === 'prs-only') {
+			return item.isPR === true;
+		}
+		return true;
+	}
+
+	private rankResults(results: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
+		const currentUsername = this.authenticatedUsername?.toLowerCase();
+		return [...results].sort((left, right) => {
+			const leftAssigned =
+				currentUsername !== undefined &&
+				left.assignees.some((assignee) => assignee.toLowerCase() === currentUsername)
+					? 1
+					: 0;
+			const rightAssigned =
+				currentUsername !== undefined &&
+				right.assignees.some((assignee) => assignee.toLowerCase() === currentUsername)
+					? 1
+					: 0;
+			if (leftAssigned !== rightAssigned) {
+				return rightAssigned - leftAssigned;
+			}
+			return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+		});
+	}
+
+	private async searchByMode(query: string): Promise<GitHubIssueMetadata[]> {
 		if (this.searchScope === 'my-repos') {
+			if (this.searchMode === 'issues-only') {
+				const issueResults = await this.plugin.githubService.searchIssuesInMyRepos(query);
+				return issueResults.items;
+			}
+			if (this.searchMode === 'prs-only') {
+				const prResults =
+					await this.plugin.githubService.searchPullRequestsInMyRepos(query);
+				return prResults.items;
+			}
+
 			const [issueResults, prResults] = await Promise.all([
 				this.plugin.githubService.searchIssuesInMyRepos(query),
 				this.plugin.githubService.searchPullRequestsInMyRepos(query)
 			]);
-			return [issueResults.items, prResults.items];
+			return [...issueResults.items, ...prResults.items];
 		}
 
 		const repo = this.getRepoForCurrentScope();
+		if (repo === undefined || repo === '') {
+			return [];
+		}
+
+		if (this.searchMode === 'issues-only') {
+			const issueResults = await this.plugin.githubService.searchIssues(query, repo);
+			return issueResults.items;
+		}
+		if (this.searchMode === 'prs-only') {
+			const prResults = await this.plugin.githubService.searchPullRequests(query, repo);
+			return prResults.items;
+		}
+
 		const [issueResults, prResults] = await Promise.all([
 			this.plugin.githubService.searchIssues(query, repo),
 			this.plugin.githubService.searchPullRequests(query, repo)
 		]);
-		return [issueResults.items, prResults.items];
+		return [...issueResults.items, ...prResults.items];
 	}
 
 	private showLoading(message: string): void {
@@ -323,6 +643,7 @@ export class GitHubSearchModal extends Modal {
 			cls: 'tdc-gh-loading',
 			text: message
 		});
+		this.updateEnterButtonLabel();
 	}
 
 	private showUrlPreview(url: string): void {
@@ -341,6 +662,7 @@ export class GitHubSearchModal extends Modal {
 			cls: 'tdc-gh-hint',
 			text: 'Press Enter to use this URL'
 		});
+		this.updateEnterButtonLabel();
 	}
 
 	private renderResults(results: GitHubIssueMetadata[], title: string): void {
@@ -366,11 +688,12 @@ export class GitHubSearchModal extends Modal {
 
 			row.addEventListener('click', () => {
 				this.selectedIndex = index;
+				this.updateEnterButtonLabel();
+				if (this.selectionLockUntilCleared) {
+					this.lockSelection(item);
+					return;
+				}
 				this.selectCurrent();
-			});
-
-			row.addEventListener('mouseenter', () => {
-				this.selectResultRow(row, index);
 			});
 
 			const icon = row.createSpan({ cls: 'tdc-gh-result-icon' });
@@ -400,14 +723,39 @@ export class GitHubSearchModal extends Modal {
 		}
 	}
 
-	private renderResultsAndSelectFirst(results: GitHubIssueMetadata[], title: string): void {
-		this.currentResults = results;
-		this.renderResults(results, title);
-		this.setInitialSelection(results.length > 0);
+	private lockSelection(selection: GitHubIssueMetadata): void {
+		this.lockedSelection = selection;
+		this.searchInput.value = `#${selection.number} ${selection.title}`;
+		this.renderLockedSelection();
+		this.updateEnterButtonLabel();
 	}
 
-	private setInitialSelection(hasResults: boolean): void {
-		if (!hasResults) {
+	private renderLockedSelection(): void {
+		if (this.lockedSelection === undefined) {
+			return;
+		}
+
+		this.currentResults = [this.lockedSelection];
+		this.renderResults([this.lockedSelection], this.getSelectedResultsTitle());
+		this.selectedIndex = 0;
+		const firstItem = this.getResultItems()[0];
+		this.addSelectionClass(firstItem);
+		this.updateEnterButtonLabel();
+	}
+
+	private renderResultsWithSelection(
+		results: GitHubIssueMetadata[],
+		title: string,
+		preselectFirstResult: boolean
+	): void {
+		this.currentResults = results;
+		this.renderResults(results, title);
+		this.setInitialSelection(results.length > 0, preselectFirstResult);
+		this.updateEnterButtonLabel();
+	}
+
+	private setInitialSelection(hasResults: boolean, preselectFirstResult: boolean): void {
+		if (!hasResults || !preselectFirstResult) {
 			this.selectedIndex = -1;
 			return;
 		}
@@ -415,19 +763,6 @@ export class GitHubSearchModal extends Modal {
 		this.selectedIndex = 0;
 		const firstItem = this.getResultItems()[0];
 		this.addSelectionClass(firstItem);
-	}
-
-	private selectResultRow(row: Element, index: number): void {
-		const resultItems = this.getResultItems();
-		for (const item of Array.from(resultItems)) {
-			if (item instanceof HTMLElement) {
-				item.removeClass('tdc-gh-selected');
-			}
-		}
-		if (row instanceof HTMLElement) {
-			row.addClass('tdc-gh-selected');
-		}
-		this.selectedIndex = index;
 	}
 
 	private getResultItems(): NodeListOf<Element> {
@@ -462,6 +797,16 @@ export class GitHubSearchModal extends Modal {
 		this.finishSelection(undefined);
 	}
 
+	private cancelSelection(): void {
+		if (this.hasResolved) {
+			return;
+		}
+
+		this.hasResolved = true;
+		this.close();
+		this.onCancel?.();
+	}
+
 	private finishSelection(url: string | undefined, metadata?: GitHubIssueMetadata): void {
 		if (this.hasResolved) {
 			return;
@@ -486,11 +831,67 @@ export class GitHubSearchModal extends Modal {
 			value === 'linked-dashboard' ||
 			value === 'linked-issue' ||
 			value === 'my-repos' ||
-			value === 'all-github'
+			value === OTHER_REPOSITORY_SCOPE
 		) {
 			return value;
 		}
 		return this.scopeOptions[0]?.value ?? 'my-repos';
+	}
+
+	private getModalTitle(): string {
+		if (this.searchMode === 'issues-only') {
+			return 'GitHub Issue (optional)';
+		}
+		if (this.searchMode === 'prs-only') {
+			return 'GitHub PR (optional)';
+		}
+		return 'GitHub Issue/PR (optional)';
+	}
+
+	private getSearchPlaceholder(): string {
+		if (this.searchMode === 'issues-only') {
+			return 'Search issues or paste URL...';
+		}
+		if (this.searchMode === 'prs-only') {
+			return 'Search pull requests or paste URL...';
+		}
+		return 'Search issues or paste URL...';
+	}
+
+	private getSelectedResultsTitle(): string {
+		if (this.searchMode === 'issues-only') {
+			return 'Selected GitHub Issue';
+		}
+		if (this.searchMode === 'prs-only') {
+			return 'Selected GitHub PR';
+		}
+		return 'Selected GitHub Issue/PR';
+	}
+
+	private hasEnterSelectableTarget(): boolean {
+		const query = this.searchInput.value.trim();
+		if (this.isGitHubUrl(query)) {
+			return true;
+		}
+		if (this.selectionLockUntilCleared && this.lockedSelection !== undefined) {
+			return true;
+		}
+		return this.selectedIndex >= 0 && this.selectedIndex < this.currentResults.length;
+	}
+
+	private updateEnterButtonLabel(): void {
+		if (this.enterButton === undefined) {
+			return;
+		}
+
+		const nextLabel =
+			this.enterSkipsWithoutSelection && !this.hasEnterSelectableTarget()
+				? this.enterSkipLabel
+				: this.confirmButtonLabel;
+
+		this.enterButton.empty();
+		this.enterButton.appendText(`${nextLabel} `);
+		this.enterButton.createEl('kbd', { text: '↵' });
 	}
 
 	private buildScopeOptions(): ScopeOption[] {
@@ -513,7 +914,7 @@ export class GitHubSearchModal extends Modal {
 		}
 
 		options.push({ value: 'my-repos', label: 'My repositories' });
-		options.push({ value: 'all-github', label: 'All GitHub' });
+		options.push({ value: OTHER_REPOSITORY_SCOPE, label: 'Other repository' });
 
 		return options;
 	}
@@ -524,6 +925,9 @@ export class GitHubSearchModal extends Modal {
 		}
 		if (this.searchScope === 'linked-dashboard') {
 			return this.dashboardLinkedRepository;
+		}
+		if (this.searchScope === OTHER_REPOSITORY_SCOPE) {
+			return this.selectedOtherRepository;
 		}
 		return undefined;
 	}

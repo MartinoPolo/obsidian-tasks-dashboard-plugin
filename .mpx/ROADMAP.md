@@ -9,7 +9,7 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 ## Current State
 
 - Completed phases: 01-21, 28.
-- Planned phases from unchecked SPEC requirements: 22-27.
+- In-progress phases from unchecked SPEC requirements: 22-27 (implemented with manual verification blockers).
 
 ## Completed Phases (Concise)
 
@@ -18,7 +18,7 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 - Phases 20-21 delivered note-entry-only cursor focus behavior and modal navigation/backspace propagation guards.
 - Phase 28 delivered `eslint-plugin-obsidianmd` integration with pragmatic rule scoping in local lint workflow.
 
-## Planned Phases (From SPEC Unchecked Requirements)
+## In-Progress Phases (From SPEC Unchecked Requirements)
 
 ### Worktrees
 

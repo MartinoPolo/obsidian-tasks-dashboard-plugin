@@ -36,6 +36,7 @@ export interface GitHubServiceInstance {
 	searchPullRequests: (query: string, repo?: string) => Promise<GitHubSearchResult>;
 	searchIssuesInMyRepos: (query: string) => Promise<GitHubSearchResult>;
 	searchPullRequestsInMyRepos: (query: string) => Promise<GitHubSearchResult>;
+	getAssignedIssues: (repo: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
 	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;
@@ -49,7 +50,7 @@ export interface GitHubServiceInstance {
 	getRateLimit: () => GitHubRateLimit | undefined;
 }
 
-export type GitHubApiErrorKind = 'auth' | 'not-found' | 'rate-limit' | 'network';
+export type GitHubApiErrorKind = 'auth' | 'forbidden' | 'not-found' | 'rate-limit' | 'network';
 
 export class GitHubApiError extends Error {
 	constructor(

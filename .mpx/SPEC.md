@@ -190,6 +190,7 @@
 
 - [x] Restrict smart cursor repositioning (jump to end of `## Tasks`) to note-entry events only; when the user directly clicks inside an already-open issue note, preserve the clicked cursor position and do not re-run auto-focus repositioning.
 
+
 ### Event Propagation
 
 - [x] Consume mouse back-button navigation events inside multi-step issue creation modals so handled back actions (for example step 2 → step 1) never propagate to the dashboard or Obsidian-level page navigation.
@@ -197,71 +198,112 @@
 
 ### Worktrees
 
-- [ ] After worktree issue creation, assign the expected worktree folder automatically when setup succeeds, using the same effective assigned-folder behavior as manual folder assignment.
+- [x] After worktree issue creation, assign the expected worktree folder automatically when setup succeeds, using the same effective assigned-folder behavior as manual folder assignment.
 - [ ] When creating a child worktree issue from an existing worktree issue card, derive base context from the source issue’s stored worktree/base-repository metadata (not from presence of an in-folder `.git` directory), and keep creation functional even when `.git` is absent in the worktree folder.
 - [ ] Persist explicit worktree branch metadata on the issue (including in issue file properties) and expose branch/worktree status details through an info affordance (icon with hover tooltip or dropdown).
-- [ ] Add a new issue info affordance that surfaces consolidated metadata: dashboard issue identity, assigned folder, linked GitHub issue/PR/repository, and current worktree details.
-- [ ] Add explicit dashboard-level visual indication for worktree issues (either a dedicated section/sort grouping or marker-based identification next to priority) without breaking Active/Archive section model.
-- [ ] For worktree issues, GitHub issue/PR linking search scope must default to and prioritize the base repository of the source issue/folder from which the worktree was created, even if the worktree folder path differs.
-- [ ] Render a worktree status icon in issue headers between collapse chevron and issue title: green when worktree is active; red when tracked branch is merged or deleted (safe-to-delete signal).
+- [x] Add a new issue info affordance that surfaces consolidated metadata: dashboard issue identity, assigned folder, linked GitHub issue/PR/repository, and current worktree details.
+- [x] For worktree issues, GitHub issue/PR linking search scope must default to and prioritize the base repository of the source issue/folder from which the worktree was created, even if the worktree folder path differs.
+- [ ] Render a worktree status icon in issue headers: green when worktree is active; red when setup failed, orange when worktree setup is pending or in-progress, gray when branch was deleted/merged
 - [ ] Introduce worktree setup verification state machine: pending (orange tree) while polling for expected folder existence every 1 second for up to 10 seconds, success state only after folder appears and assignment is activated, and failure state (red tree) after timeout.
 - [ ] If automatic worktree setup fails, expose a retry-capable `Add worktree later` header action (tree icon) as the first header action, hidden by default and auto-shown only in failed state.
+- [ ] Add an option to refresh the state to check again what the state of the worktree is. It should include checking on the branch state so that we can refresh the knowledge about worktree.
+- [ ] "Add worktree later" should not be a button with the whole text; it should be another header action. Use the same icon as we are using for displaying worktree status.
 
 ### GitHub Integration
 
-- [ ] Fix repository-scoped GitHub search so `My repositories` reliably returns issue/PR results instead of empty results when authentication and scopes are valid.
-- [ ] Repair or remove `All repositories` search mode: result set must be relevant to entered query terms/identifiers and must not prefer unrelated repositories; if relevance quality cannot meet this requirement, remove this scope.
-- [ ] Sort offered GitHub issues/PRs by recency with assignment-aware ranking (assigned-to-me first), while preserving fast incremental text/number search behavior.
-- [ ] Add optional foldable `Assigned Issues` dashboard section for dashboards with linked repositories, listing assigned GitHub issues and providing one-click conversion into dashboard issues.
+- [x] Fix repository-scoped GitHub search so `My repositories` reliably returns issue/PR results instead of empty results when authentication and scopes are valid.
+- [x] Remove `All repositories` search mode: result set must be relevant to entered query terms/identifiers and must not prefer unrelated repositories; if relevance quality cannot meet this requirement, remove this scope.
+- [x] Sort offered GitHub issues/PRs by recency with assignment-aware ranking (assigned-to-me first), while preserving fast incremental text/number search behavior.
+- [x] Add optional foldable `Assigned Issues` dashboard section for dashboards with linked repositories, listing assigned GitHub issues and providing one-click conversion into dashboard issues.
+- [ ] Investigate how these assigned issues are refreshed, and also there's some improper styling.
+
+#### Bugs
+- [x] The search and repository linking works correctly now; however, there are still some errors showing that the GitHub authentication failed. Also, the search works a bit weird, that whenever I search for issue 418, it finds it, but when for #418, it doesn't. When I search for 41, it also doesn't find it and when I search for 4, it finds issues 360 and 363 (Which might have some number in their description or something. I'm not sure. Please describe how the GitHub search works. )
+- [x] Assigned issues section -  The buttons to convert and worktree are styled improperly. They are below each other and below the links to those issues, and the worktree button is always disabled
 
 ### Issue Creation Workflow
 
-- [ ] Redefine step order to: Step 1 GitHub link selection (old step 4 behavior), Step 2 issue name entry (pre-filled from selected GitHub issue title/number when selected, empty when skipped), then remaining creation steps.
-- [ ] Conditionally include Step 1 GitHub link selection only when GitHub integration is available for the active dashboard/context.
-- [ ] In GitHub-link step, support live repository-scoped search while typing and number-aware lookup (typing an issue number should surface matching issue in repository when present).
-- [ ] When GitHub-link search input is empty, offer latest issues as default suggestions; support arrow-key navigation and Enter to select highlighted result.
-- [ ] After selecting a GitHub issue in Step 1, prefill Step 2 name using `#{number} {title}` format and allow manual edits before confirmation.
-- [ ] While a GitHub issue is selected for the current flow, do not restart auto-search until the field is fully cleared (selection-lock behavior).
-- [ ] Add conditional worktree yes/no step after name step when worktree creation is available under existing `Add WorkTree Issue` eligibility conditions.
-- [ ] Worktree yes/no step must use two explicit choices with visual semantics: Yes with green tree icon and No with red styling.
-- [ ] Remove dashboard-level `Add WorkTree Issue` button and merge capability into `Add Issue` flow via the conditional worktree step.
-- [ ] Rename per-issue card action from `Add WorkTree Issue` to `Add Issue` with plus icon, while keeping current enable/disable gating semantics tied to worktree feasibility from that issue context.
-- [ ] In name/link inputs, when field is empty or numeric-only, ArrowUp/ArrowDown should move selection within offered GitHub issue suggestions.
-- [ ] For automatically derived worktree/branch names, normalize from resulting issue name by lowercasing, replacing spaces with dashes, retaining only git-branch-safe characters, and ensuring issue number prefix is included when available.
-- [ ] Preselect `Medium` as default in priority selection step.
+- [x] Redefine step order to: Step 1 GitHub link selection (old step 4 behavior), Step 2 issue name entry (pre-filled from selected GitHub issue title/number when selected, empty when skipped), then remaining creation steps.
+- [x] Conditionally include Step 1 GitHub link selection only when GitHub integration is available for the active dashboard/context.
+- [x] In GitHub-link step, support live repository-scoped search while typing and number-aware lookup (typing an issue number should surface matching issue in repository when present).
+- [x] When GitHub-link search input is empty, offer latest issues as default suggestions; support arrow-key navigation and Enter to select highlighted result.
+- [x] After selecting a GitHub issue in Step 1, prefill Step 2 name using `{number} {first-four-words-of-title}` format (no `#`) and allow manual edits before confirmation.
+- [x] In Step 1 (GitHub link selection), do not render a separate Skip button; Enter performs skip when there is no selected suggestion and no pasted URL.
+- [x] In Step 1, clicking a result or pressing Enter on the highlighted result confirms that selection and proceeds directly to Step 2.
+- [x] In Step 2 with prefilled name, place the cursor at the end of the text and do not auto-select the full input value.
+- [x] Add conditional worktree yes/no step after name step when worktree creation is available under existing `Add WorkTree Issue` eligibility conditions.
+- [x] Worktree yes/no step must use two explicit choices with visual semantics: Yes with green tree icon and No with red styling.
+- [x] Remove dashboard-level `Add WorkTree Issue` button and merge capability into `Add Issue` flow via the conditional worktree step.
+- [x] Rename per-issue card action from `Add WorkTree Issue` to `Add Issue` with plus icon, while keeping current enable/disable gating semantics tied to worktree feasibility from that issue context.
+- [x] For automatically derived worktree/branch names, normalize from resulting issue name by lowercasing, replacing spaces with dashes, retaining only git-branch-safe characters, and ensuring issue number prefix is included when available.
+- [x] Preselect `Low` as default in priority selection step.
 
 ### Issue Card
 
 - [ ] On narrow widths, stop hover-only reveal of hidden header buttons; expose hidden actions only via 3-dots overflow for consistent discoverability.
-- [ ] Reduce minimum title width in issue header so short names relinquish space to visible actions before overflowing.
-- [ ] Remove duplicate native/system tooltips on issue-card action buttons and keep only the custom tooltip experience.
+- [ ] Minimum title width in issue header should be 100px.
+- [ ] The three dots button should always be visible.
+- [x] Remove duplicate native/system tooltips on issue-card action buttons and keep only the custom tooltip experience.
+- [x] The title of the card should be very light gray in dark mode and very dark gray in light mode, instead of the current blue link color. And for sit, there are probably some default styles for this kind of link, and they are overriding our styling. We need to set it properly.
+
+#### Bugs
+- [x] There is still different behavior of the buttons when the user hovers over the header on a narrow screen. The buttons should dynamically disappear when the screen is being narrowed, and they should be visible under the three dots always. The three dots button should always be visible, and the others should be visible only if there is enough space; otherwise, they should be under the three dots button. There should be no change in positions when hovering over the header.
+- [x] There is still duplicite tooltip in worktree status icon on hover.  Only keep our beautiful tooltip with status active, pending, to delete, or error?
+- [x] Some buttons in the GitHub link integration in the issue card on the dashboard currently don't have icons, or the icons are not visible. These icons are refresh GitHub data and remove GitHub link. I will thoroughly explain what these icons should do and what GitHub data they refresh. Do they refresh the issue data or all GitHub data, for example worktree, etc.?
 
 ### Layout Settings
 
-- [ ] Allow layout-settings dropdown menus to overflow viewport bounds with scrollbars when needed instead of clipping content.
-- [ ] Style `Delete issue` action text as red in issue-card 3-dots dropdown.
-- [ ] Style `Archive` action text as orange in issue-card 3-dots dropdown.
+- [x] Allow layout-settings dropdown menus to overflow viewport bounds with scrollbars when needed instead of clipping content.
+- [x] Style `Delete issue` action text as red in issue-card 3-dots dropdown.
+- [x] Style `Archive` action text as orange in issue-card 3-dots dropdown.
 
 ### Colors
 
-- [ ] Make issue color palettes theme-aware with explicit light/dark variants so selected colors remain visually balanced and readable in both themes.
-- [ ] Track globally used issue colors across the vault and disable already-assigned colors in creation color-picker step.
-- [ ] Auto-preselect the next available unused color by default in creation color-picker step.
-- [ ] Expand color palette to grouped multi-column shades (minimum 25 colors), with optional 6x5 layout (30 colors) if implemented, and adapt color-picker grid layout accordingly.
-- [ ] Release previously reserved color when an issue is deleted or archived so it becomes selectable again.
-- [ ] Use theme-appropriate title text color for issue-card links/titles (light text in dark mode, dark text in light mode) instead of generic link color styling.
-- [ ] Reposition header color picker to anchor as dropdown from issue header color button (preferred) or centered fallback; avoid off-screen corner placement.
+- [x] Make issue color palettes theme-aware with explicit light/dark variants so selected colors remain visually balanced and readable in both themes.
+- [x] Track globally used issue colors across the vault and disable already-assigned colors in creation color-picker step.
+- [x] Auto-preselect the next available unused color by default in creation color-picker step.
+- [x] Add Option to release all the colors (in plugin settings)
+- [ ] Expand color palette to grouped multi-column shades (30 colors), 6x5 layout, and adapt color-picker grid layout accordingly. There should be six main colours, one for each column, and the columns should just be different shades of the same colour, starting with the darker variants in dark mode and going down in the table. They should be lighter. This way, the first row will be the most used colors. Similarly, apply for light mode the light mode colors. At the top should be the most used ones, so something like:
+- light blue
+- light red
+- light orange
+- light purple
+- light brown
+-  light green Pick the best contrasting colors.
+- [x] Release previously reserved color when an issue is deleted or archived so it becomes selectable again. Also release color when a color is changed so the old color becomes available and the new color is reserved.
+- [x] Use theme-appropriate title text color for issue-card links/titles (light text in dark mode, dark text in light mode) instead of generic link color styling.
+- [x] Reposition header color picker to anchor as dropdown from issue header color button (preferred) or centered fallback; avoid off-screen corner placement.
 - [ ] Renaming requirement: change color-action tooltip/title from `Header color` to `Issue color`.
 - [ ] When changing issue color from the issue-card color action, update color-allocation tracking so old color is released and new color is reserved correctly.
 
 ### Dashboard
 
-- [ ] Ensure dashboard contains exactly one `How to Use This Dashboard` section instance (deduplicate constants/rendering paths and prevent duplicates after rebuild).
-- [ ] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
+- [x] Ensure dashboard contains exactly one `How to Use This Dashboard` section instance (deduplicate constants/rendering paths and prevent duplicates after rebuild).
+- [x] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
 - [ ] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
 - [ ] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
 - [ ] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions.
+- [ ] The Active issues section should be after dashboard global action buttons
+- [ ] Add a dashboard info section with general info - linked folder, linked Github repository
 
 ### Tooling
 
 - [x] Add and configure `eslint-plugin-obsidianmd` so local linting includes Obsidian pre-publish style/check parity where applicable.
+
+### Other
+- [x] Open Dashboard Settings button should have an icon with the settings icon, not the folder icon. It should be some sort of wheel icon that is common for settings.
+
+### Bug list:
+- [x] The automatic issue name creation from the GitHub issue name should remove the hash # sign. It should also only list the first four words from the issue title The user can always change the name themselves.
+- [x] Disabled colors in the color picker should be gray.
+- [x] Colors in the color picker for dark mode should be darker than the ones for light mode. We are choosing accent colors for background, so that should be darker in dark mode and lighter in light mode. You probably have switched the colors.
+- [x] The color of the title of the issue card doesn't seem to be changed; it still has the same ink color. It should be whiter in dark mode and darker in light mode.
+- [x] There is a new icon with an eye which triggers issue info; however, that's supposed to be opening on hover and not in the system notification, but it should spawn its own tooltip. It should spawn the tooltip instantly and not wait. It should be a multi-line tooltip containing all the information it currently has, and it should not be in a button style. It should have an info icon, not an info icon, and it should go right after the text of the title.
+- [x] Remove the skip button from the first step of add issue workflow. There already is the enter button which has skip functionality if user haven't interacted with search field or results
+- [x] Clicking an issue directly in the search results should confirm that issue and go to the next step. The same should happen when an issue is navigated to with keys and Enter is pressed. This should both directly confirm the issue and go to the next step directly.
+- [x] When the user goes to step two of issue creation (aka the name), whenever the user already selected a GitHub issue linked in the first step, the name in the input field in the second step is selected. This should not be the case. The cursor should be in that input field at the end of the currently pre-selected name. It should not be selected.
+- [x] In the third step, choosing Priority, it seems that both low and medium are pre-selected. We probably have two different mechanisms for the default selected option, and it seems to be both low and medium. So keep the default too low for simplicity.
+- [x] Deleting an issue that wasn't created in a worktree currently spawns the remove-worktree script, even if there is no checkbox to also remove the worktree. Whenever there is no worktree assigned to an issue, we should not attempt to remove the work
+- [x] I don't see any tree icons in worktrees as I requested.
+- [x] I created an issue with Git worktree, and the worktree setup script went correctly. The worktree was created; everything went fine, but the issue in the dashboard indicates that worktree setup failed. Please check how we are detecting if the setup was correct and figure out how to fix it or a completely better solution on how to detect worktree setup correct completion.
+- [x] Whenever I go from the dashboard to one of the issues, I have them opened side by side so the issue file is not opened again; it's just focused. The cursor jumps at the start of the task section or at the end of the task section. This is an issue because when I directly click into this already opened issue file, the cursor jumps to a different position. Give it one more attempt and only jump the cursor if the file was just opened, not just focused or switched to. Or we're gonna remove this smart cursor jumping completely.

@@ -95,15 +95,30 @@ export const createOverflowMenuPanel = (options: OverflowMenuPanelOptions): (() 
 		const triggerRect = options.overflowButton.getBoundingClientRect();
 		const viewportPadding = 8;
 		const panelWidth = Math.max(panel.offsetWidth, 280);
+		const verticalOffset = 4;
+		const availableSpaceBelow = Math.max(
+			120,
+			window.innerHeight - triggerRect.bottom - viewportPadding - verticalOffset
+		);
+		const availableSpaceAbove = Math.max(
+			120,
+			triggerRect.top - viewportPadding - verticalOffset
+		);
+		const shouldOpenAbove = availableSpaceAbove > availableSpaceBelow;
+		const maxPanelHeight = shouldOpenAbove ? availableSpaceAbove : availableSpaceBelow;
+		panel.style.maxHeight = `${maxPanelHeight}px`;
+
 		const panelHeight = panel.offsetHeight;
 		const maxLeft = window.innerWidth - panelWidth - viewportPadding;
 		const alignedLeft = triggerRect.right - panelWidth;
 		const left = Math.max(viewportPadding, Math.min(alignedLeft, maxLeft));
 
-		let top = triggerRect.bottom + 4;
-		const maxTop = window.innerHeight - panelHeight - viewportPadding;
-		if (top > maxTop) {
-			top = Math.max(viewportPadding, triggerRect.top - panelHeight - 4);
+		let top = triggerRect.bottom + verticalOffset;
+		if (shouldOpenAbove) {
+			top = Math.max(viewportPadding, triggerRect.top - panelHeight - verticalOffset);
+		} else {
+			const maxTop = window.innerHeight - panelHeight - viewportPadding;
+			top = Math.max(viewportPadding, Math.min(top, maxTop));
 		}
 
 		panel.style.left = `${left}px`;

@@ -1,9 +1,10 @@
 export type Priority = 'low' | 'medium' | 'high' | 'top';
 export type IssueStatus = 'active' | 'archived';
+export type WorktreeSetupState = 'pending' | 'active' | 'failed';
 export type ProgressDisplayMode = 'number' | 'percentage' | 'bar' | 'number-percentage' | 'all';
 export type GitHubAuthMethod = 'none' | 'pat';
 export type GitHubDisplayMode = 'minimal' | 'compact' | 'full';
-export type GitHubSearchScope = 'linked-dashboard' | 'linked-issue' | 'my-repos' | 'all-github';
+export type GitHubSearchScope = 'linked-dashboard' | 'linked-issue' | 'my-repos' | 'other-repo';
 export type IssueActionKey =
 	| 'folder'
 	| 'terminal'
@@ -92,6 +93,13 @@ export interface Issue {
 	priority: Priority;
 	status: IssueStatus;
 	created: string;
+	worktree?: boolean;
+	worktreeBranch?: string;
+	worktreeOriginFolder?: string;
+	worktreeExpectedFolder?: string;
+	worktreeSetupState?: WorktreeSetupState;
+	worktreeBaseRepository?: string;
+	worktreeSafeDelete?: boolean;
 	/** @deprecated Use githubLinks instead. Kept for backward compatibility during migration. */
 	githubLink?: string;
 	/** @deprecated Use githubMetadataList instead. Kept for backward compatibility during migration. */
@@ -133,6 +141,6 @@ export interface IssueProgress {
 	percentage: number;
 }
 
-export { getDashboardDisplayName } from './utils/dashboard-path';
 export { DEFAULT_SETTINGS } from './constants/settings-defaults';
+export { getDashboardDisplayName } from './utils/dashboard-path';
 export { PRIORITY_ORDER } from './utils/priorities';

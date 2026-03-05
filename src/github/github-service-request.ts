@@ -73,11 +73,14 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 	const classifyApiError = (error: unknown): GitHubApiError => {
 		const { status, message } = extractErrorDetails(error);
 
-		if (status === 401 || status === 403) {
-			const isRateLimit = status === 403 && message.includes('rate limit');
-			if (isRateLimit) {
+		if (status === 403) {
+			if (message.includes('rate limit')) {
 				return new GitHubApiError('rate-limit', status, 'GitHub API rate limit exceeded');
 			}
+			return new GitHubApiError('forbidden', status, `GitHub API forbidden: ${message}`);
+		}
+
+		if (status === 401) {
 			return new GitHubApiError(
 				'auth',
 				status,
@@ -119,6 +122,8 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 
 			if (apiError.kind === 'auth') {
 				new Notice('GitHub: authentication failed — check your token in settings');
+			} else if (apiError.kind === 'forbidden') {
+				new Notice('GitHub: access forbidden — check repository permissions');
 			} else if (apiError.kind === 'rate-limit') {
 				new Notice('GitHub: API rate limit exceeded — try again later');
 			} else if (apiError.kind === 'network') {

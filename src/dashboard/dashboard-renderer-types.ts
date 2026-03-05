@@ -1,4 +1,4 @@
-import type { IssueActionKey } from '../types';
+import type { IssueActionKey, WorktreeSetupState } from '../types';
 
 type IssueActionIconKey = keyof typeof import('./header-actions').ICONS;
 
@@ -32,4 +32,11 @@ export interface ControlParams {
 	priority: import('../types').Priority;
 	github?: string;
 	githubLinks: string[];
+	worktree?: boolean;
+	worktree_branch?: string;
+	worktree_origin_folder?: string;
+	worktree_expected_folder?: string;
+	worktree_setup_state?: WorktreeSetupState;
+	worktree_base_repository?: string;
+	worktree_safe_delete?: boolean;
 }

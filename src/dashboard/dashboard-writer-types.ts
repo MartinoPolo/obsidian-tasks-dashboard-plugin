@@ -1,4 +1,4 @@
-import { DashboardConfig, Issue, Priority } from '../types';
+import { DashboardConfig, Issue, Priority, WorktreeSetupState } from '../types';
 
 export type SortDirection = 'newest' | 'oldest';
 
@@ -30,6 +30,13 @@ export interface IssueBlockParams {
 	dashboardId: string;
 	priority: Priority;
 	githubLinks: string[];
+	worktree: boolean;
+	worktreeBranch?: string;
+	worktreeOriginFolder?: string;
+	worktreeExpectedFolder?: string;
+	worktreeSetupState?: WorktreeSetupState;
+	worktreeBaseRepository?: string;
+	worktreeSafeDelete?: boolean;
 	isArchived: boolean;
 }
 
@@ -40,6 +47,13 @@ export interface ParsedIssueFile {
 	created: string;
 	filePath: string;
 	githubLinks: string[];
+	worktree: boolean;
+	worktreeBranch?: string;
+	worktreeOriginFolder?: string;
+	worktreeExpectedFolder?: string;
+	worktreeSetupState?: WorktreeSetupState;
+	worktreeBaseRepository?: string;
+	worktreeSafeDelete?: boolean;
 }
 
 export interface ParsedDashboardIssue {
