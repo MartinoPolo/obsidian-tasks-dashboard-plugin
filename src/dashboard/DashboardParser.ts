@@ -137,11 +137,11 @@ dashboard: ${dashboardId}
 `
 		: '';
 
-	return `# Active Issues
-${MARKERS.ACTIVE_START}
-\`\`\`tasks-dashboard-sort
+	return `\`\`\`tasks-dashboard-sort
 dashboard: ${dashboardId}
 \`\`\`
+# Active Issues
+${MARKERS.ACTIVE_START}
 ${MARKERS.ACTIVE_END}
 ${assignedIssuesSection}# Notes
 %% TASKS-DASHBOARD:NOTES %%

@@ -215,7 +215,7 @@
 - [x] Remove `All repositories` search mode: result set must be relevant to entered query terms/identifiers and must not prefer unrelated repositories; if relevance quality cannot meet this requirement, remove this scope.
 - [x] Sort offered GitHub issues/PRs by recency with assignment-aware ranking (assigned-to-me first), while preserving fast incremental text/number search behavior.
 - [x] Add optional foldable `Assigned Issues` dashboard section for dashboards with linked repositories, listing assigned GitHub issues and providing one-click conversion into dashboard issues.
-- [ ] Investigate how these assigned issues are refreshed, and also there's some improper styling.
+- [x] Investigate how these assigned issues are refreshed, and also there's some improper styling.
 
 #### Bugs
 - [x] The search and repository linking works correctly now; however, there are still some errors showing that the GitHub authentication failed. Also, the search works a bit weird, that whenever I search for issue 418, it finds it, but when for #418, it doesn't. When I search for 41, it also doesn't find it and when I search for 4, it finds issues 360 and 363 (Which might have some number in their description or something. I'm not sure. Please describe how the GitHub search works. )
@@ -282,9 +282,10 @@
 - [x] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
 - [x] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
 - [x] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
-- [ ] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions.
-- [ ] The Active issues section should be after dashboard global action buttons
-- [ ] Add a dashboard info section with general info - linked folder, linked Github repository
+- [x] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions. Two icon-only buttons per row: plus icon (add issue → step 2 with preselected GitHub issue) and worktree icon (quick worktree with medium priority and next available color, user edits name only).
+- [x] The Active issues section should be after dashboard global action buttons
+- [x] Add a dashboard info section with general info - linked folder, linked Github repository
+- [x] Issues section should have a loading state so that I see that the request is pending.
 
 ### Tooling
 

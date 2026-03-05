@@ -40,6 +40,14 @@ interface CreateIssueRequest {
 	githubMetadata?: GitHubIssueMetadata;
 }
 
+export interface QuickCreateDefaults {
+	priority: Priority;
+	color: string;
+	worktree: boolean;
+	worktreeOriginFolder?: string;
+	worktreeBaseRepository?: string;
+}
+
 interface WorktreeCreationContext {
 	eligible: boolean;
 	worktreeOriginFolder?: string;
@@ -124,6 +132,7 @@ export class NamePromptModal extends Modal {
 	private initialIssueName: string | undefined;
 	private githubSelection: GitHubSelectionContext;
 	private worktreeContext: WorktreeCreationContext | undefined;
+	private quickCreateDefaults: QuickCreateDefaults | undefined;
 	private input: HTMLInputElement | undefined;
 
 	constructor(
@@ -135,7 +144,8 @@ export class NamePromptModal extends Modal {
 		sourceIssueLinkedRepository?: string,
 		initialIssueName?: string,
 		githubSelection: GitHubSelectionContext = {},
-		worktreeContext?: WorktreeCreationContext
+		worktreeContext?: WorktreeCreationContext,
+		quickCreateDefaults?: QuickCreateDefaults
 	) {
 		super(app);
 		this.plugin = plugin;
@@ -146,6 +156,7 @@ export class NamePromptModal extends Modal {
 		this.initialIssueName = initialIssueName;
 		this.githubSelection = githubSelection;
 		this.worktreeContext = worktreeContext;
+		this.quickCreateDefaults = quickCreateDefaults;
 	}
 
 	onOpen() {
@@ -262,6 +273,23 @@ export class NamePromptModal extends Modal {
 		const value = this.input.value.trim();
 		if (value !== '') {
 			this.close();
+
+			if (this.quickCreateDefaults !== undefined) {
+				const defaults = this.quickCreateDefaults;
+				void createIssueWithNotice(this.app, this.plugin, {
+					name: value,
+					priority: defaults.priority,
+					color: defaults.color,
+					dashboard: this.dashboard,
+					worktree: defaults.worktree,
+					worktreeOriginFolder: defaults.worktreeOriginFolder,
+					worktreeBaseRepository: defaults.worktreeBaseRepository,
+					githubLink: this.githubSelection.githubLink,
+					githubMetadata: this.githubSelection.githubMetadata
+				});
+				return;
+			}
+
 			if (this.mode === 'standard' && this.worktreeContext?.eligible === true) {
 				new WorktreeDecisionModal(
 					this.app,
@@ -1147,6 +1175,36 @@ function getPrefilledIssueName(metadata: GitHubIssueMetadata | undefined): strin
 		.join(' ');
 	return firstFourWords === '' ? `${metadata.number}` : `${metadata.number} ${firstFourWords}`;
 }
+
+export interface AssignedIssueCreationOptions {
+	dashboard: DashboardConfig;
+	githubMetadata: GitHubIssueMetadata;
+	githubUrl: string;
+	quickCreateDefaults?: QuickCreateDefaults;
+}
+
+export const openAssignedIssueNamePrompt = (
+	app: App,
+	plugin: TasksDashboardPlugin,
+	options: AssignedIssueCreationOptions
+): void => {
+	const prefilledName = getPrefilledIssueName(options.githubMetadata);
+	new NamePromptModal(
+		app,
+		plugin,
+		options.dashboard,
+		options.quickCreateDefaults?.worktree === true ? 'worktree' : 'standard',
+		options.quickCreateDefaults?.worktreeOriginFolder,
+		undefined,
+		prefilledName,
+		{
+			githubLink: options.githubUrl,
+			githubMetadata: options.githubMetadata
+		},
+		undefined,
+		options.quickCreateDefaults
+	).open();
+};
 
 export const openIssueCreationModal = (
 	app: App,

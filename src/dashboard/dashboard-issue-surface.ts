@@ -12,12 +12,21 @@ const collectIssueContentBlocks = (controlBlock: HTMLElement): HTMLElement[] => 
 		controlBlock.closest('.block-language-tasks-dashboard-controls') ??
 		controlBlock;
 
+	const headingTags = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+
 	let cursor = referenceBlock.nextElementSibling as HTMLElement | null;
 	while (cursor !== null) {
 		if (cursor.classList.contains('block-language-tasks-dashboard-controls')) {
 			break;
 		}
 		if (cursor.querySelector('.block-language-tasks-dashboard-controls') !== null) {
+			break;
+		}
+		// Stop at section boundaries (headings and HRs)
+		if (headingTags.has(cursor.tagName)) {
+			break;
+		}
+		if (cursor.querySelector('h1, h2, h3, h4, h5, h6') !== null) {
 			break;
 		}
 		content.push(cursor);

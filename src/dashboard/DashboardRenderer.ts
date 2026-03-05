@@ -23,6 +23,11 @@ import type {
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
 import { ICONS, appendInlineSvgIcon, createActionButton } from './header-actions';
+import {
+	openAssignedIssueNamePrompt,
+	type QuickCreateDefaults
+} from '../modals/issue-creation-modal';
+import { getNextAvailableIssueColor } from '../utils/issue-colors';
 import { renderSortControls } from './sort-controls';
 export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 
@@ -632,7 +637,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext
 	): void => {
-		renderSortControls(source, el, ctx, plugin, setIssueCollapsed);
+		renderSortControls(source, el, ctx, plugin);
 	};
 
 	const renderGitHubNoteCard = async (
@@ -698,12 +703,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			return;
 		}
 
-		const issues = await plugin.githubService.getAssignedIssues(linkedRepository, 15);
-		const dashboardProjectFolder = dashboard.projectFolder;
-		const worktreeCreationAvailable =
-			dashboardProjectFolder !== undefined &&
-			dashboardProjectFolder !== '' &&
-			platformService.isGitRepositoryFolder(dashboardProjectFolder);
 		const details = el.createEl('details', {
 			cls: 'tdc-assigned-issues-details'
 		});
@@ -712,7 +711,35 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const summary = details.createEl('summary', {
 			cls: 'tdc-assigned-issues-summary'
 		});
+		summary.setText('Assigned issues');
+
+		const loadingIndicator = details.createDiv({
+			cls: 'tdc-assigned-issues-loading'
+		});
+		loadingIndicator.createSpan({ cls: 'tdc-loading-spinner' });
+		loadingIndicator.createSpan({ text: 'Loading assigned issues…' });
+
+		let issues: Awaited<ReturnType<typeof plugin.githubService.getAssignedIssues>>;
+		try {
+			issues = await plugin.githubService.getAssignedIssues(linkedRepository, 15);
+		} catch (error: unknown) {
+			loadingIndicator.remove();
+			console.error('Tasks Dashboard: failed to fetch assigned issues', error);
+			details.createDiv({
+				cls: 'tdc-assigned-issues-message',
+				text: 'Failed to load assigned issues. Check your GitHub connection.'
+			});
+			return;
+		}
+
+		loadingIndicator.remove();
 		summary.setText(`Assigned Issues (${issues.length})`);
+
+		const dashboardProjectFolder = dashboard.projectFolder;
+		const worktreeCreationAvailable =
+			dashboardProjectFolder !== undefined &&
+			dashboardProjectFolder !== '' &&
+			platformService.isGitRepositoryFolder(dashboardProjectFolder);
 
 		if (issues.length === 0) {
 			details.createDiv({
@@ -723,7 +750,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 
 		const list = details.createDiv({ cls: 'tdc-assigned-issues-list' });
-		const conversionInFlight = new Set<string>();
 		for (const issue of issues) {
 			const row = list.createDiv({ cls: 'tdc-assigned-issues-row' });
 			const issueLink = row.createEl('a', {
@@ -736,91 +762,52 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				event.stopPropagation();
 			});
 
-			const convertButton = row.createEl('button', {
-				cls: 'tdc-btn tdc-assigned-issues-convert-btn',
-				text: 'Convert',
-				attr: {
-					type: 'button',
-					'aria-label': `Convert issue #${issue.number} into dashboard issue`
-				}
-			});
+			const actionsContainer = row.createDiv({ cls: 'tdc-assigned-issues-actions' });
 
-			const worktreeButton = row.createEl('button', {
-				cls: 'tdc-btn tdc-assigned-issues-worktree-btn',
-				text: 'Worktree',
-				attr: {
-					type: 'button',
-					'aria-label': `Create worktree issue from #${issue.number}`,
-					title: worktreeCreationAvailable
-						? 'Create issue with worktree setup'
-						: 'Set dashboard project folder to a Git repository to enable worktree creation'
-				}
-			});
-			worktreeButton.disabled = !worktreeCreationAvailable;
-
-			const setRowActionsBusy = (busy: boolean): void => {
-				convertButton.disabled = busy;
-				worktreeButton.disabled = busy || !worktreeCreationAvailable;
-			};
-
-			const createAssignedIssue = (createWithWorktree: boolean): void => {
-				const conversionMode = createWithWorktree ? 'worktree' : 'standard';
-				const conversionKey = `${issue.url}:${conversionMode}`;
-				if (conversionInFlight.has(conversionKey)) {
-					return;
-				}
-
-				conversionInFlight.add(conversionKey);
-				setRowActionsBusy(true);
-				void plugin.issueManager
-					.createIssue({
-						name: `#${issue.number} ${issue.title}`,
-						priority: 'medium',
+			createActionButton({
+				container: actionsContainer,
+				iconKey: 'plus',
+				cssClass: 'tdc-btn-square tdc-assigned-issues-add-btn',
+				ariaLabel: `Add issue #${issue.number} to dashboard`,
+				faded: false,
+				onClick: () => {
+					openAssignedIssueNamePrompt(plugin.app, plugin, {
 						dashboard,
-						githubLink: issue.url,
 						githubMetadata: issue,
-						worktree: createWithWorktree,
-						worktreeOriginFolder: createWithWorktree
-							? dashboardProjectFolder
-							: undefined,
-						worktreeBaseRepository: createWithWorktree ? linkedRepository : undefined
-					})
-					.then((createdIssue) => {
-						if (createWithWorktree) {
-							plugin.issueManager.setupWorktree(
-								dashboard,
-								createdIssue.id,
-								createdIssue.name,
-								undefined,
-								dashboardProjectFolder
-							);
-						}
-						new Notice(`Created issue: ${createdIssue.name}`);
-						plugin.triggerDashboardRefresh();
-					})
-					.catch((error: unknown) => {
-						const errorScope = createWithWorktree ? 'worktree' : 'assigned';
-						console.error(
-							`Tasks Dashboard: ${errorScope} issue conversion failed`,
-							error
-						);
-						new Notice('Failed to convert assigned issue');
-					})
-					.finally(() => {
-						conversionInFlight.delete(conversionKey);
-						setRowActionsBusy(false);
+						githubUrl: issue.url
 					});
-			};
-
-			convertButton.addEventListener('click', () => {
-				createAssignedIssue(false);
+				}
 			});
 
-			worktreeButton.addEventListener('click', () => {
-				if (!worktreeCreationAvailable) {
-					return;
+			createActionButton({
+				container: actionsContainer,
+				iconKey: 'worktree',
+				cssClass: `tdc-btn-square tdc-assigned-issues-worktree-btn${!worktreeCreationAvailable ? ' tdc-btn-faded' : ''}`,
+				ariaLabel: worktreeCreationAvailable
+					? `Quick worktree from #${issue.number}`
+					: 'Set dashboard project folder to a Git repository to enable worktree creation',
+				faded: !worktreeCreationAvailable,
+				onClick: () => {
+					if (!worktreeCreationAvailable) {
+						new Notice(
+							'Set dashboard project folder to a Git repository to enable worktree creation.'
+						);
+						return;
+					}
+					const quickDefaults: QuickCreateDefaults = {
+						priority: 'medium',
+						color: getNextAvailableIssueColor(plugin.settings.issueColors),
+						worktree: true,
+						worktreeOriginFolder: dashboardProjectFolder,
+						worktreeBaseRepository: linkedRepository
+					};
+					openAssignedIssueNamePrompt(plugin.app, plugin, {
+						dashboard,
+						githubMetadata: issue,
+						githubUrl: issue.url,
+						quickCreateDefaults: quickDefaults
+					});
 				}
-				createAssignedIssue(true);
 			});
 		}
 	};

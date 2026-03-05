@@ -5,9 +5,12 @@ import { NoteImportModal } from '../modals/note-import-modal';
 import { hasSettingsTabApi } from '../settings/settings-helpers';
 import type { DashboardConfig } from '../types';
 import { parseDashboard } from './DashboardParser';
+import {
+	observeContentBlockSiblings,
+	setIssueCollapsed as setIssueCollapsedDom
+} from './dashboard-issue-surface';
 import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
 
-type SetIssueCollapsedFn = (element: HTMLElement, collapsed: boolean) => void;
 type SortOption = { label: string; action: () => void };
 interface DashboardActionConfig {
 	iconKey: keyof typeof ICONS;
@@ -110,30 +113,78 @@ async function getActiveIssueIds(
 /**
  * Set collapsed state for all active issues in the dashboard DOM.
  */
+function applyCollapseToControlBlocks(
+	dashboardElement: Element,
+	collapsed: boolean,
+	plugin: TasksDashboardPlugin
+): void {
+	for (const controlBlock of Array.from(
+		dashboardElement.querySelectorAll(
+			'.block-language-tasks-dashboard-controls, [data-tdc-issue]'
+		)
+	)) {
+		if (controlBlock instanceof HTMLElement) {
+			const issueId = controlBlock.getAttribute('data-tdc-issue') ?? '';
+			// Respect per-issue settings — user may have expanded individually
+			const shouldBeCollapsed =
+				collapsed && plugin.settings.collapsedIssues[issueId] === true;
+			setIssueCollapsedDom(controlBlock, shouldBeCollapsed);
+			if (shouldBeCollapsed) {
+				observeContentBlockSiblings(
+					controlBlock,
+					() => plugin.settings.collapsedIssues[issueId] === true,
+					() => {}
+				);
+			}
+		}
+	}
+}
+
+const TOGGLE_ALL_OBSERVER_TIMEOUT_MS = 8000;
+let activeCollapseAllObserver: MutationObserver | undefined;
+
+function disconnectCollapseAllObserver(): void {
+	if (activeCollapseAllObserver !== undefined) {
+		activeCollapseAllObserver.disconnect();
+		activeCollapseAllObserver = undefined;
+	}
+}
+
 function toggleAllIssues(
 	collapsed: boolean,
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig,
-	element: HTMLElement,
-	setIssueCollapsed: SetIssueCollapsedFn
+	element: HTMLElement
 ): void {
+	disconnectCollapseAllObserver();
+
 	void getActiveIssueIds(plugin, dashboard).then((issueIds) => {
 		for (const issueId of issueIds) {
 			setIssueCollapsedState(plugin, issueId, collapsed);
 		}
 		void plugin.saveSettings();
 		const dashboardElement = findDashboardElement(element);
-		if (dashboardElement !== null) {
-			for (const controlBlock of Array.from(
-				dashboardElement.querySelectorAll(
-					'.block-language-tasks-dashboard-controls, [data-tdc-issue]'
-				)
-			)) {
-				if (controlBlock instanceof HTMLElement) {
-					setIssueCollapsed(controlBlock, collapsed);
-				}
-			}
+		if (dashboardElement === null) {
+			return;
 		}
+
+		applyCollapseToControlBlocks(dashboardElement, collapsed, plugin);
+
+		if (!collapsed) {
+			return;
+		}
+
+		// Observe for CM6-virtualized blocks that re-enter the DOM after viewport scroll
+		const observer = new MutationObserver(() => {
+			applyCollapseToControlBlocks(dashboardElement, true, plugin);
+		});
+		observer.observe(dashboardElement, { childList: true });
+		activeCollapseAllObserver = observer;
+		setTimeout(() => {
+			if (activeCollapseAllObserver === observer) {
+				disconnectCollapseAllObserver();
+			}
+		}, TOGGLE_ALL_OBSERVER_TIMEOUT_MS);
 	});
 }
 
@@ -141,8 +192,7 @@ export function renderSortControls(
 	source: string,
 	el: HTMLElement,
 	ctx: MarkdownPostProcessorContext,
-	plugin: TasksDashboardPlugin,
-	setIssueCollapsed: SetIssueCollapsedFn
+	plugin: TasksDashboardPlugin
 ): void {
 	const dashboardId = source.match(/dashboard:\s*([\w-]+)/)?.[1];
 	if (dashboardId === undefined) {
@@ -155,6 +205,34 @@ export function renderSortControls(
 	}
 
 	el.empty();
+
+	const infoContainer = el.createDiv({ cls: 'tdc-dashboard-info' });
+	const projectFolder = dashboard.projectFolder;
+	const linkedRepo = dashboard.githubRepo;
+	if (
+		(projectFolder !== undefined && projectFolder !== '') ||
+		(linkedRepo !== undefined && linkedRepo !== '')
+	) {
+		if (projectFolder !== undefined && projectFolder !== '') {
+			const folderRow = infoContainer.createDiv({ cls: 'tdc-dashboard-info-row' });
+			folderRow.createSpan({ cls: 'tdc-dashboard-info-label', text: 'Folder' });
+			folderRow.createSpan({ cls: 'tdc-dashboard-info-value', text: projectFolder });
+		}
+		if (linkedRepo !== undefined && linkedRepo !== '') {
+			const repoRow = infoContainer.createDiv({ cls: 'tdc-dashboard-info-row' });
+			repoRow.createSpan({ cls: 'tdc-dashboard-info-label', text: 'Repository' });
+			const repoLink = repoRow.createEl('a', {
+				cls: 'tdc-dashboard-info-value tdc-dashboard-info-link',
+				text: linkedRepo,
+				href: `https://github.com/${linkedRepo}`,
+				attr: { target: '_blank', rel: 'noopener noreferrer' }
+			});
+			repoLink.addEventListener('click', (event) => {
+				event.stopPropagation();
+			});
+		}
+	}
+
 	const container = el.createDiv({ cls: 'tdc-sort-container' });
 
 	renderDashboardActionButtons(container, [
@@ -291,7 +369,7 @@ export function renderSortControls(
 			label: 'Collapse All',
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
-				toggleAllIssues(true, plugin, dashboard, el, setIssueCollapsed);
+				toggleAllIssues(true, plugin, dashboard, el);
 			}
 		},
 		{
@@ -299,7 +377,7 @@ export function renderSortControls(
 			label: 'Expand All',
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
-				toggleAllIssues(false, plugin, dashboard, el, setIssueCollapsed);
+				toggleAllIssues(false, plugin, dashboard, el);
 			}
 		},
 		{

@@ -153,12 +153,7 @@
 	display: none !important;
 }
 
-/* Quick-hide: immediately hide content blocks following collapsed issues (Reading view) */
-.block-language-tasks-dashboard-controls:has(.tdc-collapsed)
-	+ :not(.block-language-tasks-dashboard-controls):not(hr) {
-	display: none !important;
-}
-/* Quick-hide: Live Preview (CM6 wraps blocks in .cm-embed-block) */
+/* Quick-hide: Live Preview — hide next cm-embed-block sibling (task content) after collapsed issue */
 .cm-embed-block:has(.tdc-collapsed)
 	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)) {
 	display: none !important;
@@ -1695,6 +1690,40 @@
 	text-decoration: underline;
 }
 
+/* ===== Dashboard Info ===== */
+.tdc-dashboard-info {
+	margin-bottom: 8px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.tdc-dashboard-info-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 1px 0;
+}
+
+.tdc-dashboard-info-label {
+	font-weight: 600;
+	min-width: 70px;
+}
+
+.tdc-dashboard-info-value {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tdc-dashboard-info-link {
+	color: var(--text-accent);
+	text-decoration: none;
+}
+
+.tdc-dashboard-info-link:hover {
+	text-decoration: underline;
+}
+
 /* ===== Assigned Issues ===== */
 .tdc-assigned-issues-row {
 	display: flex;
@@ -1711,21 +1740,67 @@
 	white-space: nowrap;
 }
 
-.tdc-assigned-issues-convert-btn {
+.tdc-assigned-issues-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	flex-shrink: 0;
-	font-size: 0.85em;
-	padding: 2px 8px;
 }
 
-.tdc-assigned-issues-worktree-btn {
-	flex-shrink: 0;
-	font-size: 0.85em;
-	padding: 2px 8px;
+.tdc-assigned-issues-actions .tdc-btn-square {
+	width: var(--tdc-btn-square-size);
+	height: var(--tdc-btn-square-size);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--tdc-border-radius);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	cursor: pointer;
+	color: var(--text-normal);
+	transition: background var(--tdc-transition-fast), border-color var(--tdc-transition-fast);
 }
 
-.tdc-assigned-issues-worktree-btn:disabled {
+.tdc-assigned-issues-actions .tdc-btn-square:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-muted);
+}
+
+.tdc-assigned-issues-actions .tdc-btn-square svg {
+	width: var(--tdc-btn-icon-size);
+	height: var(--tdc-btn-icon-size);
+}
+
+.tdc-assigned-issues-actions .tdc-btn-faded {
 	opacity: 0.4;
 	cursor: not-allowed;
+}
+
+/* ===== Assigned Issues Loading ===== */
+.tdc-assigned-issues-loading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 0;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.tdc-loading-spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--background-modifier-border);
+	border-top-color: var(--text-accent);
+	border-radius: 50%;
+	animation: tdc-spin 0.6s linear infinite;
+}
+
+@keyframes tdc-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .tdc-gh-links-open,

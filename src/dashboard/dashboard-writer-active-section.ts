@@ -1,11 +1,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import { DashboardConfig } from '../types';
 import { MARKERS, parseDashboard } from './DashboardParser';
-import {
-	buildSortBlock,
-	createIssueIdToBlockMap,
-	removeLegacyIssueSeparator
-} from './dashboard-writer-helpers';
+import { createIssueIdToBlockMap, removeLegacyIssueSeparator } from './dashboard-writer-helpers';
 import { ParsedDashboardIssue, SortDirection } from './dashboard-writer-types';
 
 export interface ActiveDashboardData {
@@ -58,7 +54,7 @@ export const rebuildActiveSectionWithSortedBlocks = async (
 		removeLegacyIssueSeparator(block).trim()
 	);
 	const blocksSection = cleanedBlocks.length > 0 ? `${cleanedBlocks.join('\n')}\n` : '';
-	const newActiveSection = `\n${buildSortBlock(dashboard.id)}${blocksSection}`;
+	const newActiveSection = `\n${blocksSection}`;
 
 	await app.vault.modify(file, beforeActive + newActiveSection + afterActive);
 	new Notice(noticeMessage);
