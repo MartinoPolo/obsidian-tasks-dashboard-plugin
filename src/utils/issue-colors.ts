@@ -99,7 +99,9 @@ const normalizeIssueColor = (color: string): string => {
 };
 
 export const getThemeAwareIssueColorPalette = (): readonly IssueColorEntry[] => {
-	return getIsDarkTheme() ? ISSUE_COLOR_PALETTE_FOR_DARK_THEME : ISSUE_COLOR_PALETTE_FOR_LIGHT_THEME;
+	return getIsDarkTheme()
+		? ISSUE_COLOR_PALETTE_FOR_DARK_THEME
+		: ISSUE_COLOR_PALETTE_FOR_LIGHT_THEME;
 };
 
 export const getForegroundForIssueColor = (backgroundHex: string): string => {

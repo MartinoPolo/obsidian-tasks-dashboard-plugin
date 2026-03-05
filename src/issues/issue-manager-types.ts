@@ -1,5 +1,11 @@
 import { TFile } from 'obsidian';
-import { DashboardConfig, GitHubIssueMetadata, Issue, Priority, WorktreeSetupState } from '../types';
+import {
+	DashboardConfig,
+	GitHubIssueMetadata,
+	Issue,
+	Priority,
+	WorktreeSetupState
+} from '../types';
 
 export interface CreateIssueParams {
 	name: string;

@@ -599,11 +599,36 @@ ${originalBody}`;
 		quoted: boolean;
 		requireNonEmpty: boolean;
 	}> = [
-		{ key: 'worktreeBranch', field: WORKTREE_BRANCH_FIELD, quoted: true, requireNonEmpty: true },
-		{ key: 'worktreeOriginFolder', field: WORKTREE_ORIGIN_FOLDER_FIELD, quoted: true, requireNonEmpty: true },
-		{ key: 'worktreeExpectedFolder', field: WORKTREE_EXPECTED_FOLDER_FIELD, quoted: true, requireNonEmpty: true },
-		{ key: 'worktreeSetupState', field: WORKTREE_SETUP_STATE_FIELD, quoted: false, requireNonEmpty: false },
-		{ key: 'worktreeBaseRepository', field: WORKTREE_BASE_REPOSITORY_FIELD, quoted: true, requireNonEmpty: true },
+		{
+			key: 'worktreeBranch',
+			field: WORKTREE_BRANCH_FIELD,
+			quoted: true,
+			requireNonEmpty: true
+		},
+		{
+			key: 'worktreeOriginFolder',
+			field: WORKTREE_ORIGIN_FOLDER_FIELD,
+			quoted: true,
+			requireNonEmpty: true
+		},
+		{
+			key: 'worktreeExpectedFolder',
+			field: WORKTREE_EXPECTED_FOLDER_FIELD,
+			quoted: true,
+			requireNonEmpty: true
+		},
+		{
+			key: 'worktreeSetupState',
+			field: WORKTREE_SETUP_STATE_FIELD,
+			quoted: false,
+			requireNonEmpty: false
+		},
+		{
+			key: 'worktreeBaseRepository',
+			field: WORKTREE_BASE_REPOSITORY_FIELD,
+			quoted: true,
+			requireNonEmpty: true
+		}
 	];
 
 	const applyWorktreeFieldUpdates = (
@@ -624,7 +649,11 @@ ${originalBody}`;
 			if (requireNonEmpty && value === '') {
 				continue;
 			}
-			result = upsertField(result, field, quoted ? formatQuotedValue(String(value)) : String(value));
+			result = upsertField(
+				result,
+				field,
+				quoted ? formatQuotedValue(String(value)) : String(value)
+			);
 		}
 		return result;
 	};
@@ -637,12 +666,22 @@ ${originalBody}`;
 		const { file } = getIssueFileOrThrow(dashboard, issueId);
 		let content = await app.vault.read(file);
 
-		content = applyWorktreeFieldUpdates(content, metadata, upsertFrontmatterField, quoteYamlString);
+		content = applyWorktreeFieldUpdates(
+			content,
+			metadata,
+			upsertFrontmatterField,
+			quoteYamlString
+		);
 
 		await app.vault.modify(file, content);
 
 		await editDashboardIssueBlock(dashboard, issueId, (block) => {
-			return applyWorktreeFieldUpdates(block, metadata, upsertDashboardIssueBlockField, (v) => v);
+			return applyWorktreeFieldUpdates(
+				block,
+				metadata,
+				upsertDashboardIssueBlockField,
+				(v) => v
+			);
 		});
 	};
 
