@@ -153,6 +153,17 @@
 	display: none !important;
 }
 
+/* Quick-hide: immediately hide content blocks following collapsed issues (Reading view) */
+.block-language-tasks-dashboard-controls:has(.tdc-collapsed)
+	+ :not(.block-language-tasks-dashboard-controls):not(hr) {
+	display: none !important;
+}
+/* Quick-hide: Live Preview (CM6 wraps blocks in .cm-embed-block) */
+.cm-embed-block:has(.tdc-collapsed)
+	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)) {
+	display: none !important;
+}
+
 /* ===== Issue Header ===== */
 .tdc-issue-header {
 	display: flex;

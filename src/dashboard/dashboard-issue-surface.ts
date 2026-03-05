@@ -80,6 +80,78 @@ const applyColorVariables = (
 	}
 };
 
+const OBSERVER_IDLE_TIMEOUT_MS = 500;
+const OBSERVER_MAX_LIFETIME_MS = 5000;
+
+export const observeContentBlockSiblings = (
+	controlBlockElement: HTMLElement,
+	isStillCollapsed: () => boolean,
+	onSiblingsFound: (controlBlock: HTMLElement) => void
+): (() => void) => {
+	const controlBlock = resolveIssueControlBlock(controlBlockElement);
+	const parent = controlBlock.parentElement;
+
+	if (parent === null) {
+		return () => {};
+	}
+
+	let idleTimer: ReturnType<typeof setTimeout> | undefined;
+	let disconnected = false;
+
+	const observer = new MutationObserver(() => {
+		applyToNewSiblings();
+	});
+
+	function disconnect(): void {
+		if (disconnected) {
+			return;
+		}
+		disconnected = true;
+		observer.disconnect();
+		if (idleTimer !== undefined) {
+			clearTimeout(idleTimer);
+		}
+		clearTimeout(maxLifetimeTimer);
+	}
+
+	function applyToNewSiblings(): void {
+		if (disconnected || !isStillCollapsed()) {
+			disconnect();
+			return;
+		}
+
+		const contentBlocks = collectIssueContentBlocks(controlBlock);
+		if (contentBlocks.length === 0) {
+			return;
+		}
+
+		for (const block of contentBlocks) {
+			block.classList.add('tdc-issue-content-collapsed');
+		}
+
+		onSiblingsFound(controlBlockElement);
+
+		// Reset idle timer — wait for more siblings to potentially appear
+		if (idleTimer !== undefined) {
+			clearTimeout(idleTimer);
+		}
+		idleTimer = setTimeout(() => {
+			disconnect();
+		}, OBSERVER_IDLE_TIMEOUT_MS);
+	}
+
+	observer.observe(parent, { childList: true });
+
+	const maxLifetimeTimer = setTimeout(() => {
+		disconnect();
+	}, OBSERVER_MAX_LIFETIME_MS);
+
+	// Run once immediately in case siblings already exist
+	applyToNewSiblings();
+
+	return disconnect;
+};
+
 export const applyIssueSurfaceStyles = (
 	element: HTMLElement,
 	mainColor: string | undefined

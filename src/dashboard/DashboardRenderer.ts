@@ -3,7 +3,11 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
 import { createPlatformService } from '../utils/platform';
 import { buildIssueActionDescriptors } from './dashboard-issue-actions';
-import { applyIssueSurfaceStyles, setIssueCollapsed } from './dashboard-issue-surface';
+import {
+	applyIssueSurfaceStyles,
+	observeContentBlockSiblings,
+	setIssueCollapsed
+} from './dashboard-issue-surface';
 import { createOverflowMenuPanel } from './dashboard-overflow-panel';
 import { HEADER_HOVER_TITLE_MIN_WIDTH } from './dashboard-renderer-constants';
 import { createGitHubCardRefreshRenderer } from './dashboard-renderer-github-cards';
@@ -532,7 +536,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const render = async (
 		source: string,
 		el: HTMLElement,
-		_ctx: MarkdownPostProcessorContext
+		ctx: MarkdownPostProcessorContext
 	): Promise<void> => {
 		const params = parseParams(source);
 		if (params === null) {
@@ -569,7 +573,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			issueActions,
 			actionLayout,
 			() => row2VisibleActionKeys,
-			_ctx
+			ctx
 		);
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
@@ -610,6 +614,16 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		if (isCollapsed) {
 			setIssueCollapsed(el, true);
+
+			const disconnect = observeContentBlockSiblings(
+				el,
+				() => plugin.settings.collapsedIssues[params.issue] === true,
+				(controlBlock) =>
+					applyIssueSurfaceStyles(controlBlock, plugin.settings.issueColors[params.issue])
+			);
+			const observerCleanup = new MarkdownRenderChild(el);
+			observerCleanup.register(disconnect);
+			ctx.addChild(observerCleanup);
 		}
 	};
 

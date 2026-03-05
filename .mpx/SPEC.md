@@ -240,9 +240,9 @@
 
 ### Issue Card
 
-- [ ] On narrow widths, stop hover-only reveal of hidden header buttons; expose hidden actions only via 3-dots overflow for consistent discoverability.
-- [ ] Minimum title width in issue header should be 100px.
-- [ ] The three dots button should always be visible.
+- [x] On narrow widths, stop hover-only reveal of hidden header buttons; expose hidden actions only via 3-dots overflow for consistent discoverability.
+- [x] Minimum title width in issue header should be 100px.
+- [x] The three dots button should always be visible.
 - [x] Remove duplicate native/system tooltips on issue-card action buttons and keep only the custom tooltip experience.
 - [x] The title of the card should be very light gray in dark mode and very dark gray in light mode, instead of the current blue link color. And for sit, there are probably some default styles for this kind of link, and they are overriding our styling. We need to set it properly.
 
@@ -263,7 +263,7 @@
 - [x] Track globally used issue colors across the vault and disable already-assigned colors in creation color-picker step.
 - [x] Auto-preselect the next available unused color by default in creation color-picker step.
 - [x] Add Option to release all the colors (in plugin settings)
-- [ ] Expand color palette to grouped multi-column shades (30 colors), 6x5 layout, and adapt color-picker grid layout accordingly. There should be six main colours, one for each column, and the columns should just be different shades of the same colour, starting with the darker variants in dark mode and going down in the table. They should be lighter. This way, the first row will be the most used colors. Similarly, apply for light mode the light mode colors. At the top should be the most used ones, so something like:
+- [x] Expand color palette to grouped multi-column shades (30 colors), 6x5 layout, and adapt color-picker grid layout accordingly. There should be six main colours, one for each column, and the columns should just be different shades of the same colour, starting with the darker variants in dark mode and going down in the table. They should be lighter. This way, the first row will be the most used colors. Similarly, apply for light mode the light mode colors. At the top should be the most used ones, so something like:
 - light blue
 - light red
 - light orange
@@ -273,15 +273,15 @@
 - [x] Release previously reserved color when an issue is deleted or archived so it becomes selectable again. Also release color when a color is changed so the old color becomes available and the new color is reserved.
 - [x] Use theme-appropriate title text color for issue-card links/titles (light text in dark mode, dark text in light mode) instead of generic link color styling.
 - [x] Reposition header color picker to anchor as dropdown from issue header color button (preferred) or centered fallback; avoid off-screen corner placement.
-- [ ] Renaming requirement: change color-action tooltip/title from `Header color` to `Issue color`.
-- [ ] When changing issue color from the issue-card color action, update color-allocation tracking so old color is released and new color is reserved correctly.
+- [x] Renaming requirement: change color-action tooltip/title from `Header color` to `Issue color`.
+- [x] When changing issue color from the issue-card color action, update color-allocation tracking so old color is released and new color is reserved correctly.
 
 ### Dashboard
 
 - [x] Ensure dashboard contains exactly one `How to Use This Dashboard` section instance (deduplicate constants/rendering paths and prevent duplicates after rebuild).
 - [x] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
-- [ ] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
-- [ ] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
+- [x] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
+- [x] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
 - [ ] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions.
 - [ ] The Active issues section should be after dashboard global action buttons
 - [ ] Add a dashboard info section with general info - linked folder, linked Github repository
