@@ -1,9 +1,10 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
-import { NamePromptModal } from '../modals/issue-creation-modal';
+import { openIssueCreationModal } from '../modals/issue-creation-modal';
 import { NoteImportModal } from '../modals/note-import-modal';
 import { hasSettingsTabApi } from '../settings/settings-helpers';
 import type { DashboardConfig } from '../types';
+import { createPlatformService } from '../utils/platform';
 import { parseDashboard } from './DashboardParser';
 import {
 	observeContentBlockSiblings,
@@ -230,7 +231,16 @@ export function renderSortControls(
 			label: 'Add Issue',
 			cssClass: PRIMARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
-				new NamePromptModal(plugin.app, plugin, dashboard).open();
+				const folder = dashboard.projectFolder;
+				const hasGitFolder =
+					folder !== undefined &&
+					folder !== '' &&
+					createPlatformService().isGitRepositoryFolder(folder);
+				openIssueCreationModal(plugin.app, plugin, dashboard, {
+					worktreeContext: hasGitFolder
+						? { eligible: true, worktreeOriginFolder: folder }
+						: undefined
+				});
 			}
 		},
 		{

@@ -109,7 +109,7 @@ function getExpectedWorktreeFolder(
 	}
 
 	const separator = parentFolder.includes('\\') ? '\\' : '/';
-	return `${parentFolder}${separator}${worktreeBranch}`;
+	return `${parentFolder}${separator}worktrees${separator}${worktreeBranch}`;
 }
 
 function isValidGitBranchName(branchName: string): boolean {
