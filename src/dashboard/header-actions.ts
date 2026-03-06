@@ -1,10 +1,10 @@
-import { Notice } from 'obsidian';
+import { Notice, setTooltip } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import { FolderPathModal } from '../modals/FolderPathModal';
 import { RepositoryLinkerModal } from '../modals/RepositoryLinkerModal';
 import type { DashboardConfig } from '../types';
-import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { createPlatformService, type PlatformService } from '../utils/platform';
+import { getLinkedRepositories } from './dashboard-writer-helpers';
 
 export const ICONS = {
 	trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
@@ -84,10 +84,9 @@ interface ActionButtonConfig {
 
 export function createActionButton(config: ActionButtonConfig): HTMLElement {
 	const button = config.container.createEl('button', {
-		cls: `tdc-btn ${config.cssClass}${config.faded ? ' tdc-btn-faded' : ''}`,
-		attr: { 'aria-label': config.ariaLabel, title: '' }
+		cls: `tdc-btn ${config.cssClass}${config.faded ? ' tdc-btn-faded' : ''}`
 	});
-	button.removeAttribute('title');
+	setTooltip(button, config.ariaLabel, { delay: 500 });
 	const contextMenuHandler = config.onContextMenu;
 	const hasIcon = appendInlineSvgIcon(button, ICONS[config.iconKey]);
 	if (config.labelText !== undefined) {
@@ -167,10 +166,7 @@ function renderFolderDependentActionButton(config: FolderDependentActionButtonCo
 	});
 }
 
-function openRepositoryLinkerModal(
-	plugin: TasksDashboardPlugin,
-	dashboard: DashboardConfig
-): void {
+function openRepositoryLinkerModal(plugin: TasksDashboardPlugin, dashboard: DashboardConfig): void {
 	new RepositoryLinkerModal(plugin, dashboard, (linkedRepos) => {
 		dashboard.githubRepos = linkedRepos;
 		void plugin.saveSettings();

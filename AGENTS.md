@@ -43,8 +43,10 @@
 
 ## Tooltips
 
-- Never set `title` on buttons that use `aria-label`. Obsidian renders `aria-label` as the styled black tooltip; `title` adds a duplicate ugly system tooltip. Use `aria-label` only.
-- `createActionButton` already removes `title` — never re-add it post-creation.
+- Use `setTooltip(el, text, { delay: 500 })` from `obsidian` for all button/icon tooltips. Fast styled black tooltip.
+- Never set `title` attribute on elements — creates ugly duplicate system tooltip.
+- Never use raw `aria-label` for tooltip purposes — slow default delay, no control. `setTooltip` handles both accessibility and visual tooltip.
+- `createActionButton` uses `setTooltip` internally — never add `title` or `aria-label` post-creation.
 
 ## Deployment
 

@@ -1,6 +1,17 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, TFile } from 'obsidian';
+import {
+	MarkdownPostProcessorContext,
+	MarkdownRenderChild,
+	Notice,
+	setTooltip,
+	TFile
+} from 'obsidian';
 import TasksDashboardPlugin from '../../main';
+import {
+	openAssignedIssueNamePrompt,
+	type QuickCreateDefaults
+} from '../modals/issue-creation-modal';
 import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
+import { getNextAvailableIssueColor } from '../utils/issue-colors';
 import { createPlatformService } from '../utils/platform';
 import { buildIssueActionDescriptors } from './dashboard-issue-actions';
 import {
@@ -22,13 +33,8 @@ import type {
 	IssueActionDescriptor,
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
-import { ICONS, appendInlineSvgIcon, createActionButton } from './header-actions';
-import {
-	openAssignedIssueNamePrompt,
-	type QuickCreateDefaults
-} from '../modals/issue-creation-modal';
-import { getNextAvailableIssueColor } from '../utils/issue-colors';
 import { getLinkedRepositories } from './dashboard-writer-helpers';
+import { appendInlineSvgIcon, createActionButton, ICONS } from './header-actions';
 import { renderSortControls } from './sort-controls';
 export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 
@@ -285,9 +291,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 
 		const collapseToggle = header.createEl('button', {
-			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`,
-			attr: { 'aria-label': isCollapsed ? 'Expand' : 'Collapse' }
+			cls: `tdc-btn tdc-btn-collapse${isCollapsed ? ' tdc-chevron-collapsed' : ''}`
 		});
+		setTooltip(collapseToggle, isCollapsed ? 'Expand' : 'Collapse', { delay: 500 });
 		appendInlineSvgIcon(collapseToggle, ICONS.chevron);
 		collapseToggle.addEventListener('click', (event) => {
 			stopEventAndRun(event, () => {
@@ -300,7 +306,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					delete plugin.settings.collapsedIssues[params.issue];
 				}
 				void plugin.saveSettings();
-				collapseToggle.setAttribute('aria-label', newCollapsed ? 'Expand' : 'Collapse');
+				setTooltip(collapseToggle, newCollapsed ? 'Expand' : 'Collapse', { delay: 500 });
 				setIssueCollapsed(container, newCollapsed);
 			});
 		});
@@ -332,12 +338,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const infoAffordance = header.createEl('button', {
 			cls: 'tdc-issue-info-inline',
 			attr: {
-				'aria-label': 'Issue info',
 				type: 'button',
 				'aria-haspopup': 'dialog',
 				'aria-expanded': 'false'
 			}
 		});
+		setTooltip(infoAffordance, 'Issue info', { delay: 500 });
 		appendInlineSvgIcon(infoAffordance, ICONS.info);
 		const issueInfoText = [
 			`Issue: ${params.issue}`,
@@ -355,11 +361,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		if (isWorktreeIssue) {
 			const statusIcon = header.createSpan({
 				cls: `tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`,
-				attr: {
-					'aria-label': worktreeStatusText,
-					role: 'img'
-				}
+				attr: { role: 'img' }
 			});
+			setTooltip(statusIcon, worktreeStatusText, { delay: 500 });
 			appendInlineSvgIcon(statusIcon, ICONS.worktree);
 		}
 

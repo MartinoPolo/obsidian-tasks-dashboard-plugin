@@ -56,3 +56,7 @@ Previously used a `MutationObserver` on the dashboard element to catch blocks en
 ### Key Takeaway
 
 **Don't fight CM6's virtualization — work with it.** Store state in plugin settings, apply it in `render()`, and trust CM6 to call `render()` when blocks enter the viewport. DOM-level hacks (MutationObservers, timeouts) are fragile and unnecessary when the render pipeline already reads from settings.
+
+## Obsidian Tooltips
+
+Use `setTooltip(el, text, { delay: 500 })` from `obsidian` for all tooltips. Never use `title` (ugly system tooltip) or raw `aria-label` (slow, no delay control). Using both causes dual tooltips. One tooltip mechanism per element.

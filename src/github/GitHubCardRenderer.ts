@@ -1,3 +1,4 @@
+import { setTooltip } from 'obsidian';
 import { GitHubDisplayMode, GitHubIssueMetadata, GitHubLabel, GitHubRepoMetadata } from '../types';
 import { parseGitHubUrlInfo } from '../utils/github';
 import {
@@ -66,9 +67,9 @@ function formatGitHubSimpleLinkText(url: string): string {
 
 function renderRefreshButton(parent: HTMLElement, onRefresh: () => void): void {
 	const refreshBtn = parent.createEl('button', {
-		cls: 'tdc-gh-refresh',
-		attr: { 'aria-label': 'Refresh GitHub data' }
+		cls: 'tdc-gh-refresh'
 	});
+	setTooltip(refreshBtn, 'Refresh GitHub data', { delay: 500 });
 	appendSvgIcon(refreshBtn, ICONS.refresh);
 	refreshBtn.addEventListener('click', (e) => {
 		e.preventDefault();
@@ -79,9 +80,9 @@ function renderRefreshButton(parent: HTMLElement, onRefresh: () => void): void {
 
 function renderUnlinkButton(parent: HTMLElement, onUnlink: () => void): void {
 	const unlinkBtn = parent.createEl('button', {
-		cls: 'tdc-gh-unlink',
-		attr: { 'aria-label': 'Remove GitHub link' }
+		cls: 'tdc-gh-unlink'
 	});
+	setTooltip(unlinkBtn, 'Remove GitHub link', { delay: 500 });
 	appendSvgIcon(unlinkBtn, ICONS.unlink);
 	unlinkBtn.addEventListener('click', (e) => {
 		e.preventDefault();
