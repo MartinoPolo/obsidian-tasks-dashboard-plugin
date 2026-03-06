@@ -170,13 +170,6 @@
 - [x] Ensure all actions hidden via layout settings remain correctly present and executable in the 3-dots overflow dropdown (never lost when hidden from visible rows).
 - [x] Update global `Collapse all issues` behavior so it targets every issue in the dashboard (entire dashboard dataset), not only issues currently visible in the active view/render window.
 
-## Open / Optional Improvements
-
-### Optional (Non-Blocking) UX Improvements
-
-- [x] Optional tooltip hints for overflow actions when labels are icon-only
-- [x] Optional one-click reset to default action layout at dashboard scope
-- [x] Optional lightweight confirmation toast after saving action layout settings
 
 ## Code Quality
 
@@ -208,6 +201,17 @@
 - [ ] If automatic worktree setup fails, expose a retry-capable `Add worktree later` header action (tree icon) as the first header action, hidden by default and auto-shown only in failed state.
 - [ ] Add an option to refresh the state to check again what the state of the worktree is. It should include checking on the branch state so that we can refresh the knowledge about worktree.
 - [ ] "Add worktree later" should not be a button with the whole text; it should be another header action. Use the same icon as we are using for displaying worktree status.
+- [ ] Clicking the "Add Worktree Later" button should offer a list of currently available worktrees or a button to create a worktree from this issue name, with an auto-suggested name for the worktree and an input which is editable by the user before clicking the confirm button. It should spawn a modal with all worktrees currently active in the current repository, with an option to switch to other repositories. Do we have enough information about where the repository should be fetched from and where they live on our disk?
+- [ ]
+The worktree icon and info icon in the header of the issue card should be swapped. worktree icon on the left, info on the right. Whenever there's an assigned worktree, it should display the location of the worktree in relation to what it is based on. It should show the base branch, which is most usually dev. It should show which folder or repository it is based on, and it should show the name of the branch it is currently linked to or which is checked out in this worktree. Are we able to get and show all of this? I would like to see something like atc-common/dev -> 986-out-worktree-branch for example. atc-common is the folder where the repo is located and on the dev branch we're basing the worktree branch. It will also be used to be merged into. Could you please help me with the logic of fetching and keeping all these data and how to update them if any of this changes? There are multiple scenarios. The most common one is that there is a folder with a Git repository and the dev branch from which the worktree is created, and the name of the worktree and name of the branch is the same. There is also a scenario that we are basing the worktree on another worktree, so then we should definitely list the base branch as well.
+- [ ] There is also an option to have multiple worktree base folders for issues in a dashboard. In that case, I would like to be able to sort by worktree base so that I see all the worktrees from, for example, ATC-common folder as one project and a separate section for key trader, which is a second project. Maybe just sorting by the base folder should be fine for now.
+- [ ] See where we are creating worktrees in the C:/_MP_WORK folder. See the setup-worktree.sh script for details. This should probably lead to the folder detection logic.
+- [ ] Maybe we will need a dashboard refresh button which checks that all the folders exist, that all the repositories exist, and refreshes the state of worktrees and branches and GitHub issues so that we can correctly display the status.
+    - [ ] It could also update issue status and display it somewhere in the issue card header. It could even detect linked PRs and automatically link them to the issue cards and show their status. And also show the branch status including base branch sync
+- [ ] Worktree status icon and add worktree later should be merged into one with appropriate behavior
+    - When worktree is active, it should just be an icon with a green tree.
+    - When worktree setup failed or was never done, it should be a clickable button which triggers assignment or creation of a worktree.
+
 
 ### GitHub Integration
 
@@ -216,10 +220,25 @@
 - [x] Sort offered GitHub issues/PRs by recency with assignment-aware ranking (assigned-to-me first), while preserving fast incremental text/number search behavior.
 - [x] Add optional foldable `Assigned Issues` dashboard section for dashboards with linked repositories, listing assigned GitHub issues and providing one-click conversion into dashboard issues.
 - [x] Investigate how these assigned issues are refreshed, and also there's some improper styling.
+- [ ] Assigned issues that already have a dashboard issue linked should go at the bottom of the assigned issue list. They should be separated from the unlinked assigned issues with a divider and a label "In dashboard" or something like that.
 
 #### Bugs
 - [x] The search and repository linking works correctly now; however, there are still some errors showing that the GitHub authentication failed. Also, the search works a bit weird, that whenever I search for issue 418, it finds it, but when for #418, it doesn't. When I search for 41, it also doesn't find it and when I search for 4, it finds issues 360 and 363 (Which might have some number in their description or something. I'm not sure. Please describe how the GitHub search works. )
 - [x] Assigned issues section -  The buttons to convert and worktree are styled improperly. They are below each other and below the links to those issues, and the worktree button is always disabled
+### Dashboard
+
+- [x] Ensure dashboard contains exactly one `How to Use This Dashboard` section instance (deduplicate constants/rendering paths and prevent duplicates after rebuild).
+- [x] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
+- [x] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
+- [x] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
+- [x] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions. Two icon-only buttons per row: plus icon (add issue → step 2 with preselected GitHub issue) and worktree icon (quick worktree with medium priority and next available color, user edits name only).
+- [x] The Active issues section should be after dashboard global action buttons
+- [x] Add a dashboard info section with general info - linked folder, linked Github repository
+- [x] Issues section should have a loading state so that I see that the request is pending.
+- [ ] Open Dashboard Settings button should have an icon with the settings icon, not the folder icon. It should be some sort of wheel icon that is common for settings.
+- [ ] All the dashboard buttons should have icons, not text. Tooltip should be enough to aid what the button does.
+- [ ] Buttons should go next to the dashboard info section (where assigned folder and repo is displayed). Buttons should be in a separate container which wraps to second line if there's not enough space next to the dashboard info. Also it is flex-wrap which means buttons can move to the next line if there's not enough space, but they should try to stay in the same line as the dashboard info section. The dashboard info section should be on the left, and the buttons should be on the right of it aligned to the right if possible.
+- [ ] Assigned issues should load 10 issues for each repo by default but should offer a load more button at the end of the section if there are more issues to load. It should indicate how many issues out of how many total assigned issues are loaded currently. something like (10/17 loaded) next to the repo title in assigned issues section.
 
 ### Issue Creation Workflow
 
@@ -237,6 +256,7 @@
 - [x] Rename per-issue card action from `Add WorkTree Issue` to `Add Issue` with plus icon, while keeping current enable/disable gating semantics tied to worktree feasibility from that issue context.
 - [x] For automatically derived worktree/branch names, normalize from resulting issue name by lowercasing, replacing spaces with dashes, retaining only git-branch-safe characters, and ensuring issue number prefix is included when available.
 - [x] Preselect `Low` as default in priority selection step.
+- [x] Clicking on a priority should work the same as pressing Enter in the Add Issue workflow. The same when we are editing priority later by clicking on the Change Priority button in the Issue card. Clicking a specific priority should immediately confirm it. We shouldn't need to press Enter or click on the Confirm button. Clicking the priority should be enough.
 
 ### Issue Card
 
@@ -276,23 +296,14 @@
 - [x] Renaming requirement: change color-action tooltip/title from `Header color` to `Issue color`.
 - [x] When changing issue color from the issue-card color action, update color-allocation tracking so old color is released and new color is reserved correctly.
 
-### Dashboard
 
-- [x] Ensure dashboard contains exactly one `How to Use This Dashboard` section instance (deduplicate constants/rendering paths and prevent duplicates after rebuild).
-- [x] Update `How to Use This Dashboard` content to reflect new controls and explicitly state the section can be freely deleted.
-- [x] Persist per-issue collapsed/expanded state reliably across renders/reloads for all issues.
-- [x] Ensure `Collapse all` targets all dashboard issues (not only currently visible/rendered subset).
-- [x] Add an `Assigned Issues` section that auto-fetches issues assigned to current user for the dashboard-linked repository and provides one-click worktree creation actions. Two icon-only buttons per row: plus icon (add issue → step 2 with preselected GitHub issue) and worktree icon (quick worktree with medium priority and next available color, user edits name only).
-- [x] The Active issues section should be after dashboard global action buttons
-- [x] Add a dashboard info section with general info - linked folder, linked Github repository
-- [x] Issues section should have a loading state so that I see that the request is pending.
 
 ### Tooling
 
 - [x] Add and configure `eslint-plugin-obsidianmd` so local linting includes Obsidian pre-publish style/check parity where applicable.
 
 ### Other
-- [x] Open Dashboard Settings button should have an icon with the settings icon, not the folder icon. It should be some sort of wheel icon that is common for settings.
+
 
 ### Bug list:
 - [x] The automatic issue name creation from the GitHub issue name should remove the hash # sign. It should also only list the first four words from the issue title The user can always change the name themselves.

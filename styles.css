@@ -155,7 +155,9 @@
 
 /* Quick-hide: Live Preview — hide next cm-embed-block sibling (task content) after collapsed issue */
 .cm-embed-block:has(.tdc-collapsed)
-	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)):not(:has(.tdc-assigned-issues-details)) {
+	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)):not(
+		:has(.tdc-assigned-issues-details)
+	) {
 	display: none !important;
 }
 
@@ -572,18 +574,16 @@
 	height: var(--tdc-btn-icon-size);
 }
 
-/* ===== Action Buttons (Add, Sort) ===== */
+/* ===== Action Buttons (icon-only squares) ===== */
 .tdc-btn-action {
-	width: auto;
-	height: auto;
-	padding: 8px 16px;
+	width: var(--tdc-btn-square-size);
+	height: var(--tdc-btn-square-size);
+	padding: 0;
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
+	justify-content: center;
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);
-	font-size: 0.9em;
-	font-weight: 500;
 	border: none;
 	border-radius: var(--tdc-border-radius);
 	cursor: pointer;
@@ -692,13 +692,24 @@
 	overflow: visible;
 }
 
+/* ===== Dashboard Header (info + buttons row) ===== */
+.tdc-dashboard-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
 /* ===== Sort Container ===== */
 .tdc-sort-container {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	flex-wrap: wrap;
-	margin: 8px 0 16px 0;
+	flex-shrink: 0;
+	margin-left: auto;
+	padding-right: 35px; /* Extra space not to conflict with obsidian source icon */
 }
 
 /* ===== Sort Dropdown ===== */
@@ -1692,7 +1703,8 @@
 
 /* ===== Dashboard Info ===== */
 .tdc-dashboard-info {
-	margin-bottom: 8px;
+	flex: 1 1 auto;
+	min-width: 200px;
 	font-size: 0.85em;
 	color: var(--text-muted);
 }
@@ -1759,7 +1771,9 @@
 	background: var(--background-secondary);
 	cursor: pointer;
 	color: var(--text-normal);
-	transition: background var(--tdc-transition-fast), border-color var(--tdc-transition-fast);
+	transition:
+		background var(--tdc-transition-fast),
+		border-color var(--tdc-transition-fast);
 }
 
 .tdc-assigned-issues-actions .tdc-btn-square:hover {
@@ -1968,4 +1982,37 @@
 	font-style: italic;
 	margin-left: auto;
 	flex-shrink: 0;
+}
+
+/* ===== Assigned Issues Repo Header (multi-repo grouping) ===== */
+.tdc-assigned-issues-repo-header {
+	font-weight: 600;
+	font-size: 0.85em;
+	color: var(--text-normal);
+	padding: 6px 0 2px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-top: 4px;
+}
+
+/* ===== Assigned Issues Load More ===== */
+.tdc-assigned-issues-load-more {
+	display: block;
+	width: 100%;
+	padding: 6px 12px;
+	margin-top: 8px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+	background: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	cursor: pointer;
+	text-align: center;
+	transition:
+		background var(--tdc-transition-fast),
+		color var(--tdc-transition-fast);
+}
+
+.tdc-assigned-issues-load-more:hover {
+	background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+	color: var(--text-normal);
 }

@@ -210,8 +210,7 @@ export function renderGlobalActionButtons(
 				platformService.openInFileExplorer(folderPath);
 			},
 			onSelectFolder: openProjectFolderModal,
-			openFolderSelectorOnContextMenu: 'always',
-			labelText: 'Open Folder'
+			openFolderSelectorOnContextMenu: 'always'
 		});
 	}
 
@@ -227,8 +226,7 @@ export function renderGlobalActionButtons(
 				platformService.openTerminal(folderPath);
 			},
 			onSelectFolder: openProjectFolderModal,
-			openFolderSelectorOnContextMenu: 'always',
-			labelText: 'Terminal'
+			openFolderSelectorOnContextMenu: 'always'
 		});
 	}
 
@@ -244,8 +242,7 @@ export function renderGlobalActionButtons(
 				platformService.openVSCode(folderPath);
 			},
 			onSelectFolder: openProjectFolderModal,
-			openFolderSelectorOnContextMenu: 'always',
-			labelText: 'VS Code'
+			openFolderSelectorOnContextMenu: 'always'
 		});
 	}
 
@@ -264,7 +261,6 @@ export function renderGlobalActionButtons(
 					: `Open GitHub repos (${repoCount})`
 				: 'Link GitHub repository',
 			faded: !hasRepos,
-			labelText: 'GitHub',
 			onClick: () => {
 				if (repoCount === 0) {
 					openRepositoryLinkerModal(plugin, dashboard);

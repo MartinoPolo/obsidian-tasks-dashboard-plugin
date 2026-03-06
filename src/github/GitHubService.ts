@@ -26,7 +26,7 @@ import {
 	getIssueCacheKey,
 	uniqueByUrl
 } from './github-service-search-helpers';
-import { GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
+import { AssignedIssuesResult, GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
 
 export { GitHubApiError } from './github-service-types';
 export type { GitHubApiErrorKind, GitHubServiceInstance } from './github-service-types';
@@ -356,18 +356,19 @@ export function createGitHubService(): GitHubServiceInstance {
 	const getAssignedIssues = async (
 		repo: string,
 		limit = SEARCH_RESULTS_PER_PAGE
-	): Promise<GitHubIssueMetadata[]> => {
+	): Promise<AssignedIssuesResult> => {
+		const emptyResult: AssignedIssuesResult = { items: [], totalCount: 0 };
 		if (!isAuthenticated() || repo.trim() === '') {
-			return [];
+			return emptyResult;
 		}
 
 		const username = await getAuthenticatedUser();
 		if (username === undefined || username.trim() === '') {
-			return [];
+			return emptyResult;
 		}
 
 		const cacheKey = `assigned:${repo}:${username}:${limit}`;
-		const cached = cacheStore.get<GitHubIssueMetadata[]>(cacheKey);
+		const cached = cacheStore.get<AssignedIssuesResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
 		}
@@ -377,14 +378,15 @@ export function createGitHubService(): GitHubServiceInstance {
 			buildIssueSearchEndpoint(searchQuery, limit)
 		);
 		if (data === undefined) {
-			return [];
+			return emptyResult;
 		}
 
 		const items = mapSearchItems(data.items)
 			.filter((item) => item.isPR === false)
 			.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-		cacheStore.set(cacheKey, items);
-		return items;
+		const result: AssignedIssuesResult = { items, totalCount: data.total_count };
+		cacheStore.set(cacheKey, result);
+		return result;
 	};
 
 	const searchIssuesInMyRepos = async (query: string): Promise<GitHubSearchResult> => {

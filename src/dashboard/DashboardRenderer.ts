@@ -212,9 +212,12 @@ function createIssueInfoPanel(options: IssueInfoPanelOptions): () => void {
 	};
 }
 
+const DEFAULT_ASSIGNED_ISSUES_LIMIT = 10;
+
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const { renderGitHubCardWithRefresh } = createGitHubCardRefreshRenderer(plugin);
 	const platformService = createPlatformService();
+	const assignedIssuesLimitByDashboard = new Map<string, number>();
 
 	const stopEventAndRun = (event: MouseEvent, action: () => void): void => {
 		event.preventDefault();
@@ -712,6 +715,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			return;
 		}
 
+		const currentLimit =
+			assignedIssuesLimitByDashboard.get(dashboardId) ?? DEFAULT_ASSIGNED_ISSUES_LIMIT;
+
 		const details = el.createEl('details', {
 			cls: 'tdc-assigned-issues-details'
 		});
@@ -728,25 +734,24 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		loadingIndicator.createSpan({ cls: 'tdc-loading-spinner' });
 		loadingIndicator.createSpan({ text: 'Loading assigned issues…' });
 
-		type AssignedIssue = Awaited<ReturnType<typeof plugin.githubService.getAssignedIssues>>[number];
-		interface TaggedIssue {
-			issue: AssignedIssue;
-			sourceRepo: string;
+		interface RepoResult {
+			repoName: string;
+			items: import('../types').GitHubIssueMetadata[];
+			totalCount: number;
 		}
 
-		let taggedIssues: TaggedIssue[];
+		let repoResults: RepoResult[];
 		try {
 			const results = await Promise.all(
 				repos.map(async (repoName) => {
-					const issues = await plugin.githubService.getAssignedIssues(repoName, 15);
-					return issues.map((issue) => ({ issue, sourceRepo: repoName }));
+					const result = await plugin.githubService.getAssignedIssues(
+						repoName,
+						currentLimit
+					);
+					return { repoName, items: result.items, totalCount: result.totalCount };
 				})
 			);
-			taggedIssues = results.flat();
-			taggedIssues.sort(
-				(a, b) =>
-					new Date(b.issue.updatedAt).getTime() - new Date(a.issue.updatedAt).getTime()
-			);
+			repoResults = results;
 		} catch (error: unknown) {
 			loadingIndicator.remove();
 			console.error('Tasks Dashboard: failed to fetch assigned issues', error);
@@ -777,7 +782,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			// ignore — proceed without filtering
 		}
 
-		summary.setText(`Assigned Issues (${taggedIssues.length})`);
+		const totalLoaded = repoResults.reduce((sum, r) => sum + r.items.length, 0);
+		const totalAvailable = repoResults.reduce((sum, r) => sum + r.totalCount, 0);
+		const hasMore = totalLoaded < totalAvailable;
+
+		summary.setText(`Assigned Issues (${totalLoaded}/${totalAvailable} loaded)`);
 
 		const dashboardProjectFolder = dashboard.projectFolder;
 		const worktreeCreationAvailable =
@@ -785,9 +794,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			dashboardProjectFolder !== '' &&
 			platformService.isGitRepositoryFolder(dashboardProjectFolder);
 
-		const showRepoBadge = repos.length > 1;
+		const isMultiRepo = repos.length > 1;
 
-		if (taggedIssues.length === 0) {
+		if (totalLoaded === 0) {
 			details.createDiv({
 				cls: 'tdc-assigned-issues-message',
 				text: `No open assigned issues found.`
@@ -796,19 +805,13 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 
 		const list = details.createDiv({ cls: 'tdc-assigned-issues-list' });
-		for (const { issue, sourceRepo } of taggedIssues) {
+
+		const renderIssueRow = (
+			issue: import('../types').GitHubIssueMetadata,
+			sourceRepo: string
+		): void => {
 			const isAlreadyInDashboard = existingUrls.has(issue.url);
 			const row = list.createDiv({ cls: 'tdc-assigned-issues-row' });
-
-			if (showRepoBadge) {
-				const shortName = sourceRepo.includes('/')
-					? sourceRepo.split('/')[1]
-					: sourceRepo;
-				row.createSpan({
-					cls: 'tdc-assigned-issues-repo-badge',
-					text: shortName
-				});
-			}
 
 			const issueLink = row.createEl('a', {
 				cls: 'tdc-assigned-issues-link',
@@ -825,7 +828,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					cls: 'tdc-assigned-issues-in-dashboard',
 					text: 'In dashboard'
 				});
-				continue;
+				return;
 			}
 
 			const actionsContainer = row.createDiv({ cls: 'tdc-assigned-issues-actions' });
@@ -874,6 +877,42 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 						quickCreateDefaults: quickDefaults
 					});
 				}
+			});
+		};
+
+		if (isMultiRepo) {
+			for (const { repoName, items, totalCount } of repoResults) {
+				if (totalCount === 0) {
+					continue;
+				}
+				const shortName = repoName.includes('/') ? repoName.split('/')[1] : repoName;
+				list.createDiv({
+					cls: 'tdc-assigned-issues-repo-header',
+					text: `${shortName} (${items.length}/${totalCount})`
+				});
+				for (const issue of items) {
+					renderIssueRow(issue, repoName);
+				}
+			}
+		} else {
+			const singleRepo = repoResults[0];
+			for (const issue of singleRepo.items) {
+				renderIssueRow(issue, singleRepo.repoName);
+			}
+		}
+
+		if (hasMore) {
+			const loadMoreButton = details.createEl('button', {
+				cls: 'tdc-assigned-issues-load-more',
+				text: 'Load more'
+			});
+			loadMoreButton.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				const newLimit = currentLimit + DEFAULT_ASSIGNED_ISSUES_LIMIT;
+				assignedIssuesLimitByDashboard.set(dashboardId, newLimit);
+				el.empty();
+				void renderAssignedIssuesSection(source, el, _ctx);
 			});
 		}
 	};

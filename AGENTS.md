@@ -34,13 +34,21 @@
 
 ## Agent Behavior
 
-- Broaden scope of inquiry to find unconventional solutions
 - Red team your work before calling it done
 - Reflect on tool results before proceeding
 
 ## Commands
 
 - Use `package.json` scripts as the command source of truth.
+
+## Tooltips
+
+- Never set `title` on buttons that use `aria-label`. Obsidian renders `aria-label` as the styled black tooltip; `title` adds a duplicate ugly system tooltip. Use `aria-label` only.
+- `createActionButton` already removes `title` — never re-add it post-creation.
+
+## Deployment
+
+- Plugin folder is already symlinked into Obsidian. Never copy or symlink build output manually.
 
 ## Project Invariants
 

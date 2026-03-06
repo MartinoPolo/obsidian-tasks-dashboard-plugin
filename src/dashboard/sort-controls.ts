@@ -56,7 +56,6 @@ function renderDashboardActionButtons(
 			cssClass: action.cssClass,
 			ariaLabel: action.label,
 			faded: false,
-			labelText: action.label,
 			onClick: () => {
 				action.onClick();
 			}
@@ -187,7 +186,8 @@ export function renderSortControls(
 
 	el.empty();
 
-	const infoContainer = el.createDiv({ cls: 'tdc-dashboard-info' });
+	const headerRow = el.createDiv({ cls: 'tdc-dashboard-header' });
+	const infoContainer = headerRow.createDiv({ cls: 'tdc-dashboard-info' });
 	const projectFolder = dashboard.projectFolder;
 	const linkedRepos = getLinkedRepositories(dashboard);
 	const hasFolder = projectFolder !== undefined && projectFolder !== '';
@@ -222,7 +222,7 @@ export function renderSortControls(
 		}
 	}
 
-	const container = el.createDiv({ cls: 'tdc-sort-container' });
+	const container = headerRow.createDiv({ cls: 'tdc-sort-container' });
 
 	renderDashboardActionButtons(container, [
 		{
@@ -250,7 +250,6 @@ export function renderSortControls(
 		cssClass: PRIMARY_ACTION_BUTTON_CLASS,
 		ariaLabel: 'Sort',
 		faded: false,
-		labelText: 'Sort',
 		onClick: () => {
 			toggleSortDropdown();
 		}
@@ -378,7 +377,7 @@ export function renderSortControls(
 			}
 		},
 		{
-			iconKey: 'folder',
+			iconKey: 'settings',
 			label: 'Open Dashboard Settings',
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
