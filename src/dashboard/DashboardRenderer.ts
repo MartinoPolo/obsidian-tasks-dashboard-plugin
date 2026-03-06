@@ -681,9 +681,17 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const dashboard = plugin.settings.dashboards.find((item) => item.id === dashboardId);
 		if (dashboard === undefined) {
+			el.createDiv({
+				cls: 'tdc-assigned-issues-message',
+				text: 'Dashboard configuration not found.'
+			});
 			return;
 		}
 		if (!dashboard.githubEnabled) {
+			el.createDiv({
+				cls: 'tdc-assigned-issues-message',
+				text: 'Enable GitHub integration in dashboard settings to view assigned issues.'
+			});
 			return;
 		}
 		if (!plugin.githubService.isAuthenticated()) {

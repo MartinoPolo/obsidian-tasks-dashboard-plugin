@@ -39,8 +39,9 @@ export const buildIssueRelativePath = (issueId: string, isArchived: boolean): st
 	return `${ISSUE_SECTION_ROOT}/${folder}/${issueId}`;
 };
 
-export const buildSortBlock = (dashboardId: string): string => {
-	return `\`\`\`tasks-dashboard-sort\ndashboard: ${dashboardId}\n\`\`\`\n`;
+export const buildSortBlock = (dashboardId: string, dashboardFilename?: string): string => {
+	const displayName = (dashboardFilename || 'Dashboard').replace(/\.md$/i, '');
+	return `# ${displayName}\n\`\`\`tasks-dashboard-sort\ndashboard: ${dashboardId}\n\`\`\`\n`;
 };
 
 export const escapeRegExp = (value: string): string => {

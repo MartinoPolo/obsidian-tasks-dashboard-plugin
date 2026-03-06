@@ -22,6 +22,10 @@ const collectIssueContentBlocks = (controlBlock: HTMLElement): HTMLElement[] => 
 		if (cursor.querySelector('.block-language-tasks-dashboard-controls') !== null) {
 			break;
 		}
+		// Stop at assigned issues boundary
+		if (cursor.querySelector('.tdc-assigned-issues-details, .block-language-tasks-dashboard-assigned') !== null) {
+			break;
+		}
 		// Stop at section boundaries (headings and HRs)
 		if (headingTags.has(cursor.tagName)) {
 			break;

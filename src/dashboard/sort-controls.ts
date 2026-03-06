@@ -95,7 +95,7 @@ function openDashboardSettings(plugin: TasksDashboardPlugin, dashboardId: string
 	}, 120);
 }
 
-async function getActiveIssueIds(
+async function getDashboardIssueIds(
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig
 ): Promise<string[]> {
@@ -107,7 +107,10 @@ async function getActiveIssueIds(
 	}
 	const content = await plugin.app.vault.read(file);
 	const parsed = parseDashboard(content);
-	return parsed.activeIssues.map((issue) => issue.id);
+	return [
+		...parsed.activeIssues.map((issue) => issue.id),
+		...parsed.archivedIssues.map((issue) => issue.id)
+	];
 }
 
 /**
@@ -140,51 +143,28 @@ function applyCollapseToControlBlocks(
 	}
 }
 
-const TOGGLE_ALL_OBSERVER_TIMEOUT_MS = 8000;
-let activeCollapseAllObserver: MutationObserver | undefined;
-
-function disconnectCollapseAllObserver(): void {
-	if (activeCollapseAllObserver !== undefined) {
-		activeCollapseAllObserver.disconnect();
-		activeCollapseAllObserver = undefined;
-	}
-}
-
 function toggleAllIssues(
 	collapsed: boolean,
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig,
 	element: HTMLElement
 ): void {
-	disconnectCollapseAllObserver();
-
-	void getActiveIssueIds(plugin, dashboard).then((issueIds) => {
+	void getDashboardIssueIds(plugin, dashboard).then((issueIds) => {
 		for (const issueId of issueIds) {
 			setIssueCollapsedState(plugin, issueId, collapsed);
 		}
 		void plugin.saveSettings();
+
+		// Apply immediately to all currently-visible control blocks
 		const dashboardElement = findDashboardElement(element);
-		if (dashboardElement === null) {
-			return;
+		if (dashboardElement !== null) {
+			applyCollapseToControlBlocks(dashboardElement, collapsed, plugin);
 		}
 
-		applyCollapseToControlBlocks(dashboardElement, collapsed, plugin);
-
-		if (!collapsed) {
-			return;
-		}
-
-		// Observe for CM6-virtualized blocks that re-enter the DOM after viewport scroll
-		const observer = new MutationObserver(() => {
-			applyCollapseToControlBlocks(dashboardElement, true, plugin);
-		});
-		observer.observe(dashboardElement, { childList: true });
-		activeCollapseAllObserver = observer;
-		setTimeout(() => {
-			if (activeCollapseAllObserver === observer) {
-				disconnectCollapseAllObserver();
-			}
-		}, TOGGLE_ALL_OBSERVER_TIMEOUT_MS);
+		// Trigger re-render so ReactiveRenderChild re-runs render() with updated settings.
+		// Off-viewport blocks will pick up collapse state from settings when CM6
+		// re-creates them on scroll.
+		plugin.triggerDashboardRefresh();
 	});
 }
 

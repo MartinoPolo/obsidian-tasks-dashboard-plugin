@@ -155,7 +155,7 @@
 
 /* Quick-hide: Live Preview — hide next cm-embed-block sibling (task content) after collapsed issue */
 .cm-embed-block:has(.tdc-collapsed)
-	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)) {
+	+ .cm-embed-block:not(:has(.block-language-tasks-dashboard-controls)):not(:has(.tdc-assigned-issues-details)) {
 	display: none !important;
 }
 

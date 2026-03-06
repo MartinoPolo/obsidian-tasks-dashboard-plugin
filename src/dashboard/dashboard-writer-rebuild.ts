@@ -70,7 +70,7 @@ export const buildRebuiltDashboardContent = (
 		? buildAssignedIssuesSection(dashboard.id)
 		: '';
 
-	let newContent = `${buildSortBlock(dashboard.id)}# Active Issues
+	let newContent = `${buildSortBlock(dashboard.id, dashboard.dashboardFilename)}# Active Issues
 ${MARKERS.ACTIVE_START}
 `;
 

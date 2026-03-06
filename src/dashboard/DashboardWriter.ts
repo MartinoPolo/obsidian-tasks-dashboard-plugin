@@ -169,7 +169,8 @@ export function createDashboardWriter(
 		if (file === undefined) {
 			const content = initializeDashboardStructure(
 				dashboard.id,
-				hasDashboardLinkedRepository(dashboard)
+				hasDashboardLinkedRepository(dashboard),
+				dashboard.dashboardFilename
 			);
 			await app.vault.create(dashboardPath, content);
 			file = getDashboardFile(dashboard);
@@ -183,7 +184,8 @@ export function createDashboardWriter(
 		if (!hasMarkers(content)) {
 			content = initializeDashboardStructure(
 				dashboard.id,
-				hasDashboardLinkedRepository(dashboard)
+				hasDashboardLinkedRepository(dashboard),
+				dashboard.dashboardFilename
 			);
 		}
 

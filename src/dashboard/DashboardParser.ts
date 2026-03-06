@@ -127,8 +127,10 @@ export function hasMarkers(content: string): boolean {
 
 export function initializeDashboardStructure(
 	dashboardId: string,
-	includeAssignedIssuesSection = false
+	includeAssignedIssuesSection = false,
+	dashboardFilename?: string
 ): string {
+	const displayName = (dashboardFilename || 'Dashboard').replace(/\.md$/i, '');
 	const assignedIssuesSection = includeAssignedIssuesSection
 		? `# Assigned Issues
 \`\`\`tasks-dashboard-assigned
@@ -137,7 +139,8 @@ dashboard: ${dashboardId}
 `
 		: '';
 
-	return `\`\`\`tasks-dashboard-sort
+	return `# ${displayName}
+\`\`\`tasks-dashboard-sort
 dashboard: ${dashboardId}
 \`\`\`
 # Active Issues

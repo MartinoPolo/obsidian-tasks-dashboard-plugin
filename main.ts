@@ -370,7 +370,8 @@ export default class TasksDashboardPlugin extends Plugin {
 		if (this.app.vault.getAbstractFileByPath(dashboardPath) === null) {
 			const content = initializeDashboardStructure(
 				dashboard.id,
-				dashboard.githubEnabled && (dashboard.githubRepo?.trim() ?? '') !== ''
+				dashboard.githubEnabled && (dashboard.githubRepo?.trim() ?? '') !== '',
+				dashboard.dashboardFilename
 			);
 			await this.app.vault.create(dashboardPath, content);
 		}
