@@ -1981,13 +1981,35 @@
 	margin-right: 4px;
 }
 
-/* ===== Assigned Issues "In Dashboard" indicator ===== */
-.tdc-assigned-issues-in-dashboard {
+/* ===== Assigned Issues "In Dashboard" divider ===== */
+.tdc-assigned-issues-divider {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 8px;
+	margin-bottom: 2px;
 	font-size: 0.8em;
 	color: var(--text-muted);
 	font-style: italic;
-	margin-left: auto;
-	flex-shrink: 0;
+}
+
+.tdc-assigned-issues-divider::before {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: var(--background-modifier-border);
+}
+
+.tdc-assigned-issues-divider::after {
+	content: '';
+	flex: 1;
+	height: 1px;
+	background: var(--background-modifier-border);
+}
+
+/* ===== Assigned Issues Repo Section ===== */
+.tdc-assigned-issues-repo-section {
+	margin-bottom: 4px;
 }
 
 /* ===== Assigned Issues Repo Header (multi-repo grouping) ===== */
