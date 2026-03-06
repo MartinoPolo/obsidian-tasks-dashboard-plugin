@@ -6,7 +6,6 @@ import { getDashboardPath } from '../utils/dashboard-path';
 import {
 	createPromptButtonsContainer,
 	createPromptCancelButton,
-	createPromptConfirmButton,
 	setupPromptModal
 } from './modal-helpers';
 import {
@@ -109,8 +108,13 @@ class ImportPriorityModal extends Modal {
 			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
 			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
 			container.createSpan({ text: formatPriority(priority) });
-			optionButton.addEventListener('click', () => {
+			optionButton.addEventListener('mouseup', (event) => {
+				if (event.button !== 0) {
+					return;
+				}
+				event.preventDefault();
 				this.selectPriority(priority, true);
+				this.confirmSelection();
 			});
 			this.priorityButtons.set(priority, optionButton);
 		}
@@ -120,9 +124,6 @@ class ImportPriorityModal extends Modal {
 		const buttonContainer = createPromptButtonsContainer(this.contentEl);
 		void createPromptCancelButton(buttonContainer, () => {
 			this.close();
-		});
-		void createPromptConfirmButton(buttonContainer, () => {
-			this.confirmSelection();
 		});
 
 		this.contentEl.addEventListener('keydown', (event) => {
