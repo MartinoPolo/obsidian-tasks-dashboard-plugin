@@ -93,6 +93,20 @@ const sanitizeLoadedSettings = (loaded: unknown): Partial<TasksDashboardSettings
 	return sanitized;
 };
 
+const migrateGithubRepoToRepos = (dashboard: DashboardConfig): DashboardConfig => {
+	// eslint-disable-next-line @typescript-eslint/no-deprecated
+	const legacyRepo = dashboard.githubRepo;
+	if (legacyRepo !== undefined && legacyRepo.trim() !== '') {
+		const existingRepos = dashboard.githubRepos ?? [];
+		if (existingRepos.length === 0) {
+			dashboard.githubRepos = [legacyRepo];
+		}
+	}
+	// eslint-disable-next-line @typescript-eslint/no-deprecated
+	delete dashboard.githubRepo;
+	return dashboard;
+};
+
 const withDefaultGitHubEnabled = (dashboard: DashboardConfig): DashboardConfig => {
 	const githubEnabledValue: unknown = Reflect.get(dashboard, 'githubEnabled');
 	if (githubEnabledValue === undefined) {
@@ -348,7 +362,9 @@ export default class TasksDashboardPlugin extends Plugin {
 		const mergedSettings = Object.assign({}, DEFAULT_SETTINGS, validatedData);
 		this.settings = {
 			...mergedSettings,
-			dashboards: mergedSettings.dashboards.map(withDefaultGitHubEnabled)
+			dashboards: mergedSettings.dashboards
+				.map(withDefaultGitHubEnabled)
+				.map(migrateGithubRepoToRepos)
 		};
 	}
 
@@ -370,7 +386,7 @@ export default class TasksDashboardPlugin extends Plugin {
 		if (this.app.vault.getAbstractFileByPath(dashboardPath) === null) {
 			const content = initializeDashboardStructure(
 				dashboard.id,
-				dashboard.githubEnabled && (dashboard.githubRepo?.trim() ?? '') !== '',
+				dashboard.githubEnabled && (dashboard.githubRepos?.length ?? 0) > 0,
 				dashboard.dashboardFilename
 			);
 			await this.app.vault.create(dashboardPath, content);

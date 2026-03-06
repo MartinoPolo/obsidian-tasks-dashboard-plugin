@@ -264,6 +264,7 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 		if (dashboard.githubEnabled) {
 			renderRepositoryPicker(dashboardContainer, dashboard, {
 				app: this.app,
+				plugin: this.plugin,
 				githubService: this.plugin.githubService,
 				saveSettings: () => {
 					this.saveSettings();

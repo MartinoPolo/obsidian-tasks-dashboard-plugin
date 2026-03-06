@@ -1,8 +1,9 @@
-import { Menu, Notice } from 'obsidian';
+import { Notice } from 'obsidian';
 import type TasksDashboardPlugin from '../../main';
 import { FolderPathModal } from '../modals/FolderPathModal';
-import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
+import { RepositoryLinkerModal } from '../modals/RepositoryLinkerModal';
 import type { DashboardConfig } from '../types';
+import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { createPlatformService, type PlatformService } from '../utils/platform';
 
 export const ICONS = {
@@ -166,47 +167,21 @@ function renderFolderDependentActionButton(config: FolderDependentActionButtonCo
 	});
 }
 
-function openDashboardGitHubRepoSettings(
-	event: MouseEvent,
+function openRepositoryLinkerModal(
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig
 ): void {
-	const menu = new Menu();
-	menu.addItem((item) => {
-		item.setTitle('Select linked repository').onClick(() => {
-			if (!plugin.githubService.isAuthenticated()) {
-				new Notice('Configure GitHub token in plugin settings to pick repositories.');
-				return;
-			}
-
-			void plugin.githubService.getUserRepositories().then((repositories) => {
-				if (repositories.length === 0) {
-					new Notice('No repositories found for this account.');
-					return;
-				}
-
-				new RepositoryPickerModal(plugin.app, repositories, (repository) => {
-					dashboard.githubRepo = repository.fullName;
-					void plugin.saveSettings();
-					plugin.triggerDashboardRefresh();
-					new Notice(`Linked dashboard repository: ${repository.fullName}`);
-				}).open();
-			});
-		});
-	});
-
-	if (dashboard.githubRepo !== undefined && dashboard.githubRepo !== '') {
-		menu.addItem((item) => {
-			item.setTitle('Clear linked repository').onClick(() => {
-				dashboard.githubRepo = undefined;
-				void plugin.saveSettings();
-				plugin.triggerDashboardRefresh();
-				new Notice('Cleared linked dashboard repository.');
-			});
-		});
-	}
-
-	menu.showAtPosition({ x: event.clientX, y: event.clientY });
+	new RepositoryLinkerModal(plugin, dashboard, (linkedRepos) => {
+		dashboard.githubRepos = linkedRepos;
+		void plugin.saveSettings();
+		plugin.triggerDashboardRefresh();
+		const count = linkedRepos.length;
+		if (count === 0) {
+			new Notice('Cleared all linked repositories.');
+		} else {
+			new Notice(`Linked ${count} repositor${count === 1 ? 'y' : 'ies'}.`);
+		}
+	}).open();
 }
 
 /**
@@ -275,24 +250,85 @@ export function renderGlobalActionButtons(
 	}
 
 	if (visibility.github) {
-		const hasGithubRepo = dashboard.githubRepo !== undefined && dashboard.githubRepo !== '';
+		const repos = getLinkedRepositories(dashboard);
+		const repoCount = repos.length;
+		const hasRepos = repoCount > 0;
+
 		createActionButton({
 			container,
 			iconKey: 'github',
 			cssClass: 'tdc-btn-action tdc-btn-action-secondary tdc-btn-github-quickopen',
-			ariaLabel: hasGithubRepo ? 'Open GitHub repo' : 'Configure GitHub repo in settings',
-			faded: !hasGithubRepo,
+			ariaLabel: hasRepos
+				? repoCount === 1
+					? 'Open GitHub repo'
+					: `Open GitHub repos (${repoCount})`
+				: 'Link GitHub repository',
+			faded: !hasRepos,
 			labelText: 'GitHub',
 			onClick: () => {
-				if (hasGithubRepo) {
-					window.open(`https://github.com/${dashboard.githubRepo}`, '_blank');
-				} else {
-					new Notice('Configure GitHub repository in dashboard settings.');
+				if (repoCount === 0) {
+					openRepositoryLinkerModal(plugin, dashboard);
+					return;
 				}
+				if (repoCount === 1) {
+					window.open(`https://github.com/${repos[0]}`, '_blank');
+					return;
+				}
+				openGitHubRepoDropdown(container, repos);
 			},
-			onContextMenu: (event) => {
-				openDashboardGitHubRepoSettings(event, plugin, dashboard);
+			onContextMenu: () => {
+				openRepositoryLinkerModal(plugin, dashboard);
 			}
 		});
 	}
+}
+
+function openGitHubRepoDropdown(anchorContainer: HTMLElement, repos: string[]): void {
+	const existingDropdown = document.querySelector('.tdc-github-repo-dropdown');
+	if (existingDropdown !== null) {
+		existingDropdown.remove();
+		return;
+	}
+
+	const dropdown = document.createElement('div');
+	dropdown.className = 'tdc-github-repo-dropdown tdc-sort-dropdown-portal';
+	document.body.appendChild(dropdown);
+
+	for (const repoName of repos) {
+		const item = document.createElement('div');
+		item.className = 'tdc-github-repo-dropdown-item tdc-sort-dropdown-item';
+		item.textContent = repoName;
+		item.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			dropdown.remove();
+			window.open(`https://github.com/${repoName}`, '_blank');
+		});
+		dropdown.appendChild(item);
+	}
+
+	const githubButton = anchorContainer.querySelector('.tdc-btn-github-quickopen');
+	if (githubButton instanceof HTMLElement) {
+		const rect = githubButton.getBoundingClientRect();
+		const viewportPadding = 8;
+		const dropdownWidth = Math.max(dropdown.offsetWidth, rect.width);
+		const maxLeft = window.innerWidth - dropdownWidth - viewportPadding;
+		const left = Math.max(viewportPadding, Math.min(rect.left, maxLeft));
+		dropdown.style.minWidth = `${rect.width}px`;
+		dropdown.style.left = `${left}px`;
+		dropdown.style.top = `${rect.bottom + 4}px`;
+	}
+
+	const closeDropdown = (event: MouseEvent): void => {
+		const target = event.target;
+		if (target instanceof Node && dropdown.contains(target)) {
+			return;
+		}
+		dropdown.remove();
+		document.removeEventListener('click', closeDropdown, true);
+	};
+
+	setTimeout(() => {
+		document.addEventListener('click', closeDropdown, true);
+	}, 0);
 }

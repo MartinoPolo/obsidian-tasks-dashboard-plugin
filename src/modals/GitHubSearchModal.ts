@@ -114,7 +114,7 @@ export class GitHubSearchModal extends Modal {
 		this.dashboard = dashboard;
 		this.issueLinkedRepository = linkedRepositories?.issueRepository;
 		this.dashboardLinkedRepository =
-			linkedRepositories?.dashboardRepository ?? dashboard.githubRepo;
+			linkedRepositories?.dashboardRepository ?? dashboard.githubRepos?.[0];
 		this.onCancel = linkedRepositories?.onCancel;
 		this.onBack = linkedRepositories?.onBack;
 		this.showBackButton = linkedRepositories?.showBackButton ?? false;

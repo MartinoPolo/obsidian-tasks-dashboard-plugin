@@ -1,4 +1,4 @@
-import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice } from 'obsidian';
+import { MarkdownPostProcessorContext, MarkdownRenderChild, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
 import { createPlatformService } from '../utils/platform';
@@ -28,6 +28,7 @@ import {
 	type QuickCreateDefaults
 } from '../modals/issue-creation-modal';
 import { getNextAvailableIssueColor } from '../utils/issue-colors';
+import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { renderSortControls } from './sort-controls';
 export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 
@@ -702,8 +703,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			return;
 		}
 
-		const linkedRepository = dashboard.githubRepo;
-		if (linkedRepository === undefined || linkedRepository.trim() === '') {
+		const repos = getLinkedRepositories(dashboard);
+		if (repos.length === 0) {
 			el.createDiv({
 				cls: 'tdc-assigned-issues-message',
 				text: 'Link a repository in dashboard settings to show assigned issues.'
@@ -727,9 +728,25 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		loadingIndicator.createSpan({ cls: 'tdc-loading-spinner' });
 		loadingIndicator.createSpan({ text: 'Loading assigned issues…' });
 
-		let issues: Awaited<ReturnType<typeof plugin.githubService.getAssignedIssues>>;
+		type AssignedIssue = Awaited<ReturnType<typeof plugin.githubService.getAssignedIssues>>[number];
+		interface TaggedIssue {
+			issue: AssignedIssue;
+			sourceRepo: string;
+		}
+
+		let taggedIssues: TaggedIssue[];
 		try {
-			issues = await plugin.githubService.getAssignedIssues(linkedRepository, 15);
+			const results = await Promise.all(
+				repos.map(async (repoName) => {
+					const issues = await plugin.githubService.getAssignedIssues(repoName, 15);
+					return issues.map((issue) => ({ issue, sourceRepo: repoName }));
+				})
+			);
+			taggedIssues = results.flat();
+			taggedIssues.sort(
+				(a, b) =>
+					new Date(b.issue.updatedAt).getTime() - new Date(a.issue.updatedAt).getTime()
+			);
 		} catch (error: unknown) {
 			loadingIndicator.remove();
 			console.error('Tasks Dashboard: failed to fetch assigned issues', error);
@@ -741,7 +758,26 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 
 		loadingIndicator.remove();
-		summary.setText(`Assigned Issues (${issues.length})`);
+
+		// Build set of existing dashboard issue URLs
+		const existingUrls = new Set<string>();
+		try {
+			const filename = dashboard.dashboardFilename || 'Dashboard.md';
+			const dashboardPath = `${dashboard.rootPath}/${filename}`;
+			const dashboardFile = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+			if (dashboardFile instanceof TFile) {
+				const dashboardContent = await plugin.app.vault.read(dashboardFile);
+				const githubLinkPattern = /github_link:\s*(\S+)/g;
+				let match: RegExpExecArray | null;
+				while ((match = githubLinkPattern.exec(dashboardContent)) !== null) {
+					existingUrls.add(match[1]);
+				}
+			}
+		} catch {
+			// ignore — proceed without filtering
+		}
+
+		summary.setText(`Assigned Issues (${taggedIssues.length})`);
 
 		const dashboardProjectFolder = dashboard.projectFolder;
 		const worktreeCreationAvailable =
@@ -749,17 +785,31 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			dashboardProjectFolder !== '' &&
 			platformService.isGitRepositoryFolder(dashboardProjectFolder);
 
-		if (issues.length === 0) {
+		const showRepoBadge = repos.length > 1;
+
+		if (taggedIssues.length === 0) {
 			details.createDiv({
 				cls: 'tdc-assigned-issues-message',
-				text: `No open assigned issues found for ${linkedRepository}.`
+				text: `No open assigned issues found.`
 			});
 			return;
 		}
 
 		const list = details.createDiv({ cls: 'tdc-assigned-issues-list' });
-		for (const issue of issues) {
+		for (const { issue, sourceRepo } of taggedIssues) {
+			const isAlreadyInDashboard = existingUrls.has(issue.url);
 			const row = list.createDiv({ cls: 'tdc-assigned-issues-row' });
+
+			if (showRepoBadge) {
+				const shortName = sourceRepo.includes('/')
+					? sourceRepo.split('/')[1]
+					: sourceRepo;
+				row.createSpan({
+					cls: 'tdc-assigned-issues-repo-badge',
+					text: shortName
+				});
+			}
+
 			const issueLink = row.createEl('a', {
 				cls: 'tdc-assigned-issues-link',
 				text: `#${issue.number} ${issue.title}`,
@@ -769,6 +819,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			issueLink.addEventListener('click', (event) => {
 				event.stopPropagation();
 			});
+
+			if (isAlreadyInDashboard) {
+				row.createSpan({
+					cls: 'tdc-assigned-issues-in-dashboard',
+					text: 'In dashboard'
+				});
+				continue;
+			}
 
 			const actionsContainer = row.createDiv({ cls: 'tdc-assigned-issues-actions' });
 
@@ -807,7 +865,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 						color: getNextAvailableIssueColor(plugin.settings.issueColors),
 						worktree: true,
 						worktreeOriginFolder: dashboardProjectFolder,
-						worktreeBaseRepository: linkedRepository
+						worktreeBaseRepository: sourceRepo
 					};
 					openAssignedIssueNamePrompt(plugin.app, plugin, {
 						dashboard,

@@ -113,7 +113,9 @@ export interface DashboardConfig {
 	id: string;
 	rootPath: string;
 	dashboardFilename: string;
+	/** @deprecated Use githubRepos instead. Kept for backward compatibility during migration. */
 	githubRepo?: string;
+	githubRepos?: string[];
 	githubEnabled: boolean;
 	projectFolder?: string;
 	showGitHubButtons?: boolean;

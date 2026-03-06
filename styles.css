@@ -1809,3 +1809,163 @@
 	font-size: 0.8em;
 	flex-shrink: 0;
 }
+
+/* ===== Repository Linker Modal ===== */
+.tdc-repo-linker-modal {
+	max-width: 560px;
+}
+
+.tdc-repo-linker-modal h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+
+.tdc-repo-linker-search {
+	width: 100%;
+	padding: 8px 12px;
+	margin-bottom: 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 0.95em;
+}
+
+.tdc-repo-linker-section-label {
+	font-size: 0.85em;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin-bottom: 6px;
+	margin-top: 12px;
+}
+
+.tdc-repo-linker-available-list {
+	max-height: 240px;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+}
+
+.tdc-repo-linker-available-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	padding: 8px 12px;
+	cursor: pointer;
+	transition: background var(--tdc-transition-fast);
+}
+
+.tdc-repo-linker-available-row:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tdc-repo-linker-available-row input[type='checkbox'] {
+	margin-top: 3px;
+	flex-shrink: 0;
+}
+
+.tdc-repo-linker-repo-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.tdc-repo-linker-linked-list {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	max-height: 120px;
+	overflow-y: auto;
+}
+
+.tdc-repo-linker-linked-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 12px;
+	font-size: 0.9em;
+}
+
+.tdc-repo-linker-linked-row:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tdc-repo-linker-unlink-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 1.2em;
+	line-height: 1;
+	padding: 2px 6px;
+	border-radius: 4px;
+}
+
+.tdc-repo-linker-unlink-btn:hover {
+	color: var(--text-error);
+	background: var(--background-modifier-hover);
+}
+
+.tdc-repo-linker-message {
+	padding: 12px;
+	color: var(--text-muted);
+	font-size: 0.9em;
+	text-align: center;
+}
+
+.tdc-repo-linker-loading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px;
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.tdc-repo-linker-buttons {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 16px;
+}
+
+/* ===== GitHub Repo Dropdown (multi-repo) ===== */
+.tdc-github-repo-dropdown {
+	position: fixed;
+	z-index: 10000;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	min-width: 180px;
+}
+
+.tdc-github-repo-dropdown-item {
+	padding: 8px 14px;
+	cursor: pointer;
+	font-size: 0.9em;
+	white-space: nowrap;
+}
+
+.tdc-github-repo-dropdown-item:hover {
+	background: var(--background-modifier-hover);
+}
+
+/* ===== Assigned Issues Repo Badge ===== */
+.tdc-assigned-issues-repo-badge {
+	display: inline-block;
+	padding: 1px 6px;
+	font-size: 0.75em;
+	font-weight: 500;
+	color: var(--text-muted);
+	background: var(--background-modifier-hover);
+	border-radius: 4px;
+	flex-shrink: 0;
+	margin-right: 4px;
+}
+
+/* ===== Assigned Issues "In Dashboard" indicator ===== */
+.tdc-assigned-issues-in-dashboard {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	font-style: italic;
+	margin-left: auto;
+	flex-shrink: 0;
+}

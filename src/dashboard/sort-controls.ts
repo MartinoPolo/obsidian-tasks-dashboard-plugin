@@ -9,6 +9,7 @@ import {
 	observeContentBlockSiblings,
 	setIssueCollapsed as setIssueCollapsedDom
 } from './dashboard-issue-surface';
+import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
 
 type SortOption = { label: string; action: () => void };
@@ -188,28 +189,36 @@ export function renderSortControls(
 
 	const infoContainer = el.createDiv({ cls: 'tdc-dashboard-info' });
 	const projectFolder = dashboard.projectFolder;
-	const linkedRepo = dashboard.githubRepo;
-	if (
-		(projectFolder !== undefined && projectFolder !== '') ||
-		(linkedRepo !== undefined && linkedRepo !== '')
-	) {
-		if (projectFolder !== undefined && projectFolder !== '') {
+	const linkedRepos = getLinkedRepositories(dashboard);
+	const hasFolder = projectFolder !== undefined && projectFolder !== '';
+	const hasRepos = linkedRepos.length > 0;
+	if (hasFolder || hasRepos) {
+		if (hasFolder) {
 			const folderRow = infoContainer.createDiv({ cls: 'tdc-dashboard-info-row' });
 			folderRow.createSpan({ cls: 'tdc-dashboard-info-label', text: 'Folder' });
 			folderRow.createSpan({ cls: 'tdc-dashboard-info-value', text: projectFolder });
 		}
-		if (linkedRepo !== undefined && linkedRepo !== '') {
+		if (hasRepos) {
 			const repoRow = infoContainer.createDiv({ cls: 'tdc-dashboard-info-row' });
-			repoRow.createSpan({ cls: 'tdc-dashboard-info-label', text: 'Repository' });
-			const repoLink = repoRow.createEl('a', {
-				cls: 'tdc-dashboard-info-value tdc-dashboard-info-link',
-				text: linkedRepo,
-				href: `https://github.com/${linkedRepo}`,
-				attr: { target: '_blank', rel: 'noopener noreferrer' }
+			repoRow.createSpan({
+				cls: 'tdc-dashboard-info-label',
+				text: linkedRepos.length === 1 ? 'Repository' : 'Repositories'
 			});
-			repoLink.addEventListener('click', (event) => {
-				event.stopPropagation();
-			});
+			const repoValueContainer = repoRow.createSpan({ cls: 'tdc-dashboard-info-value' });
+			for (let index = 0; index < linkedRepos.length; index += 1) {
+				if (index > 0) {
+					repoValueContainer.appendText(', ');
+				}
+				const repoLink = repoValueContainer.createEl('a', {
+					cls: 'tdc-dashboard-info-link',
+					text: linkedRepos[index],
+					href: `https://github.com/${linkedRepos[index]}`,
+					attr: { target: '_blank', rel: 'noopener noreferrer' }
+				});
+				repoLink.addEventListener('click', (event) => {
+					event.stopPropagation();
+				});
+			}
 		}
 	}
 

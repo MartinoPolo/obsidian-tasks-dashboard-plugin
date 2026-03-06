@@ -23,7 +23,11 @@ import {
 } from './dashboard-writer-types';
 
 export const hasDashboardLinkedRepository = (dashboard: DashboardConfig): boolean => {
-	return dashboard.githubEnabled && (dashboard.githubRepo?.trim() ?? '') !== '';
+	return dashboard.githubEnabled && (dashboard.githubRepos?.length ?? 0) > 0;
+};
+
+export const getLinkedRepositories = (dashboard: DashboardConfig): string[] => {
+	return dashboard.githubRepos ?? [];
 };
 
 export const buildAssignedIssuesSection = (dashboardId: string): string => {

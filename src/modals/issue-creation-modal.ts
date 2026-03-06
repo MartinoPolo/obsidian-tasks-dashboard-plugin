@@ -243,7 +243,7 @@ export class NamePromptModal extends Modal {
 			},
 			{
 				issueRepository: this.worktreeContext?.sourceIssueLinkedRepository,
-				dashboardRepository: this.dashboard.githubRepo,
+				dashboardRepository: this.dashboard.githubRepos?.[0],
 				onCancel: () => {
 					new NamePromptModal(
 						this.app,
@@ -1252,7 +1252,7 @@ export const openIssueCreationModal = (
 			},
 			{
 				issueRepository: worktreeContext?.sourceIssueLinkedRepository,
-				dashboardRepository: dashboard.githubRepo,
+				dashboardRepository: dashboard.githubRepos?.[0],
 				skipButtonLabel: 'Skip',
 				selectionLockUntilCleared: false,
 				confirmButtonLabel: 'Next',

@@ -1,5 +1,5 @@
-import { App, Notice, Setting } from 'obsidian';
-import { RepositoryPickerModal } from '../modals/RepositoryPickerModal';
+import { App, Setting } from 'obsidian';
+import { RepositoryLinkerModal } from '../modals/RepositoryLinkerModal';
 import { DashboardConfig, GitHubRepository, TasksDashboardSettings } from '../types';
 import { addDropdownOptions, isNonEmptyString } from './settings-helpers';
 import {
@@ -183,81 +183,51 @@ export function renderRepositoryPicker(
 	dashboard: DashboardConfig,
 	dependencies: {
 		app: App;
+		plugin: import('../../main').default;
 		githubService: GitHubServiceLike;
 		saveSettings: () => void;
 		display: () => void;
 	}
 ): void {
-	const { app, githubService, saveSettings, display } = dependencies;
-	const repoSetting = new Setting(container)
-		.setName('GitHub repository')
-		.setDesc(
-			'Link this dashboard to a specific repository for filtered issue suggestions (owner/repo)'
-		);
-
-	const currentRepo = dashboard.githubRepo ?? '';
+	const { plugin, githubService, saveSettings, display } = dependencies;
+	const linkedRepos = dashboard.githubRepos ?? [];
+	const repoCount = linkedRepos.length;
 	const isAuthenticated = githubService.isAuthenticated();
 
-	if (isAuthenticated) {
-		if (currentRepo !== '') {
-			repoSetting.setDesc(`Currently linked: ${currentRepo}`);
-		}
-
-		repoSetting.addButton((button) =>
-			button
-				.setButtonText(currentRepo !== '' ? 'Change' : 'Select repository')
-				.setCta()
-				.onClick(() => {
-					void openRepositoryPicker({
-						app,
-						dashboard,
-						githubService,
-						saveSettings,
-						display
-					});
-				})
+	const repoSetting = new Setting(container)
+		.setName('GitHub repositories')
+		.setDesc(
+			repoCount > 0
+				? `Linked repositories: ${repoCount}`
+				: 'No repositories linked'
 		);
 
-		if (currentRepo !== '') {
-			repoSetting.addButton((button) =>
-				button.setButtonText('Clear').onClick(() => {
-					dashboard.githubRepo = undefined;
-					saveSettings();
-					display();
+	if (isAuthenticated) {
+		repoSetting.addButton((button) =>
+			button
+				.setButtonText('Manage')
+				.setCta()
+				.onClick(() => {
+					new RepositoryLinkerModal(plugin, dashboard, (repos) => {
+						dashboard.githubRepos = repos;
+						saveSettings();
+						display();
+					}).open();
 				})
-			);
-		}
+		);
 	} else {
 		repoSetting.addText((text) =>
 			text
-				.setPlaceholder('Owner/repo')
-				.setValue(currentRepo)
+				.setPlaceholder('Owner/repo, owner/repo')
+				.setValue(linkedRepos.join(', '))
 				.onChange((value) => {
-					dashboard.githubRepo = value !== '' ? value : undefined;
+					const parsed = value
+						.split(',')
+						.map((segment) => segment.trim())
+						.filter((segment) => segment !== '');
+					dashboard.githubRepos = parsed.length > 0 ? parsed : undefined;
 					saveSettings();
 				})
 		);
 	}
-}
-
-async function openRepositoryPicker(options: {
-	app: App;
-	dashboard: DashboardConfig;
-	githubService: GitHubServiceLike;
-	saveSettings: () => void;
-	display: () => void;
-}): Promise<void> {
-	const { app, dashboard, githubService, saveSettings, display } = options;
-	const repositories = await githubService.getUserRepositories();
-
-	if (repositories.length === 0) {
-		new Notice('No repositories found. Check your token permissions.');
-		return;
-	}
-
-	new RepositoryPickerModal(app, repositories, (repository) => {
-		dashboard.githubRepo = repository.fullName;
-		saveSettings();
-		display();
-	}).open();
 }
