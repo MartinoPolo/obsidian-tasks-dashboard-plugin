@@ -124,8 +124,8 @@
 
 - [x] Optional foldable section for dashboards with linked repositories, listing assigned GitHub issues with one-click conversion into dashboard issues. Two icon-only buttons per row: plus icon (add issue → step 2 with preselected GitHub) and worktree icon (quick worktree with medium priority, next available color, user edits name only)
 - [x] Loading state visible while request is pending
-- [ ] Linked assigned issues (already in dashboard) go at the bottom, separated by divider and label (e.g., "In dashboard")
-- [ ] Load 10 issues per repo by default with "Load more" button. Display loaded/total count next to repo title (e.g., "10/17 loaded")
+- [x] Linked assigned issues (already in dashboard) go at the bottom, separated by divider and label (e.g., "In dashboard")
+- [x] Load 10 issues per repo by default with "Load more" button. Display loaded/total count next to repo title (e.g., "10/17 loaded")
 
 ## Project Folder & External Tools
 
@@ -155,18 +155,18 @@
 
 ### Pending
 
-- [ ] When creating a child worktree issue from an existing worktree issue card, derive base context from the source issue's stored worktree/base-repository metadata (not from `.git` directory presence), and keep creation functional even when `.git` is absent in the worktree folder
-- [ ] Persist explicit worktree branch metadata on the issue (including in issue file properties) and expose branch/worktree status details through an info affordance (icon with hover tooltip or dropdown)
-- [ ] Render a worktree status icon in issue headers: green when active, red on setup failure, orange when pending/in-progress, gray when branch deleted/merged
-- [ ] Worktree setup verification state machine: pending (orange tree) polling for expected folder every 1s for up to 10s, success after folder appears and assignment activates, failure (red tree) after timeout
-- [ ] On setup failure, expose a retry-capable worktree header action (tree icon) as the first header action, auto-shown only in failed state
-- [ ] Add a refresh action to re-check worktree/branch state and update displayed status
-- [ ] Worktree retry action uses the same tree icon as the status icon; displayed as a header action, not a text button
-- [ ] Clicking the worktree retry action spawns a modal listing currently active worktrees in the repository (with option to switch repositories), plus an option to create a new worktree with auto-suggested editable name and confirm button
-- [ ] Worktree icon in issue header positioned left of info icon. When a worktree is assigned, display relative location info: base folder/repo name, base branch (e.g., `dev`), and checked-out branch name (e.g., `atc-common/dev → 986-worktree-branch`). Support worktree-on-worktree scenarios by always showing the base branch. Derive folder detection from the configured worktree output directory
-- [ ] Support multiple worktree base folders per dashboard. Sort issues by worktree base folder to visually group worktrees from the same project
-- [ ] Dashboard refresh button that verifies folder/repo existence, refreshes worktree/branch state and GitHub issue status. Detect linked PRs to auto-link and display their status including base branch sync
-- [ ] Merge worktree status icon and "Add worktree later" into a single icon with context-dependent behavior: green tree icon when worktree is active; clickable button triggering worktree assignment/creation when setup failed or was never done
+- [x] When creating a child worktree issue from an existing worktree issue card, derive base context from the source issue's stored worktree/base-repository metadata (not from `.git` directory presence), and keep creation functional even when `.git` is absent in the worktree folder
+- [x] Persist explicit worktree branch metadata on the issue (including in issue file properties) and expose branch/worktree status details through an info affordance (icon with hover tooltip or dropdown)
+- [x] Render a worktree status icon in issue headers: green when active, red on setup failure, orange when pending/in-progress, gray when branch deleted/merged
+- [x] Worktree setup verification state machine: pending (orange tree) polling for expected folder every 1s for up to 10s, success after folder appears and assignment activates, failure (red tree) after timeout
+- [x] On setup failure, expose a retry-capable worktree header action (tree icon) as the first header action, auto-shown only in failed state
+- [x] Add a refresh action to re-check worktree/branch state and update displayed status
+- [x] Worktree retry action uses the same tree icon as the status icon; displayed as a header action, not a text button
+- [x] Clicking the worktree retry action spawns a modal listing currently active worktrees in the repository (with option to switch repositories), plus an option to create a new worktree with auto-suggested editable name and confirm button
+- [x] Worktree icon in issue header positioned left of info icon. When a worktree is assigned, display relative location info: base folder/repo name, base branch (e.g., `dev`), and checked-out branch name (e.g., `atc-common/dev → 986-worktree-branch`). Support worktree-on-worktree scenarios by always showing the base branch. Derive folder detection from the configured worktree output directory
+- [x] Support multiple worktree base folders per dashboard. Sort issues by worktree base folder to visually group worktrees from the same project
+- [x] Dashboard refresh button that verifies folder/repo existence, refreshes worktree/branch state and GitHub issue status. Detect linked PRs to auto-link and display their status including base branch sync
+- [x] Merge worktree status icon and "Add worktree later" into a single icon with context-dependent behavior: green tree icon when worktree is active; clickable button triggering worktree assignment/creation when setup failed or was never done
 
 ## Settings & Configuration
 
@@ -186,13 +186,13 @@
 - [x] `eslint-plugin-obsidianmd` configured for Obsidian pre-publish style/check parity
 
 ## Bugs
-- [ ] Wrapping the dashboard buttons doesn't work, and they are just hidden on the right. If there's not enough space, it correctly wraps in relation to the dashboard info section, but when the buttons themselves span across the whole width of the page, they won't wrap. It should either be horizontally scrollable, or it should wrap to the next line, which is preferred.
+- [x] Wrapping the dashboard buttons doesn't work, and they are just hidden on the right. If there's not enough space, it correctly wraps in relation to the dashboard info section, but when the buttons themselves span across the whole width of the page, they won't wrap. It should either be horizontally scrollable, or it should wrap to the next line, which is preferred.
 
-- [ ] Worktree created from the Quick option in a assigned issues sections (Open worktree from [issue number] button) of dashboard which has multiple assigned repositories and one folder. Specifically, my work dashboard is not correctly created. I see that the expected folder is worktree_expected_folder: C:/_MP_work/1017-superadmin-shouldnt-create-accounts and should be worktree_expected_folder: C:/_MP_work/worktrees/1017-superadmin-shouldnt-create-accounts
+- [x] Worktree created from the Quick option in a assigned issues sections (Open worktree from [issue number] button) of dashboard which has multiple assigned repositories and one folder. Specifically, my work dashboard is not correctly created. I see that the expected folder is worktree_expected_folder: C:/_MP_work/1017-superadmin-shouldnt-create-accounts and should be worktree_expected_folder: C:/_MP_work/worktrees/1017-superadmin-shouldnt-create-accounts
 
 When I go through the worktree creation from the ATC back office issue, which is a separate issue on the dashboard with the correct linked folder and repository, everything works fine; however, I'm not exactly sure how to link this to the correct folder from the assigned issues section. The dashboard had the correct folder assigned at the moment of creation of that worktree issue (C:\_MP_work\atc-backoffice) So I'm not exactly sure where the problem is.
 
-- [ ] Even when I have multiple repositories linked to a dashboard, whenever I create an issue and I open the GitHub issue modal, the search scope still is only offering the first GitHub repository. It should offer options to switch to any linked repository for the search.
-- [ ] The X button to remove the link of the repository to the dashboard in the GitHub repositories modal should be a square.
-- [ ] After creating a worktree issue which assigns the folder for that issue automatically, we should also open terminal as if we opened it from the Open Terminal button, so in that folder with that color. It should probably wait a bit for the worktree folder to be created. I'm not sure how to ensure that the folder is created. Maybe it can wait for a while with delayed checking and progressively larger delay.
-- [ ] The duplicate color checking from Color Picker should probably be unique to every dashboard. Each dashboard should track its own used colors. Currently, if I use a color in one dashboard, it becomes unavailable in all other dashboards, which is not ideal. It should only be unavailable in the dashboard where it's already used.
+- [x] Even when I have multiple repositories linked to a dashboard, whenever I create an issue and I open the GitHub issue modal, the search scope still is only offering the first GitHub repository. It should offer options to switch to any linked repository for the search.
+- [x] The X button to remove the link of the repository to the dashboard in the GitHub repositories modal should be a square.
+- [x] After creating a worktree issue which assigns the folder for that issue automatically, we should also open terminal as if we opened it from the Open Terminal button, so in that folder with that color. It should probably wait a bit for the worktree folder to be created. I'm not sure how to ensure that the folder is created. Maybe it can wait for a while with delayed checking and progressively larger delay.
+- [x] The duplicate color checking from Color Picker should probably be unique to every dashboard. Each dashboard should track its own used colors. Currently, if I use a color in one dashboard, it becomes unavailable in all other dashboards, which is not ideal. It should only be unavailable in the dashboard where it's already used.
