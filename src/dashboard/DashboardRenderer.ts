@@ -338,6 +338,45 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				].join('\n')
 			: 'not a worktree issue';
 
+		const isWorktreeClickable =
+			isWorktreeIssue && (isFailedWorktreeSetup || worktreeStatus === undefined);
+		const isWorktreeActive = isWorktreeIssue && worktreeStatusStateClass === 'active';
+
+		if (isWorktreeIssue) {
+			if (isWorktreeClickable) {
+				const worktreeRetryButton = createActionButton({
+					container: header,
+					iconKey: 'worktree',
+					cssClass: 'tdc-worktree-action tdc-worktree-action-retry',
+					ariaLabel: 'Retry worktree setup',
+					faded: false,
+					onClick: () => {
+						void plugin.issueManager.retryWorktreeSetup(dashboard, params.issue);
+					}
+				});
+				worktreeRetryButton.classList.add('tdc-worktree-status-failed');
+			} else if (isWorktreeActive) {
+				const worktreeRefreshButton = header.createEl('button', {
+					cls: `tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`,
+					attr: { type: 'button' }
+				});
+				setTooltip(worktreeRefreshButton, 'Refresh worktree state', { delay: 500 });
+				appendInlineSvgIcon(worktreeRefreshButton, ICONS.worktree);
+				worktreeRefreshButton.addEventListener('click', (event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					void plugin.issueManager.refreshWorktreeState(dashboard, params.issue);
+				});
+			} else {
+				const worktreeIndicator = header.createSpan({
+					cls: `tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`,
+					attr: { role: 'img' }
+				});
+				setTooltip(worktreeIndicator, worktreeStatusText, { delay: 500 });
+				appendInlineSvgIcon(worktreeIndicator, ICONS.worktree);
+			}
+		}
+
 		const infoAffordance = header.createEl('button', {
 			cls: 'tdc-issue-info-inline',
 			attr: {
@@ -361,33 +400,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			content: issueInfoText
 		});
 
-		if (isWorktreeIssue) {
-			const statusIcon = header.createSpan({
-				cls: `tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`,
-				attr: { role: 'img' }
-			});
-			setTooltip(statusIcon, worktreeStatusText, { delay: 500 });
-			appendInlineSvgIcon(statusIcon, ICONS.worktree);
-		}
-
 		const row1Container = header.createDiv({ cls: 'tdc-header-actions' });
 		const overflowWrapper = row1Container.createDiv({ cls: 'tdc-overflow-wrapper' });
-
-		if (isWorktreeIssue && isFailedWorktreeSetup) {
-			const retryButton = createActionButton({
-				container: row1Container,
-				iconKey: 'worktree',
-				cssClass: 'tdc-btn-worktree-retry',
-				ariaLabel: 'Add worktree later',
-				faded: false,
-				labelText: 'Add worktree later',
-				onClick: () => {
-					void plugin.issueManager.retryWorktreeSetup(dashboard, params.issue);
-				}
-			});
-			retryButton.classList.add('tdc-row1-action');
-			row1Container.insertBefore(retryButton, overflowWrapper);
-		}
 
 		const row1Buttons = new Map<IssueActionKey, HTMLElement>();
 		for (const key of layout.row1) {
@@ -898,12 +912,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			issues: import('../types').GitHubIssueMetadata[],
 			sourceRepo: string
 		): void => {
-			const unlinkedIssues = issues.filter(
-				(issue) => !existingDashboardUrls.has(issue.url)
-			);
-			const linkedIssues = issues.filter((issue) =>
-				existingDashboardUrls.has(issue.url)
-			);
+			const unlinkedIssues = issues.filter((issue) => !existingDashboardUrls.has(issue.url));
+			const linkedIssues = issues.filter((issue) => existingDashboardUrls.has(issue.url));
 
 			for (const issue of unlinkedIssues) {
 				renderIssueRow(parentContainer, issue, sourceRepo, false);

@@ -103,21 +103,24 @@ export class RepositoryLinkerModal extends Modal {
 		loadingContainer.createSpan({ cls: 'tdc-loading-spinner' });
 		loadingContainer.createSpan({ text: 'Loading repositories...' });
 
-		void this.plugin.githubService.getUserRepositories().then((repositories) => {
-			this.allRepositories = repositories;
-			this.renderAvailableList();
-			this.renderLinkedList();
-		}).catch(() => {
-			if (this.availableListContainer === undefined) {
-				return;
-			}
-			this.availableListContainer.empty();
-			this.availableListContainer.createDiv({
-				cls: 'tdc-repo-linker-message',
-				text: 'Failed to load repositories. Check your GitHub connection.'
+		void this.plugin.githubService
+			.getUserRepositories()
+			.then((repositories) => {
+				this.allRepositories = repositories;
+				this.renderAvailableList();
+				this.renderLinkedList();
+			})
+			.catch(() => {
+				if (this.availableListContainer === undefined) {
+					return;
+				}
+				this.availableListContainer.empty();
+				this.availableListContainer.createDiv({
+					cls: 'tdc-repo-linker-message',
+					text: 'Failed to load repositories. Check your GitHub connection.'
+				});
+				this.renderLinkedList();
 			});
-			this.renderLinkedList();
-		});
 	}
 
 	private renderAvailableList(): void {

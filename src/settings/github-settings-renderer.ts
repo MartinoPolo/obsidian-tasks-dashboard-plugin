@@ -196,11 +196,7 @@ export function renderRepositoryPicker(
 
 	const repoSetting = new Setting(container)
 		.setName('GitHub repositories')
-		.setDesc(
-			repoCount > 0
-				? `Linked repositories: ${repoCount}`
-				: 'No repositories linked'
-		);
+		.setDesc(repoCount > 0 ? `Linked repositories: ${repoCount}` : 'No repositories linked');
 
 	if (isAuthenticated) {
 		repoSetting.addButton((button) =>

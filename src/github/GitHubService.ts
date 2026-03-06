@@ -26,7 +26,11 @@ import {
 	getIssueCacheKey,
 	uniqueByUrl
 } from './github-service-search-helpers';
-import { AssignedIssuesResult, GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
+import {
+	AssignedIssuesResult,
+	GitHubSearchResult,
+	GitHubServiceInstance
+} from './github-service-types';
 
 export { GitHubApiError } from './github-service-types';
 export type { GitHubApiErrorKind, GitHubServiceInstance } from './github-service-types';

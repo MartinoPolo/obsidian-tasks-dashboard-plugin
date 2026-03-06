@@ -952,6 +952,80 @@ ${originalBody}`;
 		);
 	};
 
+	const refreshWorktreeState = async (
+		dashboard: DashboardConfig,
+		issueId: string
+	): Promise<void> => {
+		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
+		if (!metadata.worktree) {
+			return;
+		}
+
+		const expectedFolder = metadata.worktreeExpectedFolder;
+		const originFolder = metadata.worktreeOriginFolder;
+		const branch = metadata.worktreeBranch;
+
+		if (expectedFolder !== undefined && expectedFolder !== '') {
+			const folderExists = platformService.pathExists(expectedFolder);
+			if (folderExists) {
+				if (metadata.worktreeSetupState !== 'active') {
+					await updateIssueWorktreeMetadata(dashboard, issueId, {
+						worktree: true,
+						worktreeSetupState: 'active'
+					});
+				}
+				new Notice(`Worktree is active: ${issueId}`);
+				plugin.triggerDashboardRefresh();
+				return;
+			}
+		}
+
+		if (
+			branch !== undefined &&
+			branch !== '' &&
+			originFolder !== undefined &&
+			originFolder !== ''
+		) {
+			const branchMissing = platformService.isGitBranchMissing(originFolder, branch);
+			if (branchMissing) {
+				await updateIssueWorktreeMetadata(dashboard, issueId, {
+					worktree: true,
+					worktreeSetupState: 'failed'
+				});
+				new Notice(`Worktree branch missing: ${branch}`);
+				plugin.triggerDashboardRefresh();
+				return;
+			}
+
+			const detectedFolder = platformService.findWorktreePathForBranch(originFolder, branch);
+			if (detectedFolder !== undefined && detectedFolder !== '') {
+				const detectedFolderExists = platformService.pathExists(detectedFolder);
+				if (detectedFolderExists) {
+					await updateIssueWorktreeMetadata(dashboard, issueId, {
+						worktree: true,
+						worktreeExpectedFolder: detectedFolder,
+						worktreeSetupState: 'active'
+					});
+					assignIssueFolderLikeManual(dashboard.id, issueId, detectedFolder);
+					new Notice(`Worktree is active: ${issueId}`);
+					plugin.triggerDashboardRefresh();
+					return;
+				}
+			}
+		}
+
+		if (metadata.worktreeSetupState !== 'failed') {
+			await updateIssueWorktreeMetadata(dashboard, issueId, {
+				worktree: true,
+				worktreeSetupState: 'failed'
+			});
+			new Notice(`Worktree folder not found: ${issueId}`);
+		} else {
+			new Notice(`Worktree state unchanged: ${issueId}`);
+		}
+		plugin.triggerDashboardRefresh();
+	};
+
 	const removeWorktree = (
 		dashboard: DashboardConfig,
 		issueId: string,
@@ -1118,6 +1192,7 @@ ${originalBody}`;
 		retryWorktreeSetup,
 		removeWorktree,
 		addGitHubLink,
-		removeGitHubLink
+		removeGitHubLink,
+		refreshWorktreeState
 	};
 }
