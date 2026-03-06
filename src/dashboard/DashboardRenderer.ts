@@ -14,6 +14,7 @@ import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '.
 import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import { getNextAvailableIssueColor } from '../utils/issue-colors';
 import { createPlatformService } from '../utils/platform';
+import { WorktreeRetryModal } from '../modals/worktree-retry-modal';
 import { buildIssueActionDescriptors } from './dashboard-issue-actions';
 import {
 	applyIssueSurfaceStyles,
@@ -226,6 +227,38 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const platformService = createPlatformService();
 	const assignedIssuesLimitByRepo = new Map<string, number>();
 
+	const extractLastPathSegment = (folderPath: string): string => {
+		const normalizedPath = folderPath.replace(/[\\/]+$/, '');
+		const lastSeparatorIndex = Math.max(
+			normalizedPath.lastIndexOf('/'),
+			normalizedPath.lastIndexOf('\\')
+		);
+		if (lastSeparatorIndex === -1) {
+			return normalizedPath;
+		}
+		return normalizedPath.slice(lastSeparatorIndex + 1);
+	};
+
+	const buildWorktreeLocationTooltip = (
+		originFolder: string | undefined,
+		checkedOutBranch: string | undefined,
+		platformServiceInstance: import('../utils/platform').PlatformService
+	): string => {
+		if (originFolder === undefined || originFolder.trim() === '') {
+			return 'Worktree active';
+		}
+
+		const baseFolderName = extractLastPathSegment(originFolder);
+		const baseBranch = platformServiceInstance.getDefaultBranch(originFolder);
+		const branchDisplay = checkedOutBranch ?? 'unknown';
+
+		if (baseBranch !== undefined) {
+			return `${baseFolderName}/${baseBranch} \u2192 ${branchDisplay}`;
+		}
+
+		return `${baseFolderName} \u2192 ${branchDisplay}`;
+	};
+
 	const stopEventAndRun = (event: MouseEvent, action: () => void): void => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -351,7 +384,16 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					ariaLabel: 'Retry worktree setup',
 					faded: false,
 					onClick: () => {
-						void plugin.issueManager.retryWorktreeSetup(dashboard, params.issue);
+						const suggestedBranchName =
+							params.worktree_branch !== undefined && params.worktree_branch !== ''
+								? params.worktree_branch
+								: params.issue;
+						new WorktreeRetryModal(plugin.app, plugin, {
+							dashboard,
+							issueId: params.issue,
+							suggestedBranchName,
+							worktreeOriginFolder: params.worktree_origin_folder
+						}).open();
 					}
 				});
 				worktreeRetryButton.classList.add('tdc-worktree-status-failed');
@@ -360,7 +402,12 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					cls: `tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`,
 					attr: { type: 'button' }
 				});
-				setTooltip(worktreeRefreshButton, 'Refresh worktree state', { delay: 500 });
+				const worktreeActiveTooltip = buildWorktreeLocationTooltip(
+					params.worktree_origin_folder,
+					params.worktree_branch,
+					platformService
+				);
+				setTooltip(worktreeRefreshButton, worktreeActiveTooltip, { delay: 500 });
 				appendInlineSvgIcon(worktreeRefreshButton, ICONS.worktree);
 				worktreeRefreshButton.addEventListener('click', (event) => {
 					event.preventDefault();

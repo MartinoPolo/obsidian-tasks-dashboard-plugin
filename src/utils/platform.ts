@@ -25,6 +25,12 @@ interface RemoteDialogApi {
 	}) => Promise<FolderDialogResult>;
 }
 
+export interface WorktreeEntry {
+	path: string;
+	branch: string | undefined;
+	isBare: boolean;
+}
+
 export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
 	openTerminal: (folderPath: string, tabColor?: string) => void;
@@ -33,6 +39,8 @@ export interface PlatformService {
 	isGitBranchMissing: (folderPath: string, branchName: string) => boolean;
 	pathExists: (targetPath: string) => boolean;
 	findWorktreePathForBranch: (repositoryFolder: string, branchName: string) => string | undefined;
+	listActiveWorktrees: (repositoryFolder: string) => WorktreeEntry[];
+	getDefaultBranch: (repositoryFolder: string) => string | undefined;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
@@ -328,10 +336,96 @@ export function createPlatformService(): PlatformService {
 			const existsSyncFunction = getRequiredFunction(fsModule, 'existsSync');
 			const normalizedPath = folderPath.replace(/[\\/]+$/, '');
 			const gitPath = `${normalizedPath}/.git`;
+			// .git can be a directory (regular repo) or a file (worktree)
 			return existsSyncFunction(gitPath) === true;
 		} catch {
 			return false;
 		}
+	};
+
+	const listActiveWorktrees = (repositoryFolder: string): WorktreeEntry[] => {
+		if (repositoryFolder.trim() === '' || !isGitRepositoryFolder(repositoryFolder)) {
+			return [];
+		}
+
+		const output = runGitCommandOutput(repositoryFolder, ['worktree', 'list', '--porcelain']);
+		if (output === undefined || output.trim() === '') {
+			return [];
+		}
+
+		const entries: WorktreeEntry[] = [];
+		let currentPath: string | undefined;
+		let currentBranch: string | undefined;
+		let isBare = false;
+		const lines = output.split(/\r?\n/);
+
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (trimmedLine === '') {
+				if (currentPath !== undefined) {
+					entries.push({ path: currentPath, branch: currentBranch, isBare });
+				}
+				currentPath = undefined;
+				currentBranch = undefined;
+				isBare = false;
+				continue;
+			}
+
+			if (trimmedLine.startsWith('worktree ')) {
+				currentPath = trimmedLine.slice('worktree '.length).trim();
+				continue;
+			}
+
+			if (trimmedLine.startsWith('branch refs/heads/')) {
+				currentBranch = trimmedLine.slice('branch refs/heads/'.length).trim();
+				continue;
+			}
+
+			if (trimmedLine === 'bare') {
+				isBare = true;
+			}
+		}
+
+		// Handle final entry without trailing empty line
+		if (currentPath !== undefined) {
+			entries.push({ path: currentPath, branch: currentBranch, isBare });
+		}
+
+		return entries;
+	};
+
+	const getDefaultBranch = (repositoryFolder: string): string | undefined => {
+		if (repositoryFolder.trim() === '' || !isGitRepositoryFolder(repositoryFolder)) {
+			return undefined;
+		}
+
+		// Try symbolic-ref for origin HEAD first
+		const symbolicRefOutput = runGitCommandOutput(repositoryFolder, [
+			'symbolic-ref',
+			'refs/remotes/origin/HEAD',
+			'--short'
+		]);
+		if (symbolicRefOutput !== undefined && symbolicRefOutput.trim() !== '') {
+			const trimmed = symbolicRefOutput.trim();
+			// Output is like "origin/main" — strip the "origin/" prefix
+			const slashIndex = trimmed.indexOf('/');
+			if (slashIndex !== -1) {
+				return trimmed.slice(slashIndex + 1);
+			}
+			return trimmed;
+		}
+
+		// Fall back to current HEAD branch
+		const headOutput = runGitCommandOutput(repositoryFolder, [
+			'rev-parse',
+			'--abbrev-ref',
+			'HEAD'
+		]);
+		if (headOutput !== undefined && headOutput.trim() !== '' && headOutput.trim() !== 'HEAD') {
+			return headOutput.trim();
+		}
+
+		return undefined;
 	};
 
 	const pathExists = (targetPath: string): boolean => {
@@ -613,6 +707,8 @@ export function createPlatformService(): PlatformService {
 		isGitBranchMissing,
 		pathExists,
 		findWorktreePathForBranch,
+		listActiveWorktrees,
+		getDefaultBranch,
 		pickFolder,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript
