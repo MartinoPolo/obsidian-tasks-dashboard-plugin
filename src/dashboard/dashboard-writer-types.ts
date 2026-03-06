@@ -20,6 +20,7 @@ export interface DashboardWriterInstance {
 	sortByPriority: (dashboard: DashboardConfig) => Promise<void>;
 	sortByCreatedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	sortByEditedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
+	sortByWorktreeFolder: (dashboard: DashboardConfig) => Promise<void>;
 	rebuildDashboardFromFiles: (dashboard: DashboardConfig) => Promise<number>;
 }
 

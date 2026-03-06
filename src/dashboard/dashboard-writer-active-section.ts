@@ -60,6 +60,17 @@ export const rebuildActiveSectionWithSortedBlocks = async (
 	new Notice(noticeMessage);
 };
 
+const WORKTREE_ORIGIN_FOLDER_PATTERN = /worktree_origin_folder:\s*(.+)/;
+const NO_WORKTREE_FOLDER_SENTINEL = '\uffff';
+
+export const extractWorktreeOriginFolderFromBlock = (block: string): string => {
+	const match = block.match(WORKTREE_ORIGIN_FOLDER_PATTERN);
+	if (match === null) {
+		return NO_WORKTREE_FOLDER_SENTINEL;
+	}
+	return match[1].trim();
+};
+
 export const sortByDateField = async (
 	dashboardData: ActiveDashboardData,
 	direction: SortDirection,

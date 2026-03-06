@@ -3,6 +3,7 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, PRIORITY_ORDER } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
 import {
+	extractWorktreeOriginFolderFromBlock,
 	getActiveIssueBlocksFromDashboard,
 	sortByDateField as getSortedBlocksByDateField,
 	rebuildActiveSectionWithSortedBlocks
@@ -389,6 +390,56 @@ export function createDashboardWriter(
 		);
 	};
 
+	const sortByWorktreeFolder: DashboardWriterInstance['sortByWorktreeFolder'] = async (
+		dashboard
+	) => {
+		const dashboardData = await getActiveIssueBlocksFromDashboard(
+			app,
+			dashboard,
+			getDashboardFile
+		);
+		if (dashboardData === undefined) {
+			return;
+		}
+
+		const { content, issues } = dashboardData;
+		if (issues.length < 2) {
+			return;
+		}
+
+		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
+
+		const issueOriginFolders = new Map<string, string>();
+		for (const issue of issues) {
+			const block = issueIdToBlock.get(issue.id);
+			if (block !== undefined) {
+				issueOriginFolders.set(issue.id, extractWorktreeOriginFolderFromBlock(block));
+			}
+		}
+
+		const sortedIssues = [...issues].sort((a, b) => {
+			const folderA = issueOriginFolders.get(a.id) ?? '';
+			const folderB = issueOriginFolders.get(b.id) ?? '';
+			const folderComparison = folderA.localeCompare(folderB);
+			if (folderComparison !== 0) {
+				return folderComparison;
+			}
+			return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+		});
+
+		const sortedBlocks = sortedIssues
+			.map((issue) => issueIdToBlock.get(issue.id))
+			.filter((block): block is string => block !== undefined);
+
+		await rebuildActiveSectionWithSortedBlocks(
+			app,
+			dashboard,
+			getDashboardFile,
+			sortedBlocks,
+			'Issues sorted by worktree folder'
+		);
+	};
+
 	const rebuildDashboardFromFiles: DashboardWriterInstance['rebuildDashboardFromFiles'] = async (
 		dashboard
 	) => {
@@ -433,6 +484,7 @@ export function createDashboardWriter(
 		sortByPriority,
 		sortByCreatedDate,
 		sortByEditedDate,
+		sortByWorktreeFolder,
 		rebuildDashboardFromFiles
 	};
 }

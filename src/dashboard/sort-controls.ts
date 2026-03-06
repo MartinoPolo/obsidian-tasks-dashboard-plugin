@@ -10,6 +10,7 @@ import {
 	observeContentBlockSiblings,
 	setIssueCollapsed as setIssueCollapsedDom
 } from './dashboard-issue-surface';
+import { refreshDashboard } from './dashboard-refresh';
 import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { ICONS, createActionButton, renderGlobalActionButtons } from './header-actions';
 
@@ -292,6 +293,10 @@ export function renderSortControls(
 		{
 			label: 'Least Recently Edited',
 			action: () => void plugin.dashboardWriter.sortByEditedDate(dashboard, 'oldest')
+		},
+		{
+			label: 'Worktree Folder',
+			action: () => void plugin.dashboardWriter.sortByWorktreeFolder(dashboard)
 		}
 	];
 
@@ -376,6 +381,14 @@ export function renderSortControls(
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
 				toggleAllIssues(false, plugin, dashboard, el);
+			}
+		},
+		{
+			iconKey: 'refresh',
+			label: 'Refresh Dashboard',
+			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
+			onClick: () => {
+				void refreshDashboard(plugin, dashboard);
 			}
 		},
 		{
