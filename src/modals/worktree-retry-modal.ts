@@ -1,6 +1,7 @@
 import { App, Modal, setTooltip } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
+import { extractLastPathSegment } from '../utils/path-utils';
 import { createPlatformService, type PlatformService, type WorktreeEntry } from '../utils/platform';
 import {
 	createConfirmCancelButtons,
@@ -122,7 +123,7 @@ export class WorktreeRetryModal extends Modal {
 		});
 
 		for (const repositoryFolder of repositories) {
-			const folderName = this.extractFolderDisplayName(repositoryFolder);
+			const folderName = extractLastPathSegment(repositoryFolder);
 			const optionElement = selectElement.createEl('option', {
 				text: folderName,
 				value: repositoryFolder
@@ -209,19 +210,7 @@ export class WorktreeRetryModal extends Modal {
 		}
 
 		this.close();
-		void this.plugin.issueManager.retryWorktreeSetup(this.dashboard, this.issueId);
-	}
-
-	private extractFolderDisplayName(folderPath: string): string {
-		const normalizedPath = folderPath.replace(/[\\/]+$/, '');
-		const lastSeparatorIndex = Math.max(
-			normalizedPath.lastIndexOf('/'),
-			normalizedPath.lastIndexOf('\\')
-		);
-		if (lastSeparatorIndex === -1) {
-			return normalizedPath;
-		}
-		return normalizedPath.slice(lastSeparatorIndex + 1);
+		void this.plugin.issueManager.retryWorktreeSetup(this.dashboard, this.issueId, branchName);
 	}
 
 	private abbreviatePath(fullPath: string): string {

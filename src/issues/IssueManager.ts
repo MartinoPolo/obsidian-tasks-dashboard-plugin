@@ -935,13 +935,16 @@ ${originalBody}`;
 
 	const retryWorktreeSetup = async (
 		dashboard: DashboardConfig,
-		issueId: string
+		issueId: string,
+		branchOverride?: string
 	): Promise<void> => {
 		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
 		const worktreeBranch =
-			metadata.worktreeBranch !== undefined && metadata.worktreeBranch !== ''
-				? metadata.worktreeBranch
-				: sanitizeGitBranchName(issueId, issueId);
+			branchOverride !== undefined && branchOverride !== ''
+				? branchOverride
+				: metadata.worktreeBranch !== undefined && metadata.worktreeBranch !== ''
+					? metadata.worktreeBranch
+					: sanitizeGitBranchName(issueId, issueId);
 		const issueColor = plugin.settings.issueColors[issueId];
 		runWorktreeSetup(
 			dashboard,

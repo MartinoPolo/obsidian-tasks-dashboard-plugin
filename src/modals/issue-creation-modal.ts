@@ -538,7 +538,11 @@ class ColorPromptModal extends Modal {
 	}
 
 	private async loadDashboardIssueIdsAndRender(): Promise<void> {
-		this.dashboardIssueIds = await collectDashboardIssueIdSet(this.app, this.dashboard);
+		try {
+			this.dashboardIssueIds = await collectDashboardIssueIdSet(this.app, this.dashboard);
+		} catch {
+			this.dashboardIssueIds = undefined;
+		}
 		this.renderColorContent();
 	}
 

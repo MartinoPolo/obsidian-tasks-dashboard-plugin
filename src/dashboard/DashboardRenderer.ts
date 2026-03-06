@@ -35,6 +35,7 @@ import type {
 	IssueActionDescriptor,
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
+import { extractLastPathSegment } from '../utils/path-utils';
 import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { appendInlineSvgIcon, createActionButton, ICONS } from './header-actions';
 import { renderSortControls } from './sort-controls';
@@ -226,30 +227,27 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 	const { renderGitHubCardWithRefresh } = createGitHubCardRefreshRenderer(plugin);
 	const platformService = createPlatformService();
 	const assignedIssuesLimitByRepo = new Map<string, number>();
+	const defaultBranchCache = new Map<string, string | undefined>();
 
-	const extractLastPathSegment = (folderPath: string): string => {
-		const normalizedPath = folderPath.replace(/[\\/]+$/, '');
-		const lastSeparatorIndex = Math.max(
-			normalizedPath.lastIndexOf('/'),
-			normalizedPath.lastIndexOf('\\')
-		);
-		if (lastSeparatorIndex === -1) {
-			return normalizedPath;
+	const getCachedDefaultBranch = (originFolder: string): string | undefined => {
+		if (defaultBranchCache.has(originFolder)) {
+			return defaultBranchCache.get(originFolder);
 		}
-		return normalizedPath.slice(lastSeparatorIndex + 1);
+		const result = platformService.getDefaultBranch(originFolder);
+		defaultBranchCache.set(originFolder, result);
+		return result;
 	};
 
 	const buildWorktreeLocationTooltip = (
 		originFolder: string | undefined,
-		checkedOutBranch: string | undefined,
-		platformServiceInstance: import('../utils/platform').PlatformService
+		checkedOutBranch: string | undefined
 	): string => {
 		if (originFolder === undefined || originFolder.trim() === '') {
 			return 'Worktree active';
 		}
 
 		const baseFolderName = extractLastPathSegment(originFolder);
-		const baseBranch = platformServiceInstance.getDefaultBranch(originFolder);
+		const baseBranch = getCachedDefaultBranch(originFolder);
 		const branchDisplay = checkedOutBranch ?? 'unknown';
 
 		if (baseBranch !== undefined) {
@@ -404,8 +402,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				});
 				const worktreeActiveTooltip = buildWorktreeLocationTooltip(
 					params.worktree_origin_folder,
-					params.worktree_branch,
-					platformService
+					params.worktree_branch
 				);
 				setTooltip(worktreeRefreshButton, worktreeActiveTooltip, { delay: 500 });
 				appendInlineSvgIcon(worktreeRefreshButton, ICONS.worktree);
@@ -949,7 +946,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 								quickCreateDefaults: quickDefaults
 							});
 						}
-					);
+					).catch(() => {
+						new Notice('Failed to load dashboard issues');
+					});
 				}
 			});
 		};

@@ -5,7 +5,7 @@ import { getDashboardPath } from '../utils/dashboard-path';
 import { parseDashboard } from './DashboardParser';
 
 const WORKTREE_TRUE_PATTERN = /\bworktree:\s*true\b/;
-const GITHUB_LINK_PATTERN = /github_link:\s*(\S+)/g;
+const GITHUB_LINK_PATTERN = /github_link:\s*(\S+)/;
 
 interface ParsedIssueRefreshInfo {
 	issueId: string;
