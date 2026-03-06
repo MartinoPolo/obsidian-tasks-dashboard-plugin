@@ -218,9 +218,9 @@
 }
 
 .tdc-worktree-status {
-	width: 28px;
-	height: 28px;
-	min-width: 28px;
+	width: 24px;
+	height: 24px;
+	min-width: 24px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -231,20 +231,24 @@
 }
 
 .tdc-worktree-status svg {
-	width: var(--tdc-btn-icon-size);
-	height: var(--tdc-btn-icon-size);
+	width: 16px;
+	height: 16px;
 }
 
 .tdc-worktree-status-active {
-	color: var(--tdc-priority-low);
+	color: #4caf50;
 }
 
 .tdc-worktree-status-pending {
-	color: var(--tdc-priority-medium);
+	color: #ff9800;
 }
 
-.tdc-worktree-status-danger {
-	color: var(--tdc-priority-high);
+.tdc-worktree-status-failed {
+	color: #f44336;
+}
+
+.tdc-worktree-status-inactive {
+	color: #9e9e9e;
 }
 
 .tdc-issue-info-inline {

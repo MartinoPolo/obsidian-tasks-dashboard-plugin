@@ -276,9 +276,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		const isSafeToDeleteWorktree = params.worktree_safe_delete === true;
 		const worktreeStatusStateClass = isPendingWorktreeSetup
 			? 'pending'
-			: isFailedWorktreeSetup || isSafeToDeleteWorktree
-				? 'danger'
-				: 'active';
+			: isFailedWorktreeSetup
+				? 'failed'
+				: isSafeToDeleteWorktree
+					? 'inactive'
+					: 'active';
 		const worktreeStatusText = isPendingWorktreeSetup
 			? 'Pending worktree setup verification'
 			: isFailedWorktreeSetup
