@@ -9,6 +9,7 @@ import { FolderPathModal } from '../modals/FolderPathModal';
 import { GitHubLinksModal } from '../modals/github-links-modal';
 import { openIssueCreationModal, openPrioritySelectionModal } from '../modals/issue-creation-modal';
 import { RenameIssueModal } from '../modals/rename-issue-modal';
+import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import type { DashboardConfig, IssueActionKey } from '../types';
 import { getGitHubLinkType } from '../utils/github';
 import { parseGitHubRepoFullName } from '../utils/github-url';
@@ -123,16 +124,19 @@ const positionColorDropdown = (
 	});
 };
 
-const openIssueColorDropdown = (options: {
+const openIssueColorDropdown = async (options: {
 	plugin: TasksDashboardPlugin;
+	dashboard: DashboardConfig;
 	issueId: string;
 	container: HTMLElement;
 	anchorElement: HTMLElement | undefined;
 	applyIssueSurfaceStyles: (element: HTMLElement, mainColor: string | undefined) => void;
-}): void => {
-	const { plugin, issueId, container, anchorElement, applyIssueSurfaceStyles } = options;
+}): Promise<void> => {
+	const { plugin, dashboard, issueId, container, anchorElement, applyIssueSurfaceStyles } =
+		options;
+	const dashboardIssueIds = await collectDashboardIssueIdSet(plugin.app, dashboard);
 	const palette = getThemeAwareIssueColorPalette();
-	const usedColors = collectUsedIssueColors(plugin.settings.issueColors);
+	const usedColors = collectUsedIssueColors(plugin.settings.issueColors, dashboardIssueIds);
 	const currentColor = plugin.settings.issueColors[issueId] ?? ISSUE_SURFACE_COLOR_FALLBACK;
 	const originalColor = plugin.settings.issueColors[issueId];
 	let didCommitSelection = false;
@@ -174,7 +178,7 @@ const openIssueColorDropdown = (options: {
 	};
 
 	const applyColorSelection = (nextColor: string): void => {
-		if (isIssueColorUsed(plugin.settings.issueColors, nextColor, issueId)) {
+		if (isIssueColorUsed(plugin.settings.issueColors, nextColor, issueId, dashboardIssueIds)) {
 			new Notice('Color already assigned. Pick an available color.');
 			colorInput.value = plugin.settings.issueColors[issueId] ?? ISSUE_SURFACE_COLOR_FALLBACK;
 			return;
@@ -491,8 +495,9 @@ export const buildIssueActionDescriptors = (options: {
 		faded: false,
 		onClick: (event) => {
 			const anchorElement = event?.currentTarget;
-			openIssueColorDropdown({
+			void openIssueColorDropdown({
 				plugin,
+				dashboard,
 				issueId: params.issue,
 				container,
 				anchorElement: anchorElement instanceof HTMLElement ? anchorElement : undefined,

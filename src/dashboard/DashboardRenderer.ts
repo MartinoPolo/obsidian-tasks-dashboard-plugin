@@ -11,6 +11,7 @@ import {
 	type QuickCreateDefaults
 } from '../modals/issue-creation-modal';
 import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
+import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import { getNextAvailableIssueColor } from '../utils/issue-colors';
 import { createPlatformService } from '../utils/platform';
 import { buildIssueActionDescriptors } from './dashboard-issue-actions';
@@ -867,19 +868,26 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 						);
 						return;
 					}
-					const quickDefaults: QuickCreateDefaults = {
-						priority: 'medium',
-						color: getNextAvailableIssueColor(plugin.settings.issueColors),
-						worktree: true,
-						worktreeOriginFolder: dashboardProjectFolder,
-						worktreeBaseRepository: sourceRepo
-					};
-					openAssignedIssueNamePrompt(plugin.app, plugin, {
-						dashboard,
-						githubMetadata: issue,
-						githubUrl: issue.url,
-						quickCreateDefaults: quickDefaults
-					});
+					void collectDashboardIssueIdSet(plugin.app, dashboard).then(
+						(dashboardIssueIds) => {
+							const quickDefaults: QuickCreateDefaults = {
+								priority: 'medium',
+								color: getNextAvailableIssueColor(
+									plugin.settings.issueColors,
+									dashboardIssueIds
+								),
+								worktree: true,
+								worktreeOriginFolder: dashboardProjectFolder,
+								worktreeBaseRepository: sourceRepo
+							};
+							openAssignedIssueNamePrompt(plugin.app, plugin, {
+								dashboard,
+								githubMetadata: issue,
+								githubUrl: issue.url,
+								quickCreateDefaults: quickDefaults
+							});
+						}
+					);
 				}
 			});
 		};

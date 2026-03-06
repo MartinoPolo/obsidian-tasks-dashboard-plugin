@@ -29,6 +29,14 @@ export async function collectDashboardIssueIds(
 	}
 }
 
+export async function collectDashboardIssueIdSet(
+	app: App,
+	dashboard: DashboardConfig
+): Promise<Set<string>> {
+	const issueIds = await collectDashboardIssueIds(app, dashboard);
+	return new Set(issueIds);
+}
+
 export function cleanupDashboardSettingData(
 	settings: TasksDashboardSettings,
 	dashboard: DashboardConfig,

@@ -115,9 +115,30 @@ export const getForegroundForIssueColor = (backgroundHex: string): string => {
 	return getContrastingForegroundColor(normalized);
 };
 
-export const collectUsedIssueColors = (issueColors: Record<string, string>): Set<string> => {
+const filterIssueColorsByDashboard = (
+	issueColors: Record<string, string>,
+	dashboardIssueIds: Set<string> | undefined
+): Record<string, string> => {
+	if (dashboardIssueIds === undefined) {
+		return issueColors;
+	}
+
+	const filtered: Record<string, string> = {};
+	for (const [issueId, color] of Object.entries(issueColors)) {
+		if (dashboardIssueIds.has(issueId)) {
+			filtered[issueId] = color;
+		}
+	}
+	return filtered;
+};
+
+export const collectUsedIssueColors = (
+	issueColors: Record<string, string>,
+	dashboardIssueIds?: Set<string>
+): Set<string> => {
+	const scopedColors = filterIssueColorsByDashboard(issueColors, dashboardIssueIds);
 	const usedColors = new Set<string>();
-	for (const color of Object.values(issueColors)) {
+	for (const color of Object.values(scopedColors)) {
 		usedColors.add(normalizeIssueColor(color));
 	}
 	return usedColors;
@@ -126,10 +147,12 @@ export const collectUsedIssueColors = (issueColors: Record<string, string>): Set
 export const isIssueColorUsed = (
 	issueColors: Record<string, string>,
 	color: string,
-	issueIdToIgnore?: string
+	issueIdToIgnore?: string,
+	dashboardIssueIds?: Set<string>
 ): boolean => {
+	const scopedColors = filterIssueColorsByDashboard(issueColors, dashboardIssueIds);
 	const normalizedColor = normalizeIssueColor(color);
-	for (const [issueId, issueColor] of Object.entries(issueColors)) {
+	for (const [issueId, issueColor] of Object.entries(scopedColors)) {
 		if (issueIdToIgnore !== undefined && issueId === issueIdToIgnore) {
 			continue;
 		}
@@ -140,8 +163,11 @@ export const isIssueColorUsed = (
 	return false;
 };
 
-export const getNextAvailableIssueColor = (issueColors: Record<string, string>): string => {
-	const usedColors = collectUsedIssueColors(issueColors);
+export const getNextAvailableIssueColor = (
+	issueColors: Record<string, string>,
+	dashboardIssueIds?: Set<string>
+): string => {
+	const usedColors = collectUsedIssueColors(issueColors, dashboardIssueIds);
 	for (const entry of getThemeAwareIssueColorPalette()) {
 		const normalizedColor = normalizeIssueColor(entry.background);
 		if (!usedColors.has(normalizedColor)) {

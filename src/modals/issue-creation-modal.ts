@@ -1,5 +1,6 @@
 import { App, MarkdownView, Modal, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
+import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import { getErrorMessage } from '../settings/settings-helpers';
 import { DashboardConfig, GitHubIssueMetadata, GitHubRepository, Priority } from '../types';
 import { getGitHubLinkType } from '../utils/github';
@@ -243,7 +244,6 @@ export class NamePromptModal extends Modal {
 			},
 			{
 				issueRepository: this.worktreeContext?.sourceIssueLinkedRepository,
-				dashboardRepository: this.dashboard.githubRepos?.[0],
 				onCancel: () => {
 					new NamePromptModal(
 						this.app,
@@ -310,7 +310,7 @@ export class NamePromptModal extends Modal {
 				this.mode,
 				this.worktreeOriginFolder,
 				this.sourceIssueLinkedRepository,
-				getNextAvailableIssueColor(this.plugin.settings.issueColors),
+				undefined,
 				this.githubSelection
 			).open();
 		} else {
@@ -485,7 +485,7 @@ class WorktreeDecisionModal extends Modal {
 			shouldCreateWorktree ? 'worktree' : 'standard',
 			shouldCreateWorktree ? this.worktreeContext.worktreeOriginFolder : undefined,
 			shouldCreateWorktree ? this.worktreeContext.sourceIssueLinkedRepository : undefined,
-			getNextAvailableIssueColor(this.plugin.settings.issueColors),
+			undefined,
 			this.githubSelection
 		).open();
 	}
@@ -498,13 +498,14 @@ class ColorPromptModal extends Modal {
 	private mode: IssueCreationMode;
 	private worktreeOriginFolder: string | undefined;
 	private sourceIssueLinkedRepository: string | undefined;
-	private initialColor: string;
+	private initialColor: string | undefined;
 	private githubSelection: GitHubSelectionContext;
 	private input: HTMLInputElement | undefined;
 	private presetButtons: HTMLButtonElement[] = [];
 	private selectedColor = getThemeAwareIssueColorPalette()[0].background;
 	private colorPresets: readonly import('../utils/color').IssueColorEntry[] = [];
 	private usedColors = new Set<string>();
+	private dashboardIssueIds: Set<string> | undefined;
 
 	constructor(
 		app: App,
@@ -514,7 +515,7 @@ class ColorPromptModal extends Modal {
 		mode: IssueCreationMode,
 		worktreeOriginFolder?: string,
 		sourceIssueLinkedRepository?: string,
-		initialColor: string = getThemeAwareIssueColorPalette()[0].background,
+		initialColor?: string,
 		githubSelection: GitHubSelectionContext = {}
 	) {
 		super(app);
@@ -525,16 +526,40 @@ class ColorPromptModal extends Modal {
 		this.worktreeOriginFolder = worktreeOriginFolder;
 		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
 		this.initialColor = initialColor;
-		this.selectedColor = initialColor;
+		if (initialColor !== undefined) {
+			this.selectedColor = initialColor;
+		}
 		this.githubSelection = githubSelection;
 	}
 
 	onOpen(): void {
 		setupPromptModal(this, 'Issue Color');
+		void this.loadDashboardIssueIdsAndRender();
+	}
+
+	private async loadDashboardIssueIdsAndRender(): Promise<void> {
+		this.dashboardIssueIds = await collectDashboardIssueIdSet(this.app, this.dashboard);
+		this.renderColorContent();
+	}
+
+	private renderColorContent(): void {
 		this.colorPresets = getThemeAwareIssueColorPalette();
-		this.usedColors = collectUsedIssueColors(this.plugin.settings.issueColors);
-		if (isIssueColorUsed(this.plugin.settings.issueColors, this.selectedColor)) {
-			this.selectedColor = getNextAvailableIssueColor(this.plugin.settings.issueColors);
+		this.usedColors = collectUsedIssueColors(
+			this.plugin.settings.issueColors,
+			this.dashboardIssueIds
+		);
+		if (
+			isIssueColorUsed(
+				this.plugin.settings.issueColors,
+				this.selectedColor,
+				undefined,
+				this.dashboardIssueIds
+			)
+		) {
+			this.selectedColor = getNextAvailableIssueColor(
+				this.plugin.settings.issueColors,
+				this.dashboardIssueIds
+			);
 		}
 		this.contentEl.addClass('tdc-color-preset-row-six-columns');
 		const presets = this.contentEl.createDiv({ cls: 'tdc-color-preset-row' });
@@ -682,7 +707,14 @@ class ColorPromptModal extends Modal {
 			return;
 		}
 		const color = this.input.value.trim();
-		if (isIssueColorUsed(this.plugin.settings.issueColors, color)) {
+		if (
+			isIssueColorUsed(
+				this.plugin.settings.issueColors,
+				color,
+				undefined,
+				this.dashboardIssueIds
+			)
+		) {
 			new Notice('Color already assigned. Pick an available color.');
 			return;
 		}
@@ -1252,7 +1284,6 @@ export const openIssueCreationModal = (
 			},
 			{
 				issueRepository: worktreeContext?.sourceIssueLinkedRepository,
-				dashboardRepository: dashboard.githubRepos?.[0],
 				skipButtonLabel: 'Skip',
 				selectionLockUntilCleared: false,
 				confirmButtonLabel: 'Next',

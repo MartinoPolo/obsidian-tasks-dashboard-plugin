@@ -44,7 +44,6 @@ type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
 
 interface GitHubSearchModalLinkedRepositories {
 	issueRepository?: string;
-	dashboardRepository?: string;
 	onCancel?: () => void;
 	onBack?: () => void;
 	showBackButton?: boolean;
@@ -59,8 +58,10 @@ interface GitHubSearchModalLinkedRepositories {
 }
 
 interface ScopeOption {
-	value: GitHubSearchScope;
+	value: string;
+	scope: GitHubSearchScope;
 	label: string;
+	repository?: string;
 }
 
 const OTHER_REPOSITORY_SCOPE: GitHubSearchScope = 'other-repo';
@@ -69,7 +70,7 @@ export class GitHubSearchModal extends Modal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
 	private readonly issueLinkedRepository: string | undefined;
-	private readonly dashboardLinkedRepository: string | undefined;
+	private readonly dashboardLinkedRepositories: string[];
 	private readonly onSelect: OnSelectCallback;
 	private readonly onCancel: (() => void) | undefined;
 	private readonly onBack: (() => void) | undefined;
@@ -89,6 +90,7 @@ export class GitHubSearchModal extends Modal {
 	private otherRepositoryScopeLabel: HTMLElement | undefined;
 	private otherRepositoryScopeSelect: HTMLSelectElement | undefined;
 	private searchScope: GitHubSearchScope;
+	private selectedScopeRepository: string | undefined;
 	private readonly scopeOptions: ScopeOption[];
 	private selectedIndex = -1;
 	private currentResults: GitHubIssueMetadata[] = [];
@@ -113,8 +115,7 @@ export class GitHubSearchModal extends Modal {
 		this.plugin = plugin;
 		this.dashboard = dashboard;
 		this.issueLinkedRepository = linkedRepositories?.issueRepository;
-		this.dashboardLinkedRepository =
-			linkedRepositories?.dashboardRepository ?? dashboard.githubRepos?.[0];
+		this.dashboardLinkedRepositories = this.resolveDashboardLinkedRepositories();
 		this.onCancel = linkedRepositories?.onCancel;
 		this.onBack = linkedRepositories?.onBack;
 		this.showBackButton = linkedRepositories?.showBackButton ?? false;
@@ -129,7 +130,13 @@ export class GitHubSearchModal extends Modal {
 		this.showSkipButton = linkedRepositories?.showSkipButton ?? true;
 		this.onSelect = onSelect;
 		this.scopeOptions = this.buildScopeOptions();
-		this.searchScope = this.scopeOptions[0]?.value ?? 'my-repos';
+		const initialOption = this.scopeOptions[0];
+		this.searchScope = initialOption.scope;
+		this.selectedScopeRepository = initialOption.repository;
+	}
+
+	private resolveDashboardLinkedRepositories(): string[] {
+		return (this.dashboard.githubRepos ?? []).filter((repo) => repo !== '');
 	}
 
 	onOpen(): void {
@@ -160,7 +167,7 @@ export class GitHubSearchModal extends Modal {
 			});
 		}
 
-		this.searchScopeSelect.value = this.searchScope;
+		this.searchScopeSelect.value = this.scopeOptions[0].value;
 
 		this.otherRepositoryScopeLabel = optionsContainer.createEl('label', {
 			cls: 'tdc-gh-scope-label'
@@ -323,7 +330,9 @@ export class GitHubSearchModal extends Modal {
 	}
 
 	private handleSearchScopeChange(): void {
-		this.searchScope = this.parseSearchScope(this.searchScopeSelect.value);
+		const selectedOption = this.parseScopeOptionBySelectValue(this.searchScopeSelect.value);
+		this.searchScope = selectedOption?.scope ?? this.scopeOptions[0].scope;
+		this.selectedScopeRepository = selectedOption?.repository;
 		this.updateOtherRepositorySelectorVisibility();
 		if (this.searchScope === OTHER_REPOSITORY_SCOPE) {
 			void this.ensureUserRepositoriesLoaded().then(() => {
@@ -826,16 +835,8 @@ export class GitHubSearchModal extends Modal {
 		return requestId === this.activeRequestId;
 	}
 
-	private parseSearchScope(value: string): GitHubSearchScope {
-		if (
-			value === 'linked-dashboard' ||
-			value === 'linked-issue' ||
-			value === 'my-repos' ||
-			value === OTHER_REPOSITORY_SCOPE
-		) {
-			return value;
-		}
-		return this.scopeOptions[0]?.value ?? 'my-repos';
+	private parseScopeOptionBySelectValue(value: string): ScopeOption | undefined {
+		return this.scopeOptions.find((option) => option.value === value);
 	}
 
 	private getModalTitle(): string {
@@ -897,34 +898,52 @@ export class GitHubSearchModal extends Modal {
 	private buildScopeOptions(): ScopeOption[] {
 		const options: ScopeOption[] = [];
 		const issueRepo = this.issueLinkedRepository;
-		const dashboardRepo = this.dashboardLinkedRepository;
 
 		if (issueRepo !== undefined && issueRepo !== '') {
 			options.push({
 				value: 'linked-issue',
-				label: `Issue linked repository (${issueRepo})`
+				scope: 'linked-issue',
+				label: `Issue linked repository (${issueRepo})`,
+				repository: issueRepo
 			});
 		}
 
-		if (dashboardRepo !== undefined && dashboardRepo !== '' && dashboardRepo !== issueRepo) {
+		for (const dashboardRepo of this.dashboardLinkedRepositories) {
+			if (dashboardRepo === issueRepo) {
+				continue;
+			}
+			const optionValue =
+				this.dashboardLinkedRepositories.length > 1
+					? `linked-dashboard:${dashboardRepo}`
+					: 'linked-dashboard';
 			options.push({
-				value: 'linked-dashboard',
-				label: `Dashboard linked repository (${dashboardRepo})`
+				value: optionValue,
+				scope: 'linked-dashboard',
+				label: `Dashboard repository (${dashboardRepo})`,
+				repository: dashboardRepo
 			});
 		}
 
-		options.push({ value: 'my-repos', label: 'My repositories' });
-		options.push({ value: OTHER_REPOSITORY_SCOPE, label: 'Other repository' });
+		options.push({
+			value: 'my-repos',
+			scope: 'my-repos',
+			label: 'My repositories'
+		});
+		options.push({
+			value: OTHER_REPOSITORY_SCOPE,
+			scope: OTHER_REPOSITORY_SCOPE,
+			label: 'Other repository'
+		});
 
 		return options;
 	}
 
 	private getRepoForCurrentScope(): string | undefined {
 		if (this.searchScope === 'linked-issue') {
-			return this.issueLinkedRepository;
+			return this.selectedScopeRepository ?? this.issueLinkedRepository;
 		}
 		if (this.searchScope === 'linked-dashboard') {
-			return this.dashboardLinkedRepository;
+			return this.selectedScopeRepository ?? this.dashboardLinkedRepositories[0];
 		}
 		if (this.searchScope === OTHER_REPOSITORY_SCOPE) {
 			return this.selectedOtherRepository;
