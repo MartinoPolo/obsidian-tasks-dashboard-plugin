@@ -920,6 +920,7 @@ ${originalBody}`;
 						worktreeExpectedFolder: detectedFolder,
 						worktreeSetupState: 'active'
 					});
+					platformService.openTerminal(detectedFolder, color);
 					return;
 				}
 
