@@ -187,7 +187,11 @@ export class WorktreeRetryModal extends Modal {
 	}
 
 	private renderWorktreeEntry(container: HTMLElement, entry: WorktreeEntry): void {
+		const isAssignable = !entry.isBare;
 		const row = container.createDiv({ cls: 'tdc-worktree-list-row' });
+		if (isAssignable) {
+			row.addClass('tdc-worktree-list-row-clickable');
+		}
 		const branchText = entry.branch ?? (entry.isBare ? '(bare)' : '(detached)');
 		row.createDiv({ cls: 'tdc-worktree-list-branch', text: branchText });
 		const pathElement = row.createDiv({
@@ -195,6 +199,35 @@ export class WorktreeRetryModal extends Modal {
 			text: this.abbreviatePath(entry.path)
 		});
 		setTooltip(pathElement, entry.path, { delay: 500 });
+
+		if (isAssignable) {
+			const useButton = row.createEl('button', {
+				cls: 'tdc-worktree-list-use-btn',
+				text: 'Use'
+			});
+			useButton.addEventListener('click', (event) => {
+				event.stopPropagation();
+				this.assignWorktree(entry);
+			});
+			row.addEventListener('click', () => {
+				this.assignWorktree(entry);
+			});
+		}
+	}
+
+	private assignWorktree(entry: WorktreeEntry): void {
+		const originFolder = this.selectedRepositoryFolder;
+		if (originFolder === undefined) {
+			return;
+		}
+		this.close();
+		void this.plugin.issueManager.assignExistingWorktree(
+			this.dashboard,
+			this.issueId,
+			entry.path,
+			entry.branch,
+			originFolder
+		);
 	}
 
 	private confirmCreation(): void {

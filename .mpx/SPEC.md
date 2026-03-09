@@ -196,3 +196,26 @@ When I go through the worktree creation from the ATC back office issue, which is
 - [x] The X button to remove the link of the repository to the dashboard in the GitHub repositories modal should be a square.
 - [x] After creating a worktree issue which assigns the folder for that issue automatically, we should also open terminal as if we opened it from the Open Terminal button, so in that folder with that color. It should probably wait a bit for the worktree folder to be created. I'm not sure how to ensure that the folder is created. Maybe it can wait for a while with delayed checking and progressively larger delay.
 - [x] The duplicate color checking from Color Picker should probably be unique to every dashboard. Each dashboard should track its own used colors. Currently, if I use a color in one dashboard, it becomes unavailable in all other dashboards, which is not ideal. It should only be unavailable in the dashboard where it's already used.
+
+- [x] When archiving an issue that has a worktree assigned, I get a prompt for whether I want to also remove the worktree. When I hit escape, the issue is archived and the worktree is not created. I would like the behavior to change so that hitting escape completely cancels archiving the issue. The issue should only be archived by pressing enter.
+Therefore, we have to change the logic of deleting the worktree to the checkbox we have in the delete issue modal. Archiving an issue should be archived immediately on click of the button. If there is no worktree, it should ask "Do you really want to archive the issue?" and have a checkbox also delete or remove the associated worktree. Hitting escape in that modal cancels both deletions, and hitting enter deletes the issue and removes the worktree if the checkbox is checked.
+- [x] I am not able to assign worktree later if the worktree creation failed or the setup failed or the link between worktree and the dashboard issue is somehow broken. I need to be able to assign the worktree again, which means to link it to a proper folder as well as to the worktree on GitHub, I guess, or what are all the data necessary for a proper worktree linkage. The user should be able to add worktree later or assign worktree to a specific issue, updating all the necessary properties. We already have a button. That button has a tooltip "Retry worktree setup". Clicking on that button spawns a modal, but I'm not able to click on any of the active worktrees for them to be assigned. I am only able to create a new worktree by placing a new name in the input and pressing Create. User needs to be able to see a list of currently created worktrees and assign the dashboard issue to a worktree, which should update all the necessary properties and states. First, please research what properties are set during work recreation and if we are able to gather them all.
+
+Also, it seems that in that modal the Create and Cancel buttons are reversed. The Create green button should be on the right. Please check that this is the case in other modal as well and report any inconsistencies.
+
+- [ ] Worktree icon in the issue card says atc-backoffice/main -> 1001-name-of-the-worktree-and-branch. However, the worktree was based on the dev branch in ATC backoffice, which means that there is no base branch detection or it is incorrect. I would like to save the branch name from the time when the worktree is created so that we know to which branch this was related.
+
+## Git status
+- [ ] Add a completely new section or phase for implementation where we fetch and correctly update the status of:
+- GitHub worktree
+- status of the branch
+- the linked PR status
+- issue status
+It should show an icon for the branch state, similar to what GitHub does. We want to see:
+- if the branch exists
+- what the base branch is
+- if there is a PR on that branch, what state the PR is in
+- if the associated issue has states
+These states should also all be indicated with an icon in the issue card. The PR icon should only be there if a PR exists.
+This should all apply also for issues that don't have a worktree, that only have an issue assigned. We should fetch if there is a PR assigned to that issue and its state as well, if possible. Figure out the strategy on how to refresh these data and where to get them reliably, how often to refresh them, etc.
+Also, I'd like to indicate even more vividly the state of a PR. If it's for review or merged, the whole issue card should maybe change color with a gradient or split the section in two and show a different color in the second section. I would like this to be really visible. Also, there should be a new sorting mechanism which puts all the in-review PRs below the open ones, and at the bottom we should place all the merged/closed ones.

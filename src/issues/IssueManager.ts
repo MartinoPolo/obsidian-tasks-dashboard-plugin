@@ -955,6 +955,25 @@ ${originalBody}`;
 		);
 	};
 
+	const assignExistingWorktree = async (
+		dashboard: DashboardConfig,
+		issueId: string,
+		worktreePath: string,
+		worktreeBranch: string | undefined,
+		worktreeOriginFolder: string
+	): Promise<void> => {
+		await updateIssueWorktreeMetadata(dashboard, issueId, {
+			worktree: true,
+			worktreeBranch,
+			worktreeOriginFolder,
+			worktreeExpectedFolder: worktreePath,
+			worktreeSetupState: 'active',
+			worktreeBaseRepository: worktreeOriginFolder
+		});
+		assignIssueFolderLikeManual(dashboard.id, issueId, worktreePath);
+		new Notice(`Worktree assigned: ${issueId}`);
+	};
+
 	const refreshWorktreeState = async (
 		dashboard: DashboardConfig,
 		issueId: string
@@ -1193,6 +1212,7 @@ ${originalBody}`;
 		renameIssue,
 		setupWorktree,
 		retryWorktreeSetup,
+		assignExistingWorktree,
 		removeWorktree,
 		addGitHubLink,
 		removeGitHubLink,

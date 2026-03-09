@@ -164,8 +164,8 @@ export function createConfirmCancelButtons(
 	onCancel: () => void
 ): HTMLButtonElement {
 	const buttonContainer = createPromptButtonsContainer(contentEl);
-	const confirmBtn = createPromptConfirmButton(buttonContainer, onConfirm, confirmLabel);
 	void createPromptCancelButton(buttonContainer, onCancel);
+	const confirmBtn = createPromptConfirmButton(buttonContainer, onConfirm, confirmLabel);
 	return confirmBtn;
 }
 

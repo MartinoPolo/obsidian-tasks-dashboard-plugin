@@ -433,13 +433,6 @@ export class GitHubLinksModal extends Modal {
 		this.renderLinks();
 
 		const btnContainer = createPromptButtonsContainer(this.contentEl);
-		void createPromptConfirmButton(btnContainer, () => {
-			if (this.hasChanges) {
-				new Notice('GitHub links updated.');
-			}
-			this.close();
-		});
-
 		void createPromptCancelButton(
 			btnContainer,
 			() => {
@@ -447,6 +440,13 @@ export class GitHubLinksModal extends Modal {
 			},
 			'Close'
 		);
+
+		void createPromptConfirmButton(btnContainer, () => {
+			if (this.hasChanges) {
+				new Notice('GitHub links updated.');
+			}
+			this.close();
+		});
 	}
 
 	onClose() {

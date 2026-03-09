@@ -69,5 +69,12 @@ export interface IssueManagerInstance {
 		issueId: string,
 		githubUrl: string
 	) => Promise<void>;
+	assignExistingWorktree: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		worktreePath: string,
+		worktreeBranch: string | undefined,
+		worktreeOriginFolder: string
+	) => Promise<void>;
 	refreshWorktreeState: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
 }

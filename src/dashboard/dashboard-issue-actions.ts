@@ -544,7 +544,11 @@ export const buildIssueActionDescriptors = (options: {
 					const modal = new ArchiveConfirmationModal(
 						plugin.app,
 						params.name,
+						hasAssociatedWorktree,
 						(result) => {
+							if (!result.confirmed) {
+								return;
+							}
 							if (result.removeWorktree) {
 								void plugin.issueManager.removeWorktree(dashboard, params.issue, {
 									skipScriptConfirmation: true

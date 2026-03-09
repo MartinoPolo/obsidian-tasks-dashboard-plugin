@@ -131,13 +131,9 @@ export class FolderPathModal extends Modal {
 	private createActionButtons(contentEl: HTMLElement, currentValue: string | undefined): void {
 		const buttonsContainer = createPromptButtonsContainer(contentEl);
 
-		void createPromptConfirmButton(
-			buttonsContainer,
-			() => {
-				this.confirm();
-			},
-			'Save'
-		);
+		void createPromptCancelButton(buttonsContainer, () => {
+			this.close();
+		});
 
 		if (currentValue !== undefined) {
 			const clearButton = buttonsContainer.createEl('button', {
@@ -150,9 +146,13 @@ export class FolderPathModal extends Modal {
 			});
 		}
 
-		void createPromptCancelButton(buttonsContainer, () => {
-			this.close();
-		});
+		void createPromptConfirmButton(
+			buttonsContainer,
+			() => {
+				this.confirm();
+			},
+			'Save'
+		);
 	}
 
 	onOpen() {

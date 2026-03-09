@@ -11,6 +11,8 @@
 	--tdc-btn-square-size: 28px;
 	--tdc-transition-fast: 0.15s ease;
 	--tdc-border-radius: 6px;
+	--tdc-border-radius-sm: 4px;
+	--tdc-shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.15);
 	--tdc-vscode-accent: #007acc;
 
 	/* GitHub colors */
@@ -26,19 +28,23 @@
 }
 
 /* ===== Priority Colors ===== */
-.tdc-priority-low {
+.tdc-priority-low,
+.priority-low {
 	--tdc-priority-color: var(--tdc-priority-low);
 }
 
-.tdc-priority-medium {
+.tdc-priority-medium,
+.priority-medium {
 	--tdc-priority-color: var(--tdc-priority-medium);
 }
 
-.tdc-priority-high {
+.tdc-priority-high,
+.priority-high {
 	--tdc-priority-color: var(--tdc-priority-high);
 }
 
-.tdc-priority-top {
+.tdc-priority-top,
+.priority-top {
 	--tdc-priority-color: var(--tdc-priority-top);
 }
 
@@ -61,22 +67,7 @@
 	width: 12px;
 	height: 12px;
 	border-radius: 50%;
-}
-
-.tdc-priority-dot.priority-low {
-	background: var(--tdc-priority-low);
-}
-
-.tdc-priority-dot.priority-medium {
-	background: var(--tdc-priority-medium);
-}
-
-.tdc-priority-dot.priority-high {
-	background: var(--tdc-priority-high);
-}
-
-.tdc-priority-dot.priority-top {
-	background: var(--tdc-priority-top);
+	background: var(--tdc-priority-color);
 }
 
 /* ===== Issue Container ===== */
@@ -89,20 +80,8 @@
 	--tdc-issue-checklist-border: var(--background-modifier-border);
 }
 
-.tdc-issue-container.priority-low {
-	--tdc-issue-main-color: var(--tdc-priority-low);
-}
-
-.tdc-issue-container.priority-medium {
-	--tdc-issue-main-color: var(--tdc-priority-medium);
-}
-
-.tdc-issue-container.priority-high {
-	--tdc-issue-main-color: var(--tdc-priority-high);
-}
-
-.tdc-issue-container.priority-top {
-	--tdc-issue-main-color: var(--tdc-priority-top);
+.tdc-issue-container[class*='priority-'] {
+	--tdc-issue-main-color: var(--tdc-priority-color);
 }
 
 /* ===== Collapse Toggle ===== */
@@ -121,7 +100,7 @@
 
 .tdc-btn-collapse {
 	min-width: var(--tdc-btn-square-size);
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	background: transparent;
 	color: var(--text-muted);
 	margin-right: 6px;
@@ -178,20 +157,8 @@
 	margin-bottom: 0;
 }
 
-.tdc-issue-header.priority-low {
-	border-left-color: var(--tdc-priority-low);
-}
-
-.tdc-issue-header.priority-medium {
-	border-left-color: var(--tdc-priority-medium);
-}
-
-.tdc-issue-header.priority-high {
-	border-left-color: var(--tdc-priority-high);
-}
-
-.tdc-issue-header.priority-top {
-	border-left-color: var(--tdc-priority-top);
+.tdc-issue-header[class*='priority-'] {
+	border-left-color: var(--tdc-priority-color);
 }
 
 .tdc-issue-header a,
@@ -228,7 +195,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	background: transparent;
 	color: var(--text-muted);
 	flex-shrink: 0;
@@ -240,15 +207,15 @@
 }
 
 .tdc-worktree-status-active {
-	color: #4caf50;
+	color: var(--tdc-priority-low);
 }
 
 .tdc-worktree-status-pending {
-	color: #ff9800;
+	color: var(--tdc-priority-medium);
 }
 
 .tdc-worktree-status-failed {
-	color: #f44336;
+	color: var(--tdc-priority-high);
 }
 
 .tdc-worktree-status-inactive {
@@ -256,7 +223,7 @@
 }
 
 button.tdc-worktree-action-retry {
-	color: #f44336;
+	color: var(--tdc-priority-high);
 }
 
 button.tdc-worktree-action-retry:hover {
@@ -550,27 +517,18 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	width: 100px;
 	height: 8px;
 	background: var(--background-modifier-border);
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	overflow: hidden;
 }
 
 .tdc-progress-fill {
 	height: 100%;
 	transition: width 0.2s ease;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 }
 
-.tdc-progress-fill-low {
-	background-color: var(--tdc-priority-low);
-}
-.tdc-progress-fill-medium {
-	background-color: var(--tdc-priority-medium);
-}
-.tdc-progress-fill-high {
-	background-color: var(--tdc-priority-high);
-}
-.tdc-progress-fill-top {
-	background-color: var(--tdc-priority-top);
+.tdc-progress-fill {
+	background-color: var(--tdc-priority-color);
 }
 
 .tdc-progress-text {
@@ -745,7 +703,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--tdc-border-radius);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	box-shadow: var(--tdc-shadow-dropdown);
 	overflow: hidden;
 }
 
@@ -847,7 +805,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 .tdc-prompt-btn kbd {
 	background: rgba(0, 0, 0, 0.15);
 	padding: 2px 6px;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	font-size: 0.85em;
 	font-family: inherit;
 }
@@ -1026,7 +984,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 .tdc-color-preset-btn {
 	width: 44px;
 	height: 44px;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	border: 1px solid var(--background-modifier-border);
 	cursor: pointer;
 	padding: 0;
@@ -1233,7 +1191,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 .tdc-rate-limit-info {
 	font-size: 0.85em;
 	padding: 4px 8px;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	background: var(--background-secondary);
 }
 
@@ -1307,12 +1265,16 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	font-weight: 500;
 }
 
-/* GitHub State Badges */
-.tdc-gh-state {
-	font-size: 0.8em;
+/* GitHub Badges (shared pill shape) */
+.tdc-gh-state,
+.tdc-gh-label {
 	font-weight: 500;
 	padding: 2px 8px;
 	border-radius: 12px;
+}
+
+.tdc-gh-state {
+	font-size: 0.8em;
 	text-transform: capitalize;
 }
 
@@ -1349,7 +1311,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	transition: var(--tdc-transition-fast);
 }
 
@@ -1384,9 +1346,6 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 
 .tdc-gh-label {
 	font-size: 0.75em;
-	padding: 2px 8px;
-	border-radius: 12px;
-	font-weight: 500;
 }
 
 .tdc-gh-label-more {
@@ -1414,25 +1373,24 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	font-weight: 500;
 }
 
-/* GitHub Body */
-.tdc-gh-body {
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid var(--background-modifier-border);
-	font-size: 0.9em;
-	color: var(--text-muted);
-	line-height: 1.5;
-}
-
-/* GitHub Footer */
+/* GitHub Body & Footer */
+.tdc-gh-body,
 .tdc-gh-footer {
 	margin-top: 10px;
 	padding-top: 10px;
 	border-top: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.tdc-gh-body {
+	font-size: 0.9em;
+	line-height: 1.5;
+}
+
+.tdc-gh-footer {
 	display: flex;
 	justify-content: space-between;
 	font-size: 0.8em;
-	color: var(--text-muted);
 }
 
 .tdc-gh-repo {
@@ -1489,7 +1447,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 .tdc-gh-scope-select {
 	flex: 1;
 	padding: 4px 8px;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	border: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 	color: var(--text-normal);
@@ -1931,7 +1889,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	flex-shrink: 0;
 }
 
@@ -1969,7 +1927,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--tdc-border-radius);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	box-shadow: var(--tdc-shadow-dropdown);
 	min-width: 180px;
 }
 
@@ -1992,7 +1950,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	font-weight: 500;
 	color: var(--text-muted);
 	background: var(--background-modifier-hover);
-	border-radius: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 	flex-shrink: 0;
 	margin-right: 4px;
 }
@@ -2122,6 +2080,22 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 
 .tdc-worktree-list-row:not(:last-child) {
 	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tdc-worktree-list-row-clickable {
+	cursor: pointer;
+	border-radius: var(--tdc-border-radius);
+}
+
+.tdc-worktree-list-row-clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tdc-worktree-list-use-btn {
+	flex-shrink: 0;
+	padding: 2px 8px;
+	font-size: var(--font-ui-smaller);
+	cursor: pointer;
 }
 
 .tdc-worktree-list-branch {

@@ -380,11 +380,11 @@ class WorktreeDecisionModal extends Modal {
 		void createPromptBackButton(buttonContainer, () => {
 			this.goBack();
 		});
-		void createPromptConfirmButton(buttonContainer, () => {
-			this.confirmSelection();
-		});
 		void createPromptCancelButton(buttonContainer, () => {
 			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
 		});
 
 		this.contentEl.addEventListener('keydown', (event) => {
@@ -659,11 +659,11 @@ class ColorPromptModal extends Modal {
 		void createPromptBackButton(buttonContainer, () => {
 			this.goBack();
 		});
-		void createPromptConfirmButton(buttonContainer, () => {
-			this.confirm();
-		});
 		void createPromptCancelButton(buttonContainer, () => {
 			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirm();
 		});
 	}
 
