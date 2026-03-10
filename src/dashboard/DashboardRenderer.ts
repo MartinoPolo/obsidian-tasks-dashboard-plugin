@@ -626,8 +626,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		window.addEventListener('resize', handleWindowResize);
 		let resizeObserver: ResizeObserver | undefined;
 		const applyBadgeCompaction = (): void => {
+			const headerOverflowing = header.scrollWidth > header.clientWidth;
 			const titleTruncated = link.scrollWidth > link.clientWidth;
-			headerBadges.classList.toggle('tdc-badges-compact', titleTruncated);
+			headerBadges.classList.toggle('tdc-badges-compact', headerOverflowing || titleTruncated);
 		};
 
 		if (typeof ResizeObserver !== 'undefined') {
