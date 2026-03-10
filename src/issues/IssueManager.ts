@@ -365,9 +365,13 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		const trimmedName = name.trim();
 		const githubNumberPrefix =
 			githubMetadata?.number !== undefined ? `#${githubMetadata.number} ` : '';
+		const nameAlreadyPrefixed =
+			trimmedName.startsWith('#') ||
+			(githubMetadata?.number !== undefined &&
+				trimmedName.startsWith(`${githubMetadata.number}`));
 		const preferredWorktreeName =
 			trimmedName !== ''
-				? githubNumberPrefix !== '' && trimmedName.startsWith('#')
+				? githubNumberPrefix !== '' && nameAlreadyPrefixed
 					? trimmedName
 					: `${githubNumberPrefix}${trimmedName}`.trim()
 				: `${githubNumberPrefix}${issueId}`.trim();
@@ -387,6 +391,10 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 				: undefined;
 		const derivedWorktreeSetupState =
 			worktree === true ? (worktreeSetupState ?? 'pending') : undefined;
+		const capturedWorktreeBaseBranch =
+			worktree === true && resolvedWorktreeOriginFolder !== undefined
+				? platformService.getCurrentBranch(resolvedWorktreeOriginFolder)
+				: undefined;
 
 		await ensureFolderExists(activePath);
 
@@ -413,6 +421,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 			worktreeExpectedFolder: derivedWorktreeExpectedFolder,
 			worktreeSetupState: derivedWorktreeSetupState,
 			worktreeBaseRepository,
+			worktreeBaseBranch: capturedWorktreeBaseBranch,
 			filePath
 		};
 
@@ -976,13 +985,15 @@ ${originalBody}`;
 		worktreeBranch: string | undefined,
 		worktreeOriginFolder: string
 	): Promise<void> => {
+		const capturedBaseBranch = platformService.getCurrentBranch(worktreeOriginFolder);
 		await updateIssueWorktreeMetadata(dashboard, issueId, {
 			worktree: true,
 			worktreeBranch,
 			worktreeOriginFolder,
 			worktreeExpectedFolder: worktreePath,
 			worktreeSetupState: 'active',
-			worktreeBaseRepository: worktreeOriginFolder
+			worktreeBaseRepository: worktreeOriginFolder,
+			worktreeBaseBranch: capturedBaseBranch
 		});
 		assignIssueFolderLikeManual(dashboard.id, issueId, worktreePath);
 		new Notice(`Worktree assigned: ${issueId}`);

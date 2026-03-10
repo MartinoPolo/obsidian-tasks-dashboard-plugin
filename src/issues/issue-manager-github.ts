@@ -104,7 +104,7 @@ priority: ${issue.priority}`;
 	content += `
 ---
 ## Tasks
-- [ ] `;
+`;
 
 	return content;
 }

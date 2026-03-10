@@ -1,4 +1,4 @@
-export type BranchStatus = 'active' | 'deleted' | 'unknown';
+export type BranchStatus = 'active' | 'local' | 'deleted' | 'unknown';
 export type PrState = 'none' | 'draft' | 'open' | 'review-requested' | 'merged' | 'closed';
 export type IssueState = 'open' | 'closed' | 'not_planned' | 'unknown';
 

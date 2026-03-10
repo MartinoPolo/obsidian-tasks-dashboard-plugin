@@ -28,6 +28,7 @@
 	--tdc-git-pr-draft: #768390;
 	--tdc-git-pr-review: #d29922;
 	--tdc-git-branch-active: #3fb950;
+	--tdc-git-branch-local: #a5d6a7;
 	--tdc-git-branch-deleted: #768390;
 }
 
@@ -277,7 +278,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	background: transparent !important;
 	background-color: transparent !important;
 	background-image: none !important;
-	border-radius: 0 !important;
+	border-radius: var(--tdc-border-radius-sm) !important;
 	color: var(--tdc-issue-header-link-color, var(--text-normal)) !important;
 	flex-shrink: 0;
 	cursor: pointer;
@@ -2156,7 +2157,7 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	display: inline-flex;
 	align-items: center;
 	gap: 3px;
-	padding: 1px 6px;
+	padding: 2px 7px;
 	border-radius: 10px;
 	font-size: 11px;
 	line-height: 16px;
@@ -2165,11 +2166,12 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	cursor: default;
 	color: var(--text-muted);
 	background: var(--background-modifier-border);
+	border: 1px solid transparent;
 }
 
 .tdc-git-badge svg {
-	width: 12px;
-	height: 12px;
+	width: 14px;
+	height: 14px;
 	flex-shrink: 0;
 }
 
@@ -2186,11 +2188,19 @@ a.tdc-git-badge:hover {
 .tdc-git-badge-branch-active {
 	color: var(--tdc-git-branch-active);
 	background: color-mix(in srgb, var(--tdc-git-branch-active) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-branch-active) 40%, transparent);
+}
+
+.tdc-git-badge-branch-local {
+	color: var(--tdc-git-branch-local);
+	background: color-mix(in srgb, var(--tdc-git-branch-local) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-branch-local) 40%, transparent);
 }
 
 .tdc-git-badge-branch-deleted {
 	color: var(--tdc-git-branch-deleted);
 	background: color-mix(in srgb, var(--tdc-git-branch-deleted) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-branch-deleted) 40%, transparent);
 	text-decoration: line-through;
 }
 
@@ -2203,43 +2213,74 @@ a.tdc-git-badge:hover {
 .tdc-git-badge-open {
 	color: var(--tdc-git-pr-open);
 	background: color-mix(in srgb, var(--tdc-git-pr-open) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-pr-open) 40%, transparent);
 }
 
 .tdc-git-badge-merged {
 	color: var(--tdc-git-pr-merged);
 	background: color-mix(in srgb, var(--tdc-git-pr-merged) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-pr-merged) 40%, transparent);
 }
 
 .tdc-git-badge-closed {
 	color: var(--tdc-git-pr-closed);
 	background: color-mix(in srgb, var(--tdc-git-pr-closed) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-pr-closed) 40%, transparent);
 }
 
 .tdc-git-badge-draft {
 	color: var(--tdc-git-pr-draft);
 	background: color-mix(in srgb, var(--tdc-git-pr-draft) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-pr-draft) 40%, transparent);
 }
 
 .tdc-git-badge-review {
 	color: var(--tdc-git-pr-review);
 	background: color-mix(in srgb, var(--tdc-git-pr-review) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-pr-review) 40%, transparent);
 }
 
 /* Issue badges */
 .tdc-git-badge-issue-open {
 	color: var(--tdc-gh-open);
 	background: color-mix(in srgb, var(--tdc-gh-open) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-gh-open) 40%, transparent);
 }
 
 .tdc-git-badge-issue-closed {
 	color: var(--tdc-gh-closed);
 	background: color-mix(in srgb, var(--tdc-gh-closed) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-gh-closed) 40%, transparent);
 }
 
 .tdc-git-badge-issue-not-planned {
 	color: var(--text-muted);
 	background: var(--background-modifier-border);
+	border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
+
+/* Header badge color override: text = title color, icon = state color */
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-branch-"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-open"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-merged"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-closed"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-draft"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-review"],
+.tdc-header-badges .tdc-git-badge[class*="tdc-git-badge-issue-"] {
+	color: var(--tdc-issue-header-link-color, var(--text-normal));
+}
+
+.tdc-header-badges .tdc-git-badge-branch-active svg { color: var(--tdc-git-branch-active); }
+.tdc-header-badges .tdc-git-badge-branch-local svg { color: var(--tdc-git-branch-local); }
+.tdc-header-badges .tdc-git-badge-branch-deleted svg { color: var(--tdc-git-branch-deleted); }
+.tdc-header-badges .tdc-git-badge-open svg { color: var(--tdc-git-pr-open); }
+.tdc-header-badges .tdc-git-badge-merged svg { color: var(--tdc-git-pr-merged); }
+.tdc-header-badges .tdc-git-badge-closed svg { color: var(--tdc-git-pr-closed); }
+.tdc-header-badges .tdc-git-badge-draft svg { color: var(--tdc-git-pr-draft); }
+.tdc-header-badges .tdc-git-badge-review svg { color: var(--tdc-git-pr-review); }
+.tdc-header-badges .tdc-git-badge-issue-open svg { color: var(--tdc-gh-open); }
+.tdc-header-badges .tdc-git-badge-issue-closed svg { color: var(--tdc-gh-closed); }
+.tdc-header-badges .tdc-git-badge-issue-not-planned svg { color: var(--text-muted); }
 
 /* Header badges */
 .tdc-header-badges {
@@ -2252,9 +2293,9 @@ a.tdc-git-badge:hover {
 }
 
 .tdc-header-badges .tdc-git-badge {
-	font-size: 10px;
-	line-height: 14px;
-	padding: 1px 5px;
+	font-size: 11px;
+	line-height: 16px;
+	padding: 2px 7px;
 }
 
 .tdc-header-badges-loading {
@@ -2279,7 +2320,8 @@ a.tdc-git-badge:hover {
 
 /* Compact badge mode — icon-only */
 .tdc-badges-compact .tdc-git-badge {
-	padding: 1px 4px;
+	padding: 4px;
+	border-radius: var(--tdc-border-radius-sm);
 }
 
 .tdc-badges-compact .tdc-git-badge > span {
@@ -2337,7 +2379,4 @@ a.tdc-git-badge:hover {
 	position: relative;
 }
 
-/* Hide header badges when collapsed */
-.tdc-collapsed .tdc-header-badges {
-	display: none;
-}
+/* Collapsed cards: badges remain visible, compaction handled by JS */

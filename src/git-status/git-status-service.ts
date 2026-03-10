@@ -144,8 +144,11 @@ export function createGitStatusService(
 		}
 
 		const result = platformService.checkBranchExists(originFolder, branchName);
-		if (result === 'local' || result === 'remote') {
+		if (result === 'remote') {
 			return 'active';
+		}
+		if (result === 'local') {
+			return 'local';
 		}
 		return 'deleted';
 	};

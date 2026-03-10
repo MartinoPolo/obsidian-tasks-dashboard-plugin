@@ -378,6 +378,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			void plugin.app.workspace.openLinkText(params.path, '', false);
 		});
 
+		const headerBadges = header.createDiv({
+			cls: 'tdc-header-badges'
+		});
+
 		const githubLinksText =
 			params.githubLinks.length > 0 ? params.githubLinks.join('\n') : 'None';
 		const worktreeSummary = isWorktreeIssue
@@ -455,10 +459,6 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		setTooltip(infoAffordance, 'Issue info', { delay: 500 });
 		appendInlineSvgIcon(infoAffordance, ICONS.info);
 
-		const headerBadges = header.createDiv({
-			cls: 'tdc-header-badges'
-		});
-
 		let gitStatusInfoLines: string[] = [];
 
 		const buildInfoContent = (): string => {
@@ -517,14 +517,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					lines.push(`Last refreshed: ${formatRelativeTime(gitStatus.fetchedAt)}`);
 					gitStatusInfoLines = lines;
 
-					// Render header badges
+					// Render header badges: Issue → Branch → PR
 					headerBadges.classList.remove('tdc-header-badges-loading');
+					for (const linkedIssue of gitStatus.linkedIssues) {
+						renderIssueBadge(headerBadges, linkedIssue);
+					}
 					renderBranchBadge(headerBadges, gitStatus);
 					for (const pr of gitStatus.linkedPullRequests) {
 						renderPrBadge(headerBadges, pr);
-					}
-					for (const linkedIssue of gitStatus.linkedIssues) {
-						renderIssueBadge(headerBadges, linkedIssue);
 					}
 					applyPrStateAccent(header, gitStatus.aggregatePrState);
 					applyBadgeCompaction();
@@ -626,6 +626,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		window.addEventListener('resize', handleWindowResize);
 		let resizeObserver: ResizeObserver | undefined;
 		const applyBadgeCompaction = (): void => {
+			// Temporarily remove compact to measure natural (expanded) width
+			headerBadges.classList.remove('tdc-badges-compact');
 			const headerOverflowing = header.scrollWidth > header.clientWidth;
 			const titleTruncated = link.scrollWidth > link.clientWidth;
 			headerBadges.classList.toggle('tdc-badges-compact', headerOverflowing || titleTruncated);

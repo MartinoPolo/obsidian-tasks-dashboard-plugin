@@ -738,6 +738,16 @@ export function createPlatformService(): PlatformService {
 			return 'local';
 		}
 
+		// Fallback: git branch --list is more portable on Windows/MINGW64
+		const branchListOutput = runGitCommandOutput(repositoryFolder, [
+			'branch',
+			'--list',
+			branchName
+		]);
+		if (branchListOutput !== undefined && branchListOutput.trim() !== '') {
+			return 'local';
+		}
+
 		const remoteStatus = runGitCommandStatus(repositoryFolder, [
 			'rev-parse',
 			'--verify',

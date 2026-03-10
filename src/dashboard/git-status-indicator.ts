@@ -66,9 +66,11 @@ export function renderBranchBadge(container: HTMLElement, status: IssueGitStatus
 	const branchStatusClass =
 		status.branchStatus === 'active'
 			? 'tdc-git-badge-branch-active'
-			: status.branchStatus === 'deleted'
-				? 'tdc-git-badge-branch-deleted'
-				: 'tdc-git-badge-branch-unknown';
+			: status.branchStatus === 'local'
+				? 'tdc-git-badge-branch-local'
+				: status.branchStatus === 'deleted'
+					? 'tdc-git-badge-branch-deleted'
+					: 'tdc-git-badge-branch-unknown';
 
 	const badge = container.createSpan({
 		cls: `tdc-git-badge ${branchStatusClass}`
@@ -84,9 +86,11 @@ export function renderBranchBadge(container: HTMLElement, status: IssueGitStatus
 	const tooltipText =
 		status.branchStatus === 'active'
 			? `Branch exists: ${status.branchName}`
-			: status.branchStatus === 'deleted'
-				? `Branch deleted: ${status.branchName}`
-				: `Branch status unknown: ${status.branchName}`;
+			: status.branchStatus === 'local'
+				? `Branch local only (not pushed): ${status.branchName}`
+				: status.branchStatus === 'deleted'
+					? `Branch deleted: ${status.branchName}`
+					: `Branch status unknown: ${status.branchName}`;
 	setTooltip(badge, tooltipText, { delay: 300 });
 }
 

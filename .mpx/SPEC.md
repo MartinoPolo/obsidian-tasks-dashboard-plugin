@@ -200,10 +200,24 @@ When I go through the worktree creation from the ATC back office issue, which is
 - [x] When archiving an issue that has a worktree assigned, I get a prompt for whether I want to also remove the worktree. When I hit escape, the issue is archived and the worktree is not created. I would like the behavior to change so that hitting escape completely cancels archiving the issue. The issue should only be archived by pressing enter.
 Therefore, we have to change the logic of deleting the worktree to the checkbox we have in the delete issue modal. Archiving an issue should be archived immediately on click of the button. If there is no worktree, it should ask "Do you really want to archive the issue?" and have a checkbox also delete or remove the associated worktree. Hitting escape in that modal cancels both deletions, and hitting enter deletes the issue and removes the worktree if the checkbox is checked.
 - [x] I am not able to assign worktree later if the worktree creation failed or the setup failed or the link between worktree and the dashboard issue is somehow broken. I need to be able to assign the worktree again, which means to link it to a proper folder as well as to the worktree on GitHub, I guess, or what are all the data necessary for a proper worktree linkage. The user should be able to add worktree later or assign worktree to a specific issue, updating all the necessary properties. We already have a button. That button has a tooltip "Retry worktree setup". Clicking on that button spawns a modal, but I'm not able to click on any of the active worktrees for them to be assigned. I am only able to create a new worktree by placing a new name in the input and pressing Create. User needs to be able to see a list of currently created worktrees and assign the dashboard issue to a worktree, which should update all the necessary properties and states. First, please research what properties are set during work recreation and if we are able to gather them all.
-
 Also, it seems that in that modal the Create and Cancel buttons are reversed. The Create green button should be on the right. Please check that this is the case in other modal as well and report any inconsistencies.
 
-- [ ] Worktree icon in the issue card says atc-backoffice/main -> 1001-name-of-the-worktree-and-branch. However, the worktree was based on the dev branch in ATC backoffice, which means that there is no base branch detection or it is incorrect. I would like to save the branch name from the time when the worktree is created so that we know to which branch this was related.
+- [x] Icon for rebuild dashboard is the same as for sort - Let's find something suitable for rebuild action
+- [x] When a branch is deleted, it displays the number in the branch name twice. 1019-1019-table-pagination
+- [x] If a branch is not yet pushed to origin, it is evaluated as deleted. We should Determine the state of a branch based on both local and remote state of that branch.
+- [x] PR/Issue/branch badges should be visible even in collapsed state of dashboard issue card. Currently, it's visible only in the expanded state. The badges should also be a bit larger. The badges should be on the left of the worktree button/icon. The order in the header should be:
+1. collapse_button
+2. title
+3. badges
+4. worktree button/icon
+5. issue_info
+6. the rest of the buttons Their text should always match the text of the title and the issue info icon, which means to get the secondary color from the color picker selected for that issue. Also, there's some issue with layouting whenever we decrease the width of the page where the badges are visible. The buttons are getting correctly hidden to the point when only the three dot button is visible, and then there is some undefined state which changes on and off with each pixel change in width of the page. The two states are:
+- badges collapsed into icons - this is what we want for not enough space.
+- badges expanded to full size with text, some buttons on the right visible, and issue title being truncated - this is some weird not well defined state which should be discarded
+
+- [x] Worktree icon in the issue card says atc-backoffice/main -> 1001-name-of-the-worktree-and-branch. However, the worktree was based on the dev branch in ATC backoffice, which means that there is no base branch detection or it is incorrect. I would like to save the branch name from the time when the worktree is created so that we know to which branch this was related.
+
+- [ ] Priority selection step in issue creation doesn't have a confirmation button, only skip and cancel. Skip doesn't even make sense here as task has to have a priority. Even when no priority is selected, there is a default priority assigned.
 
 ## Git Status
 
@@ -251,12 +265,19 @@ Also, it seems that in that modal the Create and Cancel buttons are reversed. Th
 
 - [x] Remove the standalone GitHub issue markdown link (`[#number - title](url)`) from issue note creation (`generateIssueContent`) and GitHub linking (`updateBodyWithGitHubLink`). The `tasks-dashboard-github` code block remains as the sole GitHub section in issue notes
 
+## Ask before Archiving/Deleting if there are unfinished tasks in the issue (Phase 30)
+- [ ] Whenever archiving or deleting an issue, if there are any unfinished tasks in that issue, we should ask for confirmation with a warning that there are unfinished tasks. In the case of delete modal, we already have that, and we just want to add red text saying there are x unfinished tasks. In case of archive, we also have the model, but I think we spawn it only when there is a worktree assigned to that issue. Now I would also like to spawn it if there are any unfinished tasks.
+
+## Check VS code color before spawning it from the plugin
+- [ ] VS Code color is determined by workspace settings in.vscode/settings.json, specifically the peacock.color property. Whenever VS Code is spawned from this Obsidian plugin, we should check that the value in that Peacock color property matches the color of the issue it is spawned from. If it's spawned from the dashboard, we don't have to do this check because dashboards don't have colors aside. Whenever we are spawning it from an issue, it should do this check. Please see how the setup worktree script does the color change and use that convention to also edit the color or to check the color and edit the color if there is a mismatch to the current issue color.
+- [ ] Whenever an issue is created automatically via "quick worktree from #[issue number]" button is used, It should use the next color related to the last color that was used for issue creation. Currently, we're using a system where the first available color is used; however, I would like to change that so that the system remembers which color was the last used during any issue creation and selects the next available color from there. The point is that when I create an issue, delete this issue, and create another issue, it has the same color, and I would like the issue colors to rotate more.
 
 ## Manual Test cases
 - See what happens when we have full GitHub integration for a dashboard with all the worktrees' PRs and branches correctly fetched and displayed, and what happens when we remove the GitHub integration.
    - See if sorting by GitHub stuff is hidden.
 
-## Bugs
-- [ ] Icon for rebuild dashboard is the same as for sort - Let's find something suitable for rebuild action
-- [ ] When a branch is deleted, it displays the number in the branch name twice. 1019-1019-table-pagination
-- [ ] If a branch is not yet pushed to origin, it is evaluated as deleted. We should Determine the state of a branch based on both local and remote state of that branch.
+## TODO
+- [ ] Refactor all large files, do a clean code sweep across the whole project
+- [ ] We should keep small components if possible - for example header badges seems like a perfect candidate for standalone component. First, analyze how we should approach componentization in Obsidian Plugin.
+
+- [ ] Consolidate all current phases into 1 epic

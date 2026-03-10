@@ -400,7 +400,7 @@ export function renderSortControls(
 			}
 		},
 		{
-			iconKey: 'sort',
+			iconKey: 'rebuild',
 			label: 'Rebuild',
 			cssClass: SECONDARY_ACTION_BUTTON_CLASS,
 			onClick: () => {
