@@ -49,6 +49,11 @@ export interface GitHubServiceInstance {
 	getRepository: (owner: string, repo: string) => Promise<GitHubRepoMetadata | undefined>;
 	getAuthenticatedUser: () => Promise<string | undefined>;
 	getUserOrganizations: () => Promise<string[]>;
+	getPullRequestsByBranch: (
+		owner: string,
+		repo: string,
+		branch: string
+	) => Promise<GitHubIssueMetadata[]>;
 	clearCache: () => void;
 	clearCacheForUrl: (url: string) => void;
 	isAuthenticated: () => boolean;

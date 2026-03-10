@@ -52,7 +52,11 @@ export interface IssueManagerInstance {
 		color?: string,
 		worktreeOriginFolder?: string
 	) => void;
-	retryWorktreeSetup: (dashboard: DashboardConfig, issueId: string, branchOverride?: string) => Promise<void>;
+	retryWorktreeSetup: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		branchOverride?: string
+	) => Promise<void>;
 	removeWorktree: (
 		dashboard: DashboardConfig,
 		issueId: string,

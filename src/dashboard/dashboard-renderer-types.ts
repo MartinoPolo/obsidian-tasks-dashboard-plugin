@@ -38,5 +38,6 @@ export interface ControlParams {
 	worktree_expected_folder?: string;
 	worktree_setup_state?: WorktreeSetupState;
 	worktree_base_repository?: string;
+	worktree_base_branch?: string;
 	worktree_safe_delete?: boolean;
 }

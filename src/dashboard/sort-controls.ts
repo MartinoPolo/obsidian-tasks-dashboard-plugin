@@ -297,6 +297,10 @@ export function renderSortControls(
 		{
 			label: 'Worktree Folder',
 			action: () => void plugin.dashboardWriter.sortByWorktreeFolder(dashboard)
+		},
+		{
+			label: 'PR State',
+			action: () => void plugin.dashboardWriter.sortByPrState(dashboard)
 		}
 	];
 

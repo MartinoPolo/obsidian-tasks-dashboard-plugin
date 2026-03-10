@@ -16,6 +16,10 @@ import {
 	createDashboardWriter,
 	type DashboardWriterInstance
 } from './src/dashboard/DashboardWriter';
+import {
+	createGitStatusService,
+	type GitStatusServiceInstance
+} from './src/git-status/git-status-service';
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
 import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
@@ -28,6 +32,7 @@ import {
 	TasksDashboardSettings
 } from './src/types';
 import { getDashboardPath } from './src/utils/dashboard-path';
+import { createPlatformService } from './src/utils/platform';
 
 const REFRESH_DEBOUNCE_MS = 500;
 
@@ -126,12 +131,17 @@ export default class TasksDashboardPlugin extends Plugin {
 	dashboardWriter!: DashboardWriterInstance;
 	dashboardRenderer!: DashboardRendererInstance;
 	githubService!: GitHubServiceInstance;
+	gitStatusService!: GitStatusServiceInstance;
 	private registeredCommands: string[] = [];
 	async onload() {
 		try {
 			await this.loadSettings();
 			this.githubService = createGitHubService();
 			this.githubService.setAuth(this.settings.githubAuth);
+			this.gitStatusService = createGitStatusService(
+				this.githubService,
+				createPlatformService()
+			);
 			this.issueManager = createIssueManager(this.app, this);
 			this.progressTracker = createProgressTracker(this.app);
 			this.dashboardWriter = createDashboardWriter(this.app, this);

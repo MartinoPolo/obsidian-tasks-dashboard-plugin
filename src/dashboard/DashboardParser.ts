@@ -130,7 +130,7 @@ export function initializeDashboardStructure(
 	includeAssignedIssuesSection = false,
 	dashboardFilename?: string
 ): string {
-	const displayName = (dashboardFilename || 'Dashboard').replace(/\.md$/i, '');
+	const displayName = (dashboardFilename !== undefined && dashboardFilename !== '' ? dashboardFilename : 'Dashboard').replace(/\.md$/i, '');
 	const assignedIssuesSection = includeAssignedIssuesSection
 		? `# Assigned Issues
 \`\`\`tasks-dashboard-assigned

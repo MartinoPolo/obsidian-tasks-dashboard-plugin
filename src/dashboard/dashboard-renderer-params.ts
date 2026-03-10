@@ -100,6 +100,9 @@ export const parseParams = (source: string): ControlParams | null => {
 			case 'worktree_base_repository':
 				params.worktree_base_repository = line.value;
 				break;
+			case 'worktree_base_branch':
+				params.worktree_base_branch = line.value;
+				break;
 			case 'worktree_safe_delete': {
 				const worktreeSafeDelete = parseBoolean(line.value);
 				if (worktreeSafeDelete !== undefined) {

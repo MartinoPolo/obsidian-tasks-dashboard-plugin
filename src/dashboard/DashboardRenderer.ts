@@ -36,6 +36,7 @@ import type {
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
 import { extractLastPathSegment } from '../utils/path-utils';
+import { renderBranchBadge, renderPrBadge, renderIssueBadge, applyPrStateAccent } from './git-status-indicator';
 import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { appendInlineSvgIcon, createActionButton, ICONS } from './header-actions';
 import { renderSortControls } from './sort-controls';
@@ -58,7 +59,7 @@ export interface DashboardRendererInstance {
 
 interface IssueInfoPanelOptions {
 	infoButton: HTMLElement;
-	content: string;
+	getContent: () => string;
 }
 
 function createIssueInfoPanel(options: IssueInfoPanelOptions): () => void {
@@ -185,7 +186,7 @@ function createIssueInfoPanel(options: IssueInfoPanelOptions): () => void {
 		nextPanel.empty();
 		nextPanel.classList.remove('tdc-hidden');
 		const content = nextPanel.createDiv({ cls: 'tdc-issue-info-panel-content' });
-		content.setText(options.content);
+		content.setText(options.getContent());
 
 		positionPanel();
 		window.addEventListener('scroll', positionPanel, true);
@@ -223,6 +224,19 @@ function createIssueInfoPanel(options: IssueInfoPanelOptions): () => void {
 
 const DEFAULT_ASSIGNED_ISSUES_PER_REPO = 10;
 
+function formatRelativeTime(timestamp: number): string {
+	const seconds = Math.floor((Date.now() - timestamp) / 1000);
+	if (seconds < 60) {
+		return 'just now';
+	}
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) {
+		return `${minutes} min ago`;
+	}
+	const hours = Math.floor(minutes / 60);
+	return `${hours}h ago`;
+}
+
 export function createDashboardRenderer(plugin: TasksDashboardPlugin): DashboardRendererInstance {
 	const { renderGitHubCardWithRefresh } = createGitHubCardRefreshRenderer(plugin);
 	const platformService = createPlatformService();
@@ -240,14 +254,15 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 	const buildWorktreeLocationTooltip = (
 		originFolder: string | undefined,
-		checkedOutBranch: string | undefined
+		checkedOutBranch: string | undefined,
+		storedBaseBranch?: string
 	): string => {
 		if (originFolder === undefined || originFolder.trim() === '') {
 			return 'Worktree active';
 		}
 
 		const baseFolderName = extractLastPathSegment(originFolder);
-		const baseBranch = getCachedDefaultBranch(originFolder);
+		const baseBranch = storedBaseBranch ?? getCachedDefaultBranch(originFolder);
 		const branchDisplay = checkedOutBranch ?? 'unknown';
 
 		if (baseBranch !== undefined) {
@@ -365,7 +380,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					`origin: ${params.worktree_origin_folder ?? 'n/a'}`,
 					`expected folder: ${params.worktree_expected_folder ?? 'n/a'}`,
 					`setup state: ${params.worktree_setup_state ?? 'n/a'}`,
-					`base repository: ${params.worktree_base_repository ?? 'n/a'}`
+					`base repository: ${params.worktree_base_repository ?? 'n/a'}`,
+					`base branch: ${params.worktree_base_branch ?? 'n/a'}`
 				].join('\n')
 			: 'not a worktree issue';
 
@@ -402,7 +418,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 				});
 				const worktreeActiveTooltip = buildWorktreeLocationTooltip(
 					params.worktree_origin_folder,
-					params.worktree_branch
+					params.worktree_branch,
+					params.worktree_base_branch
 				);
 				setTooltip(worktreeRefreshButton, worktreeActiveTooltip, { delay: 500 });
 				appendInlineSvgIcon(worktreeRefreshButton, ICONS.worktree);
@@ -431,18 +448,80 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 		setTooltip(infoAffordance, 'Issue info', { delay: 500 });
 		appendInlineSvgIcon(infoAffordance, ICONS.info);
-		const issueInfoText = [
-			`Issue: ${params.issue}`,
-			`Dashboard: ${dashboard.id}`,
-			`Path: ${params.path}`,
-			`Assigned folder: ${assignedIssueFolder ?? 'None'}`,
-			`GitHub links:\n${githubLinksText}`,
-			`Worktree:\n${worktreeSummary}`
-		].join('\n\n');
+
+		const headerBadges = header.createDiv({
+			cls: 'tdc-header-badges'
+		});
+
+		let gitStatusInfoLines: string[] = [];
+
+		const buildInfoContent = (): string => {
+			const sections: string[] = [
+				`Dashboard: ${dashboard.id}\nIssue: ${params.issue}`,
+				`Assigned folder: ${assignedIssueFolder ?? 'None'}`,
+				`GitHub links:\n${githubLinksText}`,
+				`Worktree:\n${worktreeSummary}`
+			];
+			if (gitStatusInfoLines.length > 0) {
+				sections.push(gitStatusInfoLines.join('\n'));
+			} else {
+				sections.push('Last refreshed: Not yet');
+			}
+			return sections.join('\n\n');
+		};
+
 		const disposeIssueInfoPanel = createIssueInfoPanel({
 			infoButton: infoAffordance,
-			content: issueInfoText
+			getContent: buildInfoContent
 		});
+
+		// Async-fetch git status and update info panel data
+		if (isWorktreeIssue || params.githubLinks.length > 0) {
+			headerBadges.classList.add('tdc-header-badges-loading');
+			const linkedReposForInfo = getLinkedRepositories(dashboard);
+			void plugin.gitStatusService
+				.getIssueGitStatus({
+					branchName: params.worktree_branch,
+					originFolder: params.worktree_origin_folder,
+					baseBranch: params.worktree_base_branch,
+					githubLinks: params.githubLinks,
+					dashboardId: dashboard.id,
+					issueId: params.issue,
+					linkedRepos: linkedReposForInfo
+				})
+				.then((gitStatus) => {
+					const lines: string[] = [];
+					if (gitStatus.branchName !== undefined) {
+						lines.push(`Branch: ${gitStatus.branchName} (${gitStatus.branchStatus})`);
+						if (gitStatus.baseBranch !== undefined) {
+							lines.push(`Base branch: ${gitStatus.baseBranch}`);
+						}
+					}
+					if (gitStatus.linkedPullRequests.length > 0) {
+						const prLines = gitStatus.linkedPullRequests.map(
+							(pr) => `  #${pr.number} ${pr.state} — ${pr.title}`
+						);
+						lines.push(`PRs:\n${prLines.join('\n')}`);
+					}
+					lines.push(`Last refreshed: ${formatRelativeTime(gitStatus.fetchedAt)}`);
+					gitStatusInfoLines = lines;
+
+					// Render header badges
+					headerBadges.classList.remove('tdc-header-badges-loading');
+					renderBranchBadge(headerBadges, gitStatus);
+					for (const pr of gitStatus.linkedPullRequests) {
+						renderPrBadge(headerBadges, pr);
+					}
+					for (const linkedIssue of gitStatus.linkedIssues) {
+						renderIssueBadge(headerBadges, linkedIssue);
+					}
+					applyPrStateAccent(container, gitStatus.aggregatePrState);
+				})
+				.catch(() => {
+					gitStatusInfoLines = ['Last refreshed: Error'];
+					headerBadges.classList.remove('tdc-header-badges-loading');
+				});
+		}
 
 		const row1Container = header.createDiv({ cls: 'tdc-header-actions' });
 		const overflowWrapper = row1Container.createDiv({ cls: 'tdc-overflow-wrapper' });
@@ -927,8 +1006,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 						);
 						return;
 					}
-					void collectDashboardIssueIdSet(plugin.app, dashboard).then(
-						(dashboardIssueIds) => {
+					void collectDashboardIssueIdSet(plugin.app, dashboard)
+						.then((dashboardIssueIds) => {
 							const quickDefaults: QuickCreateDefaults = {
 								priority: 'medium',
 								color: getNextAvailableIssueColor(
@@ -945,10 +1024,10 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 								githubUrl: issue.url,
 								quickCreateDefaults: quickDefaults
 							});
-						}
-					).catch(() => {
-						new Notice('Failed to load dashboard issues');
-					});
+						})
+						.catch(() => {
+							new Notice('Failed to load dashboard issues');
+						});
 				}
 			});
 		};

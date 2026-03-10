@@ -71,6 +71,27 @@ export const extractWorktreeOriginFolderFromBlock = (block: string): string => {
 	return match[1].trim();
 };
 
+const WORKTREE_BRANCH_PATTERN = /worktree_branch:\s*(.+)/;
+const GITHUB_LINK_EXTRACT_PATTERN = /github_link:\s*(\S+)/g;
+
+export const extractBranchFromBlock = (block: string): string | undefined => {
+	const match = block.match(WORKTREE_BRANCH_PATTERN);
+	if (match === null) {
+		return undefined;
+	}
+	return match[1].trim();
+};
+
+export const extractGithubLinksFromBlock = (block: string): string[] => {
+	const links: string[] = [];
+	let match: RegExpExecArray | null;
+	const pattern = new RegExp(GITHUB_LINK_EXTRACT_PATTERN.source, 'g');
+	while ((match = pattern.exec(block)) !== null) {
+		links.push(match[1]);
+	}
+	return links;
+};
+
 export const sortByDateField = async (
 	dashboardData: ActiveDashboardData,
 	direction: SortDirection,

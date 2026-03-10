@@ -1,29 +1,10 @@
 import { DashboardConfig, GitHubIssueMetadata, GitHubStoredMetadata, Issue } from '../types';
-import { parseGitHubUrlInfo } from '../utils/github';
-import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../utils/github-url';
 import {
 	appendBeforeFrontmatterClose,
 	escapeForRegExp,
 	getDashboardFilename,
 	getFrontmatterCloseIndex
 } from './issue-manager-shared';
-
-function formatGitHubLinkText(url: string, metadata?: GitHubStoredMetadata): string {
-	if (metadata !== undefined) {
-		return `#${metadata.number} - ${metadata.title}`;
-	}
-	const parsed = parseGitHubUrlInfo(url);
-	if (parsed !== undefined) {
-		return `#${parsed.number}`;
-	}
-	if (isGitHubRepoUrl(url)) {
-		const repoFullName = parseGitHubRepoFullName(url);
-		if (repoFullName !== undefined) {
-			return repoFullName;
-		}
-	}
-	return 'GitHub Link';
-}
 
 export function buildGitHubMetadataYaml(
 	metadata: GitHubStoredMetadata,
@@ -71,17 +52,11 @@ function generateGithubLinksFrontmatter(
 
 function generateGithubLinksBody(
 	links: string[],
-	metadataList: GitHubStoredMetadata[],
 	dashboardId: string
 ): string {
 	let body = '';
-	for (let index = 0; index < links.length; index++) {
-		const url = links[index];
-		const metadata = metadataList.at(index);
-		const linkText = formatGitHubLinkText(url, metadata);
-		body += `\n[${linkText}](${url})
-
-\`\`\`tasks-dashboard-github
+	for (const url of links) {
+		body += `\n\`\`\`tasks-dashboard-github
 url: ${url}
 dashboard: ${dashboardId}
 \`\`\``;
@@ -127,7 +102,7 @@ priority: ${issue.priority}`;
 [← Back to Dashboard](${relativePath})
 # ${issue.name}`;
 
-	content += generateGithubLinksBody(links, metadataList, dashboard.id);
+	content += generateGithubLinksBody(links, dashboard.id);
 
 	content += `
 ---
@@ -211,12 +186,9 @@ export function updateFrontmatterWithGitHubLink(
 export function updateBodyWithGitHubLink(
 	content: string,
 	githubUrl: string,
-	storedMetadata: GitHubStoredMetadata | undefined,
 	dashboardId: string
 ): string {
-	const linkText = formatGitHubLinkText(githubUrl, storedMetadata);
 	const githubBlock =
-		`[${linkText}](${githubUrl})\n\n` +
 		'```tasks-dashboard-github\n' +
 		`url: ${githubUrl}\n` +
 		`dashboard: ${dashboardId}\n` +
@@ -257,11 +229,18 @@ export function removeGitHubLinkFromIssueContent(content: string, githubUrl: str
 	}
 
 	const escapedUrl = escapeForRegExp(githubUrl);
-	const bodyLinkPattern = new RegExp(
+	// Old format: markdown link + code block
+	const oldFormatPattern = new RegExp(
 		`\\n?\\[([^\\]]*?)\\]\\(${escapedUrl}\\)\\s*\\n\\n\`\`\`tasks-dashboard-github\\nurl: ${escapedUrl}\\ndashboard: [^\\n]+\\n\`\`\``,
 		'g'
 	);
-	return content.replace(bodyLinkPattern, '');
+	content = content.replace(oldFormatPattern, '');
+	// New format: code block only (no markdown link prefix)
+	const newFormatPattern = new RegExp(
+		`\\n?\`\`\`tasks-dashboard-github\\nurl: ${escapedUrl}\\ndashboard: [^\\n]+\\n\`\`\``,
+		'g'
+	);
+	return content.replace(newFormatPattern, '');
 }
 
 export function removeGitHubLinkFromDashboardIssueBlock(block: string, githubUrl: string): string {

@@ -46,6 +46,18 @@ Detailed execution tasks and decisions live in `.mpx/phases/*/CHECKLIST.md`.
 
 
 
+### Issue Card & Header Refinements
+
+- Phase 29: header-badges-and-card-refinements
+  - Move git status badges into header (branch/PR/issue state)
+  - Remove embedded GitHub cards from dashboard issue cards
+  - Header styling fixes (info icon color, spacing)
+  - PR accent strip on header bottom border
+  - Priority toggle per dashboard
+  - Remove standalone GitHub link from issue notes
+  - Responsive badge compaction (icon-only on narrow widths)
+  - Right-click refresh on badges
+
 ## Unphased Backlog
 
 - OAuth authentication for github (alternative to PAT)

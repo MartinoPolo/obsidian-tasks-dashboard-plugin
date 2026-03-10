@@ -108,6 +108,33 @@ export function createGitHubService(): GitHubServiceInstance {
 		});
 	};
 
+	const getPullRequestsByBranch = async (
+		owner: string,
+		repo: string,
+		branch: string
+	): Promise<GitHubIssueMetadata[]> => {
+		if (!isAuthenticated()) {
+			return [];
+		}
+
+		const cacheKey = `prs-by-branch:${owner}/${repo}:${branch}`;
+		const cached = cacheStore.get<GitHubIssueMetadata[]>(cacheKey);
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		const data = await requestClient.apiRequest<GitHubPullRequestApiResponse[]>(
+			`/repos/${owner}/${repo}/pulls?head=${encodeURIComponent(owner)}:${encodeURIComponent(branch)}&state=all&per_page=10`
+		);
+		if (data === undefined) {
+			return [];
+		}
+
+		const items = data.map((pr) => mapPullRequestResponse(pr, owner, repo));
+		cacheStore.set(cacheKey, items);
+		return items;
+	};
+
 	const getMetadataFromUrl = async (url: string): Promise<GitHubIssueMetadata | undefined> => {
 		const parsed = parseGitHubUrl(url);
 		if (parsed === undefined) {
@@ -406,6 +433,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		validateToken,
 		getIssue,
 		getPullRequest,
+		getPullRequestsByBranch,
 		searchIssues,
 		searchPullRequests,
 		searchIssuesInMyRepos,

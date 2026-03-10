@@ -21,6 +21,7 @@ export interface DashboardWriterInstance {
 	sortByCreatedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	sortByEditedDate: (dashboard: DashboardConfig, direction: SortDirection) => Promise<void>;
 	sortByWorktreeFolder: (dashboard: DashboardConfig) => Promise<void>;
+	sortByPrState: (dashboard: DashboardConfig) => Promise<void>;
 	rebuildDashboardFromFiles: (dashboard: DashboardConfig) => Promise<number>;
 }
 
@@ -37,6 +38,7 @@ export interface IssueBlockParams {
 	worktreeExpectedFolder?: string;
 	worktreeSetupState?: WorktreeSetupState;
 	worktreeBaseRepository?: string;
+	worktreeBaseBranch?: string;
 	worktreeSafeDelete?: boolean;
 	isArchived: boolean;
 }
@@ -54,6 +56,7 @@ export interface ParsedIssueFile {
 	worktreeExpectedFolder?: string;
 	worktreeSetupState?: WorktreeSetupState;
 	worktreeBaseRepository?: string;
+	worktreeBaseBranch?: string;
 	worktreeSafeDelete?: boolean;
 }
 

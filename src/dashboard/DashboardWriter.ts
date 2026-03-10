@@ -3,6 +3,8 @@ import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, PRIORITY_ORDER } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
 import {
+	extractBranchFromBlock,
+	extractGithubLinksFromBlock,
 	extractWorktreeOriginFolderFromBlock,
 	getActiveIssueBlocksFromDashboard,
 	sortByDateField as getSortedBlocksByDateField,
@@ -19,6 +21,7 @@ import {
 	escapeRegExp,
 	extractAndRemoveIssueBlock,
 	extractNotesSection,
+	getLinkedRepositories,
 	hasDashboardLinkedRepository,
 	insertBeforeMarker,
 	parseYamlFrontmatter,
@@ -440,6 +443,82 @@ export function createDashboardWriter(
 		);
 	};
 
+	const sortByPrState: DashboardWriterInstance['sortByPrState'] = async (dashboard) => {
+		const dashboardData = await getActiveIssueBlocksFromDashboard(
+			app,
+			dashboard,
+			getDashboardFile
+		);
+		if (dashboardData === undefined) {
+			return;
+		}
+
+		const { content, issues } = dashboardData;
+		if (issues.length < 2) {
+			return;
+		}
+
+		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
+
+		// Extract PR state from git status cache for each issue
+		const prStateSortOrder: Record<string, number> = {
+			none: 0,
+			open: 0,
+			draft: 1,
+			'review-requested': 2,
+			merged: 3,
+			closed: 4
+		};
+
+		// Extract PR state from issue blocks via GitHub link patterns
+		const issuePrStateOrder = new Map<string, number>();
+		for (const issue of issues) {
+			const block = issueIdToBlock.get(issue.id);
+			if (block === undefined) {
+				issuePrStateOrder.set(issue.id, 0);
+				continue;
+			}
+
+			// Try to get cached git status from plugin
+			try {
+				const gitStatus = await plugin.gitStatusService.getIssueGitStatus({
+					branchName: extractBranchFromBlock(block),
+					originFolder: extractWorktreeOriginFolderFromBlock(block),
+					baseBranch: undefined,
+					githubLinks: extractGithubLinksFromBlock(block),
+					dashboardId: dashboard.id,
+					issueId: issue.id,
+					linkedRepos: getLinkedRepositories(dashboard)
+				});
+				issuePrStateOrder.set(issue.id, prStateSortOrder[gitStatus.aggregatePrState] ?? 0);
+			} catch {
+				issuePrStateOrder.set(issue.id, 0);
+			}
+		}
+
+		const sortedIssues = [...issues].sort((a, b) => {
+			const stateA = issuePrStateOrder.get(a.id) ?? 0;
+			const stateB = issuePrStateOrder.get(b.id) ?? 0;
+			const stateComparison = stateA - stateB;
+			if (stateComparison !== 0) {
+				return stateComparison;
+			}
+			return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+		});
+
+		const sortedBlocks = sortedIssues
+			.map((issue) => issueIdToBlock.get(issue.id))
+			.filter((block): block is string => block !== undefined);
+
+		await rebuildActiveSectionWithSortedBlocks(
+			app,
+			dashboard,
+			getDashboardFile,
+			sortedBlocks,
+			'Issues sorted by PR state'
+		);
+	};
+
 	const rebuildDashboardFromFiles: DashboardWriterInstance['rebuildDashboardFromFiles'] = async (
 		dashboard
 	) => {
@@ -485,6 +564,7 @@ export function createDashboardWriter(
 		sortByCreatedDate,
 		sortByEditedDate,
 		sortByWorktreeFolder,
+		sortByPrState,
 		rebuildDashboardFromFiles
 	};
 }

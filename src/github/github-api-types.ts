@@ -32,6 +32,7 @@ export interface GitHubIssueApiResponse extends GitHubIssueLikeApiResponse {
 export interface GitHubPullRequestApiResponse extends GitHubIssueLikeApiResponse {
 	merged: boolean;
 	draft: boolean;
+	requested_reviewers?: GitHubAssigneeApiResponse[];
 }
 
 export interface GitHubSearchApiResponse {

@@ -76,7 +76,7 @@ export interface GitHubIssueMetadata {
 	repository: string;
 	url: string;
 	isPR: boolean;
-	prStatus?: 'merged' | 'draft' | 'open' | 'closed';
+	prStatus?: 'merged' | 'draft' | 'open' | 'closed' | 'review-requested';
 }
 
 export interface GitHubStoredMetadata {
@@ -99,6 +99,7 @@ export interface Issue {
 	worktreeExpectedFolder?: string;
 	worktreeSetupState?: WorktreeSetupState;
 	worktreeBaseRepository?: string;
+	worktreeBaseBranch?: string;
 	worktreeSafeDelete?: boolean;
 	/** @deprecated Use githubLinks instead. Kept for backward compatibility during migration. */
 	githubLink?: string;

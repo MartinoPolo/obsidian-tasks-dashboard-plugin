@@ -205,17 +205,58 @@ Also, it seems that in that modal the Create and Cancel buttons are reversed. Th
 
 - [ ] Worktree icon in the issue card says atc-backoffice/main -> 1001-name-of-the-worktree-and-branch. However, the worktree was based on the dev branch in ATC backoffice, which means that there is no base branch detection or it is incorrect. I would like to save the branch name from the time when the worktree is created so that we know to which branch this was related.
 
-## Git status
-- [ ] Add a completely new section or phase for implementation where we fetch and correctly update the status of:
-- GitHub worktree
-- status of the branch
-- the linked PR status
-- issue status
-It should show an icon for the branch state, similar to what GitHub does. We want to see:
-- if the branch exists
-- what the base branch is
-- if there is a PR on that branch, what state the PR is in
-- if the associated issue has states
-These states should also all be indicated with an icon in the issue card. The PR icon should only be there if a PR exists.
-This should all apply also for issues that don't have a worktree, that only have an issue assigned. We should fetch if there is a PR assigned to that issue and its state as well, if possible. Figure out the strategy on how to refresh these data and where to get them reliably, how often to refresh them, etc.
-Also, I'd like to indicate even more vividly the state of a PR. If it's for review or merged, the whole issue card should maybe change color with a gradient or split the section in two and show a different color in the second section. I would like this to be really visible. Also, there should be a new sorting mechanism which puts all the in-review PRs below the open ones, and at the bottom we should place all the merged/closed ones.
+## Git Status
+
+- [x] Fetch and display branch status, linked PR status, and GitHub issue status per dashboard issue
+- [x] Branch badge with GitHub-style icon: green when active, strikethrough when deleted, gray when unknown
+- [x] PR badge with state icon: open (green), draft (gray), merged (purple), closed (red), review-requested (yellow)
+- [x] PR badge only shown when a PR exists
+- [x] Works for both worktree issues (branch-based lookup) and non-worktree issues (GitHub-link-based lookup)
+- [x] PR state accent: vivid card accent (border + gradient overlay) for merged and review-requested states
+- [x] Sort by PR state: review-requested → open → draft → merged → closed
+- [x] 5-minute cache with manual refresh via dashboard refresh button
+
+### Header Badges (Phase 29)
+
+- [ ] Move branch and PR badges from the git-status strip (below header) into the issue header, directly after the worktree icon
+- [ ] Add GitHub issue state badge in the header alongside branch/PR badges, with appropriate GitHub icons (open = green circle-dot, closed = purple circle-check) and clickable link to the GitHub issue
+- [ ] Badge text: branch name trimmed to 16 characters; PR shows `#number State`; issue shows `#number State`
+- [ ] Responsive badge behavior: when insufficient header space, badges collapse to icon-only mode (keeping state color and icon, dropping text)
+- [ ] PR badge is a clickable link opening the PR URL
+- [ ] Right-click context menu on PR/branch/issue badges with "Refresh" action to refresh git status for that specific issue
+- [ ] Remove the git-status strip container (`.tdc-git-status-container`) between header and controls — badges live in header now
+- [ ] PR state accent strip rendered at bottom border of issue header (not left border)
+
+### Issue Card Simplification (Phase 29)
+
+- [ ] Remove embedded GitHub issue/PR cards from dashboard issue cards. Dashboard issue card contains only: header (with badges and buttons), controls (progress + action buttons), task query section
+- [ ] GitHub issue summary retained only inside the issue note file (via `tasks-dashboard-github` code block)
+
+## Issue Header Styling (Phase 29)
+
+- [ ] Info icon color matches header text color (not `--text-muted`). On hover, show slightly gray background (no color change to `--text-normal`)
+- [ ] Worktree icon uses green color (`var(--tdc-priority-low)` / `#4caf50`) in active state (already implemented, verify)
+- [ ] Consistent spacing between worktree icon, info icon, and other header action buttons — remove the extra `margin-left: 6px` on info icon so all elements use the header's `gap: 8px`
+
+## Priority Toggle (Phase 29)
+
+- [ ] Per-dashboard setting `prioritiesEnabled` (default: `true`). When disabled:
+  - Priority left-border strip hidden on issue cards (CSS-driven, priority class still applied)
+  - Priority selection step skipped in all issue creation workflows
+  - All issues auto-assigned `low` priority
+  - "Sort by Priority" option hidden from sort dropdown
+  - Issues retain priority in data model (just not displayed or prompted)
+
+## Issue Note Cleanup (Phase 29)
+
+- [ ] Remove the standalone GitHub issue markdown link (`[#number - title](url)`) from issue note creation (`generateIssueContent`) and GitHub linking (`updateBodyWithGitHubLink`). The `tasks-dashboard-github` code block remains as the sole GitHub section in issue notes
+
+
+## Manual Test cases
+- See what happens when we have full GitHub integration for a dashboard with all the worktrees' PRs and branches correctly fetched and displayed, and what happens when we remove the GitHub integration.
+   - See if sorting by GitHub stuff is hidden.
+
+## Bugs
+- [ ] Icon for rebuild dashboard is the same as for sort - Let's find something suitable for rebuild action
+- [ ] When a branch is deleted, it displays the number in the branch name twice. 1019-1019-table-pagination
+- [ ] If a branch is not yet pushed to origin, it is evaluated as deleted. We should Determine the state of a branch based on both local and remote state of that branch.

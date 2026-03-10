@@ -34,6 +34,7 @@ const WORKTREE_ORIGIN_FOLDER_FIELD = 'worktree_origin_folder';
 const WORKTREE_EXPECTED_FOLDER_FIELD = 'worktree_expected_folder';
 const WORKTREE_SETUP_STATE_FIELD = 'worktree_setup_state';
 const WORKTREE_BASE_REPOSITORY_FIELD = 'worktree_base_repository';
+const WORKTREE_BASE_BRANCH_FIELD = 'worktree_base_branch';
 const WORKTREE_SETUP_POLL_INTERVAL_MS = 1000;
 const WORKTREE_SETUP_TIMEOUT_MS = 10_000;
 
@@ -561,6 +562,7 @@ ${originalBody}`;
 		worktreeExpectedFolder?: string;
 		worktreeSetupState?: 'pending' | 'active' | 'failed';
 		worktreeBaseRepository?: string;
+		worktreeBaseBranch?: string;
 	}
 
 	const getIssueWorktreeMetadata = async (
@@ -589,7 +591,8 @@ ${originalBody}`;
 			worktreeBaseRepository: getFrontmatterStringField(
 				content,
 				WORKTREE_BASE_REPOSITORY_FIELD
-			)
+			),
+			worktreeBaseBranch: getFrontmatterStringField(content, WORKTREE_BASE_BRANCH_FIELD)
 		};
 	};
 
@@ -626,6 +629,12 @@ ${originalBody}`;
 		{
 			key: 'worktreeBaseRepository',
 			field: WORKTREE_BASE_REPOSITORY_FIELD,
+			quoted: true,
+			requireNonEmpty: true
+		},
+		{
+			key: 'worktreeBaseBranch',
+			field: WORKTREE_BASE_BRANCH_FIELD,
 			quoted: true,
 			requireNonEmpty: true
 		}
@@ -695,7 +704,7 @@ ${originalBody}`;
 			.split('\n')
 			.filter(
 				(line) =>
-					!/^worktree(_color|_origin_folder|_branch|_expected_folder|_setup_state|_base_repository)?:/.test(
+					!/^worktree(_color|_origin_folder|_branch|_expected_folder|_setup_state|_base_repository|_base_branch)?:/.test(
 						line.trim()
 					)
 			);
@@ -872,12 +881,17 @@ ${originalBody}`;
 		void (async () => {
 			try {
 				const initialDetectedFolder = resolveDetectedWorktreeFolder(expectedWorktreeFolder);
+				const capturedBaseBranch =
+					resolvedWorktreeOriginFolder !== undefined
+						? platformService.getCurrentBranch(resolvedWorktreeOriginFolder)
+						: undefined;
 				await updateIssueWorktreeMetadata(dashboard, issueId, {
 					worktree: true,
 					worktreeBranch,
 					worktreeOriginFolder: resolvedWorktreeOriginFolder,
 					worktreeExpectedFolder: initialDetectedFolder,
-					worktreeSetupState: 'pending'
+					worktreeSetupState: 'pending',
+					worktreeBaseBranch: capturedBaseBranch
 				});
 
 				platformService.runWorktreeSetupScript(
@@ -1175,7 +1189,7 @@ ${originalBody}`;
 		const storedMetadata = toStoredGitHubMetadata(metadata);
 
 		content = updateFrontmatterWithGitHubLink(content, githubUrl, storedMetadata);
-		content = updateBodyWithGitHubLink(content, githubUrl, storedMetadata, dashboard.id);
+		content = updateBodyWithGitHubLink(content, githubUrl, dashboard.id);
 
 		await app.vault.modify(file, content);
 		await updateDashboardWithGitHubLink(dashboard, issueId, githubUrl);

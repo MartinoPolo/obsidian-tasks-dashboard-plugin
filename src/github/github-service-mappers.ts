@@ -64,13 +64,17 @@ export const mapPullRequestResponse = (
 	owner: string,
 	repo: string
 ): GitHubIssueMetadata => {
+	const hasReviewRequested =
+		data.requested_reviewers !== undefined && data.requested_reviewers.length > 0;
 	const prStatus: NonNullable<GitHubIssueMetadata['prStatus']> = data.merged
 		? 'merged'
 		: data.draft
 			? 'draft'
 			: data.state === 'closed'
 				? 'closed'
-				: 'open';
+				: hasReviewRequested
+					? 'review-requested'
+					: 'open';
 
 	return {
 		number: data.number,

@@ -41,6 +41,11 @@ export interface PlatformService {
 	findWorktreePathForBranch: (repositoryFolder: string, branchName: string) => string | undefined;
 	listActiveWorktrees: (repositoryFolder: string) => WorktreeEntry[];
 	getDefaultBranch: (repositoryFolder: string) => string | undefined;
+	getCurrentBranch: (repositoryFolder: string) => string | undefined;
+	checkBranchExists: (
+		repositoryFolder: string,
+		branchName: string
+	) => 'local' | 'remote' | 'none';
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
@@ -699,6 +704,53 @@ export function createPlatformService(): PlatformService {
 		);
 	};
 
+	const getCurrentBranch = (repositoryFolder: string): string | undefined => {
+		if (repositoryFolder.trim() === '' || !isGitRepositoryFolder(repositoryFolder)) {
+			return undefined;
+		}
+
+		const output = runGitCommandOutput(repositoryFolder, ['rev-parse', '--abbrev-ref', 'HEAD']);
+		if (output === undefined || output.trim() === '' || output.trim() === 'HEAD') {
+			return undefined;
+		}
+
+		return output.trim();
+	};
+
+	const checkBranchExists = (
+		repositoryFolder: string,
+		branchName: string
+	): 'local' | 'remote' | 'none' => {
+		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
+			return 'none';
+		}
+		if (!isGitRepositoryFolder(repositoryFolder)) {
+			return 'none';
+		}
+
+		const localStatus = runGitCommandStatus(repositoryFolder, [
+			'rev-parse',
+			'--verify',
+			'--quiet',
+			`refs/heads/${branchName}`
+		]);
+		if (localStatus === 0) {
+			return 'local';
+		}
+
+		const remoteStatus = runGitCommandStatus(repositoryFolder, [
+			'rev-parse',
+			'--verify',
+			'--quiet',
+			`refs/remotes/origin/${branchName}`
+		]);
+		if (remoteStatus === 0) {
+			return 'remote';
+		}
+
+		return 'none';
+	};
+
 	return {
 		openInFileExplorer,
 		openTerminal,
@@ -709,6 +761,8 @@ export function createPlatformService(): PlatformService {
 		findWorktreePathForBranch,
 		listActiveWorktrees,
 		getDefaultBranch,
+		getCurrentBranch,
+		checkBranchExists,
 		pickFolder,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript

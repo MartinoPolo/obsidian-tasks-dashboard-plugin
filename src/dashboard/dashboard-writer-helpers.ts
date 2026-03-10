@@ -1,5 +1,5 @@
 import { TFile } from 'obsidian';
-import { DashboardConfig, Issue, Priority, PRIORITY_ORDER, WorktreeSetupState } from '../types';
+import { DashboardConfig, Issue, Priority, PRIORITY_ORDER } from '../types';
 import {
 	buildIssueMarkerEnd,
 	buildIssueMarkerStart,
@@ -44,7 +44,7 @@ export const buildIssueRelativePath = (issueId: string, isArchived: boolean): st
 };
 
 export const buildSortBlock = (dashboardId: string, dashboardFilename?: string): string => {
-	const displayName = (dashboardFilename || 'Dashboard').replace(/\.md$/i, '');
+	const displayName = (dashboardFilename !== undefined && dashboardFilename !== '' ? dashboardFilename : 'Dashboard').replace(/\.md$/i, '');
 	return `# ${displayName}\n\`\`\`tasks-dashboard-sort\ndashboard: ${dashboardId}\n\`\`\`\n`;
 };
 
@@ -86,6 +86,9 @@ export const buildIssueMarkdownBlock = (params: IssueBlockParams): string => {
 						: undefined,
 					params.worktreeBaseRepository !== undefined
 						? `worktree_base_repository: ${params.worktreeBaseRepository}`
+						: undefined,
+					params.worktreeBaseBranch !== undefined
+						? `worktree_base_branch: ${params.worktreeBaseBranch}`
 						: undefined,
 					params.worktreeSafeDelete === true ? 'worktree_safe_delete: true' : undefined
 				]
@@ -224,17 +227,6 @@ export const extractNotesSection = (existingContent: string): string => {
 	return cleanedNotesContent.trim();
 };
 
-const WORKTREE_SETUP_STATES: readonly WorktreeSetupState[] = ['pending', 'active', 'failed'];
-
-const parseWorktreeSetupState = (value: string | undefined): WorktreeSetupState | undefined => {
-	if (value === undefined) {
-		return undefined;
-	}
-	return WORKTREE_SETUP_STATES.includes(value as WorktreeSetupState)
-		? (value as WorktreeSetupState)
-		: undefined;
-};
-
 export const parseIssueFile = (file: TFile, content: string): ParsedIssueFile | undefined => {
 	const frontmatter = parseYamlFrontmatter(content);
 	const frontmatterText = getFrontmatterText(content) ?? '';
@@ -276,6 +268,7 @@ export const parseIssueFile = (file: TFile, content: string): ParsedIssueFile | 
 				? frontmatter['worktree_setup_state']
 				: undefined,
 		worktreeBaseRepository: stripYamlQuotes(frontmatter['worktree_base_repository']),
+		worktreeBaseBranch: stripYamlQuotes(frontmatter['worktree_base_branch']),
 		worktreeSafeDelete: hasMergedPullRequestMetadata
 	};
 };
@@ -298,6 +291,7 @@ export const parsedIssueFileToBlockParams = (
 		worktreeExpectedFolder: issueFile.worktreeExpectedFolder,
 		worktreeSetupState: issueFile.worktreeSetupState,
 		worktreeBaseRepository: issueFile.worktreeBaseRepository,
+		worktreeBaseBranch: issueFile.worktreeBaseBranch,
 		worktreeSafeDelete: issueFile.worktreeSafeDelete,
 		isArchived
 	};
@@ -319,6 +313,7 @@ export const toIssueBlockParams = (issue: Issue, dashboard: DashboardConfig): Is
 		worktreeExpectedFolder: issue.worktreeExpectedFolder,
 		worktreeSetupState: issue.worktreeSetupState,
 		worktreeBaseRepository: issue.worktreeBaseRepository,
+		worktreeBaseBranch: issue.worktreeBaseBranch,
 		worktreeSafeDelete: issue.worktreeSafeDelete,
 		isArchived: false
 	};

@@ -76,6 +76,9 @@ export async function refreshDashboard(
 		}
 	}
 
+	// Clear git status cache so fresh data is fetched on re-render
+	plugin.gitStatusService.clearCache();
+
 	// Refresh GitHub metadata by clearing cache then triggering re-render
 	const hasGitHubEnabled = dashboard.githubEnabled && plugin.githubService.isAuthenticated();
 
