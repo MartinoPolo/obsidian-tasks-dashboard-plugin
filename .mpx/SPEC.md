@@ -95,8 +95,8 @@
 - [x] Theme-aware derived controls/checklist backgrounds from main color (light/dark)
 - [x] Theme-aware color palettes with explicit light/dark variants for visual balance and readability
 - [x] Rebuild flow preserves marker compatibility while retaining color behavior
-- [x] Track globally used issue colors across the vault; disable already-assigned colors in creation picker (disabled colors render gray)
-- [x] Auto-preselect the next available unused color by default
+- [x] Track used issue colors per dashboard; disable already-assigned colors in creation picker (disabled colors render gray)
+- [x] Auto-preselect next available color by rotating from last-used color position
 - [x] Release color when an issue is deleted, archived, or color is changed (old color freed, new color reserved)
 - [x] Option to release all colors in plugin settings
 - [x] 30-color palette in 6×5 grid: six main hues (blue, red, orange, purple, brown, green) with five shades each. Darker shades at top in dark mode, lighter shades at top in light mode. Top row contains the most-used colors
@@ -112,7 +112,7 @@
 - [x] Sort offered issues/PRs by recency with assignment-aware ranking (assigned-to-me first)
 - [x] Multiple GitHub issues/PRs per dashboard issue
 - [x] Repository links supported in addition to issue/PR links
-- [x] Embedded GitHub cards in dashboard and issue notes
+- [x] Embedded GitHub cards in issue notes via `tasks-dashboard-github` code block
 - [x] Link text uses issue number and title
 - [x] Manual refresh action for GitHub data
 - [x] Quick-open GitHub action per issue
@@ -185,100 +185,68 @@
 - [x] Modular architecture with separate services
 - [x] `eslint-plugin-obsidianmd` configured for Obsidian pre-publish style/check parity
 
-## Bugs
-- [x] Wrapping the dashboard buttons doesn't work, and they are just hidden on the right. If there's not enough space, it correctly wraps in relation to the dashboard info section, but when the buttons themselves span across the whole width of the page, they won't wrap. It should either be horizontally scrollable, or it should wrap to the next line, which is preferred.
-
-- [x] Worktree created from the Quick option in a assigned issues sections (Open worktree from [issue number] button) of dashboard which has multiple assigned repositories and one folder. Specifically, my work dashboard is not correctly created. I see that the expected folder is worktree_expected_folder: C:/_MP_work/1017-superadmin-shouldnt-create-accounts and should be worktree_expected_folder: C:/_MP_work/worktrees/1017-superadmin-shouldnt-create-accounts
-
-When I go through the worktree creation from the ATC back office issue, which is a separate issue on the dashboard with the correct linked folder and repository, everything works fine; however, I'm not exactly sure how to link this to the correct folder from the assigned issues section. The dashboard had the correct folder assigned at the moment of creation of that worktree issue (C:\_MP_work\atc-backoffice) So I'm not exactly sure where the problem is.
-
-- [x] Even when I have multiple repositories linked to a dashboard, whenever I create an issue and I open the GitHub issue modal, the search scope still is only offering the first GitHub repository. It should offer options to switch to any linked repository for the search.
-- [x] The X button to remove the link of the repository to the dashboard in the GitHub repositories modal should be a square.
-- [x] After creating a worktree issue which assigns the folder for that issue automatically, we should also open terminal as if we opened it from the Open Terminal button, so in that folder with that color. It should probably wait a bit for the worktree folder to be created. I'm not sure how to ensure that the folder is created. Maybe it can wait for a while with delayed checking and progressively larger delay.
-- [x] The duplicate color checking from Color Picker should probably be unique to every dashboard. Each dashboard should track its own used colors. Currently, if I use a color in one dashboard, it becomes unavailable in all other dashboards, which is not ideal. It should only be unavailable in the dashboard where it's already used.
-
-- [x] When archiving an issue that has a worktree assigned, I get a prompt for whether I want to also remove the worktree. When I hit escape, the issue is archived and the worktree is not created. I would like the behavior to change so that hitting escape completely cancels archiving the issue. The issue should only be archived by pressing enter.
-Therefore, we have to change the logic of deleting the worktree to the checkbox we have in the delete issue modal. Archiving an issue should be archived immediately on click of the button. If there is no worktree, it should ask "Do you really want to archive the issue?" and have a checkbox also delete or remove the associated worktree. Hitting escape in that modal cancels both deletions, and hitting enter deletes the issue and removes the worktree if the checkbox is checked.
-- [x] I am not able to assign worktree later if the worktree creation failed or the setup failed or the link between worktree and the dashboard issue is somehow broken. I need to be able to assign the worktree again, which means to link it to a proper folder as well as to the worktree on GitHub, I guess, or what are all the data necessary for a proper worktree linkage. The user should be able to add worktree later or assign worktree to a specific issue, updating all the necessary properties. We already have a button. That button has a tooltip "Retry worktree setup". Clicking on that button spawns a modal, but I'm not able to click on any of the active worktrees for them to be assigned. I am only able to create a new worktree by placing a new name in the input and pressing Create. User needs to be able to see a list of currently created worktrees and assign the dashboard issue to a worktree, which should update all the necessary properties and states. First, please research what properties are set during work recreation and if we are able to gather them all.
-Also, it seems that in that modal the Create and Cancel buttons are reversed. The Create green button should be on the right. Please check that this is the case in other modal as well and report any inconsistencies.
-
-- [x] Icon for rebuild dashboard is the same as for sort - Let's find something suitable for rebuild action
-- [x] When a branch is deleted, it displays the number in the branch name twice. 1019-1019-table-pagination
-- [x] If a branch is not yet pushed to origin, it is evaluated as deleted. We should Determine the state of a branch based on both local and remote state of that branch.
-- [x] PR/Issue/branch badges should be visible even in collapsed state of dashboard issue card. Currently, it's visible only in the expanded state. The badges should also be a bit larger. The badges should be on the left of the worktree button/icon. The order in the header should be:
-1. collapse_button
-2. title
-3. badges
-4. worktree button/icon
-5. issue_info
-6. the rest of the buttons Their text should always match the text of the title and the issue info icon, which means to get the secondary color from the color picker selected for that issue. Also, there's some issue with layouting whenever we decrease the width of the page where the badges are visible. The buttons are getting correctly hidden to the point when only the three dot button is visible, and then there is some undefined state which changes on and off with each pixel change in width of the page. The two states are:
-- badges collapsed into icons - this is what we want for not enough space.
-- badges expanded to full size with text, some buttons on the right visible, and issue title being truncated - this is some weird not well defined state which should be discarded
-
-- [x] Worktree icon in the issue card says atc-backoffice/main -> 1001-name-of-the-worktree-and-branch. However, the worktree was based on the dev branch in ATC backoffice, which means that there is no base branch detection or it is incorrect. I would like to save the branch name from the time when the worktree is created so that we know to which branch this was related.
-
-- [ ] Priority selection step in issue creation doesn't have a confirmation button, only skip and cancel. Skip doesn't even make sense here as task has to have a priority. Even when no priority is selected, there is a default priority assigned.
-
 ## Git Status
 
 - [x] Fetch and display branch status, linked PR status, and GitHub issue status per dashboard issue
-- [x] Branch badge with GitHub-style icon: green when active, strikethrough when deleted, gray when unknown
-- [x] PR badge with state icon: open (green), draft (gray), merged (purple), closed (red), review-requested (yellow)
-- [x] PR badge only shown when a PR exists
+- [x] Branch badge: green when active, strikethrough when deleted, gray when unknown
+- [x] Branch state determined from both local and remote refs; unpushed local branches recognized as active
+- [x] PR badge with state icon: open (green), draft (gray), merged (purple), closed (red), review-requested (yellow). Clickable link to PR URL
+- [x] PR badge shown only when a PR exists
+- [x] GitHub issue state badge with icons (open = green circle-dot, closed = purple circle-check). Clickable link to issue URL
+- [x] Badge text: branch name trimmed to 16 chars (full name in tooltip); PR and issue show `#number State`
+- [x] Badges rendered in issue header after title; visible in both expanded and collapsed card states
+- [x] Responsive badge compaction: badges collapse to icon-only mode when header space is insufficient (keeping state color and icon, dropping text)
+- [x] Right-click context menu on badges with "Refresh" action for per-issue git status refresh
 - [x] Works for both worktree issues (branch-based lookup) and non-worktree issues (GitHub-link-based lookup)
-- [x] PR state accent: vivid card accent (border + gradient overlay) for merged and review-requested states
+- [x] PR state accent: vivid header bottom-border with gradient overlay for merged and review-requested states
 - [x] Sort by PR state: review-requested → open → draft → merged → closed
-- [x] 5-minute cache with manual refresh via dashboard refresh button
+- [x] 5-minute cache with manual refresh via dashboard refresh button and per-issue badge context menu
 
-### Header Badges (Phase 29)
-
-- [x] Move branch and PR badges from the git-status strip (below header) into the issue header, directly after the worktree icon
-- [x] Add GitHub issue state badge in the header alongside branch/PR badges, with appropriate GitHub icons (open = green circle-dot, closed = purple circle-check) and clickable link to the GitHub issue
-- [x] Badge text: branch name trimmed to 16 characters; PR shows `#number State`; issue shows `#number State`
-- [x] Responsive badge behavior: when insufficient header space, badges collapse to icon-only mode (keeping state color and icon, dropping text)
-- [x] PR badge is a clickable link opening the PR URL
-- [x] Right-click context menu on PR/branch/issue badges with "Refresh" action to refresh git status for that specific issue
-- [x] Remove the git-status strip container (`.tdc-git-status-container`) between header and controls — badges live in header now
-- [x] PR state accent strip rendered at bottom border of issue header (not left border)
-
-### Issue Card Simplification (Phase 29)
-
-- [x] Remove embedded GitHub issue/PR cards from dashboard issue cards. Dashboard issue card contains only: header (with badges and buttons), controls (progress + action buttons), task query section
-- [x] GitHub issue summary retained only inside the issue note file (via `tasks-dashboard-github` code block)
-
-## Issue Header Styling (Phase 29)
-
-- [x] Info icon color matches header text color (not `--text-muted`). On hover, show slightly gray background (no color change to `--text-normal`)
-- [x] Worktree icon uses green color (`var(--tdc-priority-low)` / `#4caf50`) in active state (already implemented, verify)
-- [x] Consistent spacing between worktree icon, info icon, and other header action buttons — remove the extra `margin-left: 6px` on info icon so all elements use the header's `gap: 8px`
-
-## Priority Toggle (Phase 29)
+## Priority Toggle
 
 - [x] Per-dashboard setting `prioritiesEnabled` (default: `true`). When disabled:
   - Priority left-border strip hidden on issue cards (CSS-driven, priority class still applied)
   - Priority selection step skipped in all issue creation workflows
   - All issues auto-assigned `low` priority
   - "Sort by Priority" option hidden from sort dropdown
-  - Issues retain priority in data model (just not displayed or prompted)
+  - Issues retain priority in data model (not displayed or prompted)
 
-## Issue Note Cleanup (Phase 29)
+## Issue Card Layout
 
-- [x] Remove the standalone GitHub issue markdown link (`[#number - title](url)`) from issue note creation (`generateIssueContent`) and GitHub linking (`updateBodyWithGitHubLink`). The `tasks-dashboard-github` code block remains as the sole GitHub section in issue notes
+- [x] Dashboard issue card contains: header (with badges and buttons), controls (progress + action buttons), task query section
+- [x] Header element order: collapse button, title, badges, worktree icon, info icon, action buttons
+- [x] Info icon color matches header text color; hover shows background highlight
+- [x] Consistent spacing between all header elements via parent `gap`; no per-element margin overrides
+- [x] Rebuild action uses a distinct icon from sort action
 
-## Ask before Archiving/Deleting if there are unfinished tasks in the issue (Phase 30)
-- [x] Whenever archiving or deleting an issue, if there are any unfinished tasks in that issue, we should ask for confirmation with a warning that there are unfinished tasks. In the case of delete modal, we already have that, and we just want to add red text saying there are x unfinished tasks. In case of archive, we also have the model, but I think we spawn it only when there is a worktree assigned to that issue. Now I would also like to spawn it if there are any unfinished tasks.
-- [ ] The active issue file that is created After Add Issue workflow has a markdown checkbox by default, we need to remove this checkbox so that, when this file is not opened at all during the whole lifecycle, it is not marked as having unfinished tasks.
+## Issue Lifecycle
 
-## Check VS code color before spawning it from the plugin
-- [x] VS Code color is determined by workspace settings in.vscode/settings.json, specifically the peacock.color property. Whenever VS Code is spawned from this Obsidian plugin, we should check that the value in that Peacock color property matches the color of the issue it is spawned from. If it's spawned from the dashboard, we don't have to do this check because dashboards don't have colors aside. Whenever we are spawning it from an issue, it should do this check. Please see how the setup worktree script does the color change and use that convention to also edit the color or to check the color and edit the color if there is a mismatch to the current issue color.
-- [x] Whenever an issue is created automatically via "quick worktree from #[issue number]" button is used, It should use the next color related to the last color that was used for issue creation. Currently, we're using a system where the first available color is used; however, I would like to change that so that the system remembers which color was the last used during any issue creation and selects the next available color from there. The point is that when I create an issue, delete this issue, and create another issue, it has the same color, and I would like the issue colors to rotate more.
+- [x] Archive and delete confirmation modals display unfinished task count in red when incomplete tasks exist
+- [x] Archive modal includes worktree removal checkbox; Escape cancels the entire operation
+- [x] Issue notes use `tasks-dashboard-github` code block as the sole GitHub section (no standalone markdown link)
+- [ ] New issue files created without a default markdown checkbox to avoid false unfinished-task counts
+- [ ] Priority selection step displays a confirmation button; no skip action (every issue requires a priority, with default pre-selected)
 
-## Manual Test cases
-- See what happens when we have full GitHub integration for a dashboard with all the worktrees' PRs and branches correctly fetched and displayed, and what happens when we remove the GitHub integration.
-   - See if sorting by GitHub stuff is hidden.
+## External Tools
+
+- [x] After worktree creation, auto-open terminal in the worktree folder with issue color once folder is confirmed
+- [x] VS Code launch verifies Peacock color (`peacock.color` in `.vscode/settings.json`) matches issue color; corrects mismatch before opening
+
+## Worktree Refinements
+
+- [x] Quick worktree from assigned issues derives expected folder from the worktree output directory configuration
+- [x] Worktree retry modal lists active worktrees for direct assignment in addition to creating new worktrees
+- [x] Worktree base branch persisted at creation time for accurate base-branch display
+- [x] Normalized worktree branch names avoid duplicate number prefixes
+
+## UI Consistency
+
+- [x] Modal confirm buttons positioned on the right; cancel/secondary on the left
+- [x] GitHub repository removal button uses square icon styling
+- [x] GitHub search scope offers all linked repositories for the dashboard (not just the first)
 
 ## TODO
-- [ ] Refactor all large files, do a clean code sweep across the whole project
-- [ ] We should keep small components if possible - for example header badges seems like a perfect candidate for standalone component. First, analyze how we should approach componentization in Obsidian Plugin.
 
+- [ ] Refactor large files; clean code sweep across the project
+- [ ] Componentize standalone UI units (e.g., header badges) into isolated modules; analyze Obsidian Plugin componentization approach
 - [ ] Consolidate all current phases into 1 epic
