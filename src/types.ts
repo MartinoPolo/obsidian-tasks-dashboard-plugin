@@ -138,6 +138,7 @@ export interface TasksDashboardSettings {
 	collapsedDashboardSettings: Record<string, boolean>;
 	issueColors: Record<string, string>;
 	issueFolders: Record<string, string>;
+	lastUsedColorIndex?: number;
 }
 export interface IssueProgress {
 	done: number;

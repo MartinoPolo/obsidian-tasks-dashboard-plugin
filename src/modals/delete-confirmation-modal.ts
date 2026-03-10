@@ -15,6 +15,7 @@ export interface DeleteConfirmationResult {
 export class DeleteConfirmationModal extends Modal {
 	private readonly issueName: string;
 	private readonly hasAssociatedWorktree: boolean;
+	private readonly unfinishedTaskCount: number;
 	private readonly onRemoveWorktreeChange?: (checked: boolean) => void;
 	private readonly onResult: (result: DeleteConfirmationResult) => void;
 	private removeWorktree = false;
@@ -24,6 +25,7 @@ export class DeleteConfirmationModal extends Modal {
 		app: App,
 		issueName: string,
 		hasAssociatedWorktree: boolean,
+		unfinishedTaskCount: number,
 		initialRemoveWorktree: boolean,
 		onRemoveWorktreeChange: ((checked: boolean) => void) | undefined,
 		onResult: (result: DeleteConfirmationResult) => void
@@ -31,6 +33,7 @@ export class DeleteConfirmationModal extends Modal {
 		super(app);
 		this.issueName = issueName;
 		this.hasAssociatedWorktree = hasAssociatedWorktree;
+		this.unfinishedTaskCount = unfinishedTaskCount;
 		this.removeWorktree = hasAssociatedWorktree ? initialRemoveWorktree : false;
 		this.onRemoveWorktreeChange = onRemoveWorktreeChange;
 		this.onResult = onResult;
@@ -40,6 +43,9 @@ export class DeleteConfirmationModal extends Modal {
 		setupPromptModal(this, 'Confirm Delete');
 
 		this.renderMessage();
+		if (this.unfinishedTaskCount > 0) {
+			this.renderUnfinishedTasksWarning();
+		}
 		if (this.hasAssociatedWorktree) {
 			this.renderRemoveWorktreeCheckbox();
 		}
@@ -72,6 +78,14 @@ export class DeleteConfirmationModal extends Modal {
 		this.contentEl.createEl('p', {
 			text: `Are you sure you want to delete '${this.issueName}'? This will move the file to trash.`,
 			cls: 'tdc-delete-message'
+		});
+	}
+
+	private renderUnfinishedTasksWarning() {
+		const label = this.unfinishedTaskCount === 1 ? 'task' : 'tasks';
+		this.contentEl.createEl('p', {
+			text: `⚠ ${this.unfinishedTaskCount} unfinished ${label} remaining.`,
+			cls: 'tdc-unfinished-tasks-warning'
 		});
 	}
 

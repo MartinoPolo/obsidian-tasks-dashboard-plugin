@@ -879,6 +879,13 @@ button.tdc-worktree-status.tdc-worktree-status-active:hover {
 	line-height: 1.5;
 }
 
+.tdc-unfinished-tasks-warning {
+	color: var(--tdc-priority-high);
+	margin: 0 0 12px 0;
+	line-height: 1.5;
+	font-weight: 500;
+}
+
 .tdc-delete-checkbox-row {
 	display: flex;
 	align-items: center;

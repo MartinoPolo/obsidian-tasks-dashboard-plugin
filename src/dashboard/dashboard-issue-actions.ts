@@ -346,7 +346,8 @@ export const buildIssueActionDescriptors = (options: {
 		faded: !hasIssueFolder,
 		onClick: () => {
 			if (isNonEmptyString(issueFolder)) {
-				platformService.openVSCode(issueFolder);
+				const issueColor = plugin.settings.issueColors[params.issue];
+				platformService.openVSCode(issueFolder, issueColor);
 				return;
 			}
 			openIssueFolderModal();
@@ -533,10 +534,13 @@ export const buildIssueActionDescriptors = (options: {
 				return;
 			}
 
-			void plugin.issueManager
-				.hasAssociatedWorktree(dashboard, params.issue)
-				.then((hasAssociatedWorktree) => {
-					if (!hasAssociatedWorktree) {
+			void Promise.all([
+				plugin.issueManager.hasAssociatedWorktree(dashboard, params.issue),
+				plugin.progressTracker.getProgress(params.path)
+			])
+				.then(([hasAssociatedWorktree, progress]) => {
+					const unfinishedTaskCount = progress.total - progress.done;
+					if (!hasAssociatedWorktree && unfinishedTaskCount === 0) {
 						void plugin.issueManager.archiveIssue(dashboard, params.issue);
 						return;
 					}
@@ -545,6 +549,7 @@ export const buildIssueActionDescriptors = (options: {
 						plugin.app,
 						params.name,
 						hasAssociatedWorktree,
+						unfinishedTaskCount,
 						(result) => {
 							if (!result.confirmed) {
 								return;
@@ -573,13 +578,17 @@ export const buildIssueActionDescriptors = (options: {
 		shouldRender: true,
 		faded: false,
 		onClick: () => {
-			void plugin.issueManager
-				.hasAssociatedWorktree(dashboard, params.issue)
-				.then((hasAssociatedWorktree) => {
+			void Promise.all([
+				plugin.issueManager.hasAssociatedWorktree(dashboard, params.issue),
+				plugin.progressTracker.getProgress(params.path)
+			])
+				.then(([hasAssociatedWorktree, progress]) => {
+					const unfinishedTaskCount = progress.total - progress.done;
 					const modal = new DeleteConfirmationModal(
 						plugin.app,
 						params.name,
 						hasAssociatedWorktree,
+						unfinishedTaskCount,
 						hasAssociatedWorktree
 							? plugin.settings.deleteIssueRemoveWorktreeByDefault
 							: false,

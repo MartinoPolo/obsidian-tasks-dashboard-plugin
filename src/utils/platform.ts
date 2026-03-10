@@ -34,7 +34,7 @@ export interface WorktreeEntry {
 export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
 	openTerminal: (folderPath: string, tabColor?: string) => void;
-	openVSCode: (folderPath: string) => void;
+	openVSCode: (folderPath: string, issueColor?: string) => void;
 	isGitRepositoryFolder: (folderPath: string) => boolean;
 	isGitBranchMissing: (folderPath: string, branchName: string) => boolean;
 	pathExists: (targetPath: string) => boolean;
@@ -319,7 +319,46 @@ export function createPlatformService(): PlatformService {
 		}
 	};
 
-	const openVSCode = (folderPath: string): void => {
+	const ensurePeacockColor = (folderPath: string, issueColor: string): void => {
+		try {
+			const fsModule = loadModule('fs');
+			const pathModule = loadModule('path');
+			const joinFunction = getRequiredFunction(pathModule, 'join');
+			const existsSyncFunction = getRequiredFunction(fsModule, 'existsSync');
+			const readFileSyncFunction = getRequiredFunction(fsModule, 'readFileSync');
+			const writeFileSyncFunction = getRequiredFunction(fsModule, 'writeFileSync');
+			const mkdirSyncFunction = getRequiredFunction(fsModule, 'mkdirSync');
+
+			const vscodeDir = joinFunction(folderPath, '.vscode') as string;
+			const settingsPath = joinFunction(vscodeDir, 'settings.json') as string;
+
+			let settings: Record<string, unknown> = {};
+			if (existsSyncFunction(settingsPath) === true) {
+				const content = readFileSyncFunction(settingsPath, 'utf8') as string;
+				const parsed: unknown = JSON.parse(content);
+				if (typeof parsed === 'object' && parsed !== null) {
+					settings = parsed as Record<string, unknown>;
+				}
+			}
+
+			if (settings['peacock.color'] === issueColor) {
+				return;
+			}
+
+			settings['peacock.color'] = issueColor;
+			if (existsSyncFunction(vscodeDir) !== true) {
+				mkdirSyncFunction(vscodeDir, { recursive: true });
+			}
+			writeFileSyncFunction(settingsPath, JSON.stringify(settings, null, '\t') + '\n');
+		} catch {
+			// Silent failure — don't corrupt user settings
+		}
+	};
+
+	const openVSCode = (folderPath: string, issueColor?: string): void => {
+		if (issueColor !== undefined && isValidHexColor(issueColor)) {
+			ensurePeacockColor(folderPath, issueColor);
+		}
 		const spawn = getSpawn();
 		const child = spawn('code', [folderPath], {
 			shell: process.platform === 'win32',

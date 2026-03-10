@@ -163,16 +163,32 @@ export const isIssueColorUsed = (
 	return false;
 };
 
+export const findIssueColorPaletteIndex = (color: string): number => {
+	const normalized = normalizeIssueColor(color);
+	const palette = getThemeAwareIssueColorPalette();
+	for (let index = 0; index < palette.length; index += 1) {
+		if (normalizeIssueColor(palette[index].background) === normalized) {
+			return index;
+		}
+	}
+	return -1;
+};
+
 export const getNextAvailableIssueColor = (
 	issueColors: Record<string, string>,
-	dashboardIssueIds?: Set<string>
+	dashboardIssueIds?: Set<string>,
+	startAfterIndex?: number
 ): string => {
+	const palette = getThemeAwareIssueColorPalette();
+	const paletteLength = palette.length;
 	const usedColors = collectUsedIssueColors(issueColors, dashboardIssueIds);
-	for (const entry of getThemeAwareIssueColorPalette()) {
-		const normalizedColor = normalizeIssueColor(entry.background);
+	const origin = startAfterIndex !== undefined && startAfterIndex >= 0 ? startAfterIndex : -1;
+	for (let offset = 0; offset < paletteLength; offset += 1) {
+		const index = (origin + 1 + offset) % paletteLength;
+		const normalizedColor = normalizeIssueColor(palette[index].background);
 		if (!usedColors.has(normalizedColor)) {
 			return normalizedColor;
 		}
 	}
-	return normalizeIssueColor(getThemeAwareIssueColorPalette()[0].background);
+	return normalizeIssueColor(palette[0].background);
 };

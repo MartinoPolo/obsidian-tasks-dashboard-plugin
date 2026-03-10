@@ -15,6 +15,7 @@ export interface ArchiveConfirmationResult {
 export class ArchiveConfirmationModal extends Modal {
 	private readonly issueName: string;
 	private readonly hasAssociatedWorktree: boolean;
+	private readonly unfinishedTaskCount: number;
 	private readonly onResult: (result: ArchiveConfirmationResult) => void;
 	private removeWorktree = true;
 	private hasResolved = false;
@@ -23,11 +24,13 @@ export class ArchiveConfirmationModal extends Modal {
 		app: App,
 		issueName: string,
 		hasAssociatedWorktree: boolean,
+		unfinishedTaskCount: number,
 		onResult: (result: ArchiveConfirmationResult) => void
 	) {
 		super(app);
 		this.issueName = issueName;
 		this.hasAssociatedWorktree = hasAssociatedWorktree;
+		this.unfinishedTaskCount = unfinishedTaskCount;
 		this.onResult = onResult;
 	}
 
@@ -35,6 +38,9 @@ export class ArchiveConfirmationModal extends Modal {
 		setupPromptModal(this, 'Confirm Archive');
 
 		this.renderMessage();
+		if (this.unfinishedTaskCount > 0) {
+			this.renderUnfinishedTasksWarning();
+		}
 		if (this.hasAssociatedWorktree) {
 			this.renderRemoveWorktreeCheckbox();
 		}
@@ -66,6 +72,14 @@ export class ArchiveConfirmationModal extends Modal {
 		this.contentEl.createEl('p', {
 			text: `Are you sure you want to archive '${this.issueName}'?`,
 			cls: 'tdc-delete-message'
+		});
+	}
+
+	private renderUnfinishedTasksWarning() {
+		const label = this.unfinishedTaskCount === 1 ? 'task' : 'tasks';
+		this.contentEl.createEl('p', {
+			text: `⚠ ${this.unfinishedTaskCount} unfinished ${label} remaining.`,
+			cls: 'tdc-unfinished-tasks-warning'
 		});
 	}
 

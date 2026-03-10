@@ -12,7 +12,7 @@ import {
 } from '../modals/issue-creation-modal';
 import { DashboardConfig, IssueProgress, Priority, type IssueActionKey } from '../types';
 import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
-import { getNextAvailableIssueColor } from '../utils/issue-colors';
+import { findIssueColorPaletteIndex, getNextAvailableIssueColor } from '../utils/issue-colors';
 import { createPlatformService } from '../utils/platform';
 import { WorktreeRetryModal } from '../modals/worktree-retry-modal';
 import { buildIssueActionDescriptors } from './dashboard-issue-actions';
@@ -1040,12 +1040,14 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					}
 					void collectDashboardIssueIdSet(plugin.app, dashboard)
 						.then((dashboardIssueIds) => {
+							const nextColor = getNextAvailableIssueColor(
+								plugin.settings.issueColors,
+								dashboardIssueIds,
+								plugin.settings.lastUsedColorIndex
+							);
 							const quickDefaults: QuickCreateDefaults = {
 								priority: dashboard.prioritiesEnabled === false ? 'low' : 'medium',
-								color: getNextAvailableIssueColor(
-									plugin.settings.issueColors,
-									dashboardIssueIds
-								),
+								color: nextColor,
 								worktree: true,
 								worktreeOriginFolder: dashboardProjectFolder,
 								worktreeBaseRepository: sourceRepo

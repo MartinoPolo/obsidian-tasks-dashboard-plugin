@@ -8,6 +8,7 @@ import { parseGitHubRepoFullName, parseGitHubUrl } from '../utils/github-url';
 import {
 	ISSUE_COLOR_PICKER_COLUMNS,
 	collectUsedIssueColors,
+	findIssueColorPaletteIndex,
 	getNextAvailableIssueColor,
 	getThemeAwareIssueColorPalette,
 	isIssueColorUsed
@@ -102,6 +103,10 @@ async function createIssueWithNotice(
 		});
 		if (request.color !== undefined) {
 			plugin.settings.issueColors[issue.id] = request.color;
+			const paletteIndex = findIssueColorPaletteIndex(request.color);
+			if (paletteIndex >= 0) {
+				plugin.settings.lastUsedColorIndex = paletteIndex;
+			}
 			await plugin.saveSettings();
 		}
 		if (request.worktree === true) {
@@ -562,7 +567,8 @@ class ColorPromptModal extends Modal {
 		) {
 			this.selectedColor = getNextAvailableIssueColor(
 				this.plugin.settings.issueColors,
-				this.dashboardIssueIds
+				this.dashboardIssueIds,
+				this.plugin.settings.lastUsedColorIndex
 			);
 		}
 		this.contentEl.addClass('tdc-color-preset-row-six-columns');
@@ -870,14 +876,6 @@ class PriorityPromptModal extends Modal {
 		const priorityList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
 
 		for (const priority of PRIORITY_OPTIONS) {
-			const confirmFromMouse = (event: MouseEvent): void => {
-				if (event.button !== 0) {
-					return;
-				}
-				event.preventDefault();
-				this.selectPriority(priority, true);
-				this.confirmSelection();
-			};
 			const optionButton = priorityList.createEl('button', {
 				cls: 'tdc-selectable-option-btn',
 				attr: {
@@ -888,7 +886,9 @@ class PriorityPromptModal extends Modal {
 			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
 			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
 			container.createSpan({ text: formatPriorityLabel(priority) });
-			optionButton.addEventListener('mouseup', confirmFromMouse);
+			optionButton.addEventListener('click', () => {
+				this.selectPriority(priority, true);
+			});
 			this.priorityButtons.set(priority, optionButton);
 		}
 
@@ -900,6 +900,9 @@ class PriorityPromptModal extends Modal {
 		});
 		void createPromptCancelButton(buttonContainer, () => {
 			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
 		});
 
 		this.contentEl.addEventListener('keydown', (event) => {
@@ -1001,13 +1004,8 @@ class PrioritySelectionModal extends Modal {
 			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
 			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
 			container.createSpan({ text: formatPriorityLabel(priority) });
-			optionButton.addEventListener('mouseup', (event) => {
-				if (event.button !== 0) {
-					return;
-				}
-				event.preventDefault();
+			optionButton.addEventListener('click', () => {
 				this.selectPriority(priority, true);
-				this.confirmSelection();
 			});
 			this.priorityButtons.set(priority, optionButton);
 		}
@@ -1017,6 +1015,9 @@ class PrioritySelectionModal extends Modal {
 		const buttonContainer = createPromptButtonsContainer(this.contentEl);
 		void createPromptCancelButton(buttonContainer, () => {
 			this.close();
+		});
+		void createPromptConfirmButton(buttonContainer, () => {
+			this.confirmSelection();
 		});
 
 		this.contentEl.addEventListener('keydown', (event) => {
