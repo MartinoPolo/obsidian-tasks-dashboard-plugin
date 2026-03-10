@@ -124,6 +124,7 @@ export interface DashboardConfig {
 	showTerminalButtons?: boolean;
 	showVSCodeButtons?: boolean;
 	issueActionLayout?: DashboardIssueActionLayout;
+	prioritiesEnabled?: boolean;
 }
 
 export interface TasksDashboardSettings {

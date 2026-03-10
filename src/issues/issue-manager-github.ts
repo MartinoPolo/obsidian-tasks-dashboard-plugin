@@ -50,10 +50,7 @@ function generateGithubLinksFrontmatter(
 	return yaml;
 }
 
-function generateGithubLinksBody(
-	links: string[],
-	dashboardId: string
-): string {
+function generateGithubLinksBody(links: string[], dashboardId: string): string {
 	let body = '';
 	for (const url of links) {
 		body += `\n\`\`\`tasks-dashboard-github

@@ -132,8 +132,7 @@
 }
 
 /* ===== Collapsed State ===== */
-.tdc-collapsed .tdc-controls,
-.tdc-collapsed .tdc-github-container {
+.tdc-collapsed .tdc-controls {
 	display: none;
 }
 
@@ -168,6 +167,11 @@
 
 .tdc-issue-header[class*='priority-'] {
 	border-left-color: var(--tdc-priority-color);
+}
+
+/* Hide priority left-border when priorities are disabled */
+.tdc-priorities-disabled .tdc-issue-header[class*='priority-'] {
+	border-left-color: var(--text-muted);
 }
 
 .tdc-issue-header a,
@@ -2284,52 +2288,52 @@ a.tdc-git-badge:hover {
 
 /* ===== PR State Card Accents ===== */
 
-.tdc-issue-container.tdc-pr-accent-merged {
-	border-left: 3px solid var(--tdc-git-pr-merged);
+.tdc-issue-header.tdc-pr-accent-merged {
+	border-bottom: 3px solid var(--tdc-git-pr-merged);
 }
 
-.tdc-issue-container.tdc-pr-accent-merged::before {
+.tdc-issue-header.tdc-pr-accent-merged::before {
 	content: '';
 	position: absolute;
-	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: linear-gradient(135deg, color-mix(in srgb, var(--tdc-git-pr-merged) 8%, transparent), transparent 60%);
+	height: 100%;
+	background: linear-gradient(to top, color-mix(in srgb, var(--tdc-git-pr-merged) 8%, transparent), transparent 60%);
 	pointer-events: none;
 	border-radius: inherit;
 }
 
-.tdc-issue-container.tdc-pr-accent-review-requested {
-	border-left: 3px solid var(--tdc-git-pr-review);
+.tdc-issue-header.tdc-pr-accent-review-requested {
+	border-bottom: 3px solid var(--tdc-git-pr-review);
 }
 
-.tdc-issue-container.tdc-pr-accent-review-requested::before {
+.tdc-issue-header.tdc-pr-accent-review-requested::before {
 	content: '';
 	position: absolute;
-	top: 0;
 	left: 0;
 	right: 0;
 	bottom: 0;
-	background: linear-gradient(135deg, color-mix(in srgb, var(--tdc-git-pr-review) 8%, transparent), transparent 60%);
+	height: 100%;
+	background: linear-gradient(to top, color-mix(in srgb, var(--tdc-git-pr-review) 8%, transparent), transparent 60%);
 	pointer-events: none;
 	border-radius: inherit;
 }
 
-.tdc-issue-container.tdc-pr-accent-open {
-	border-left: 3px solid var(--tdc-git-pr-open);
+.tdc-issue-header.tdc-pr-accent-open {
+	border-bottom: 3px solid var(--tdc-git-pr-open);
 }
 
-.tdc-issue-container.tdc-pr-accent-draft {
-	border-left: 3px solid var(--tdc-git-pr-draft);
+.tdc-issue-header.tdc-pr-accent-draft {
+	border-bottom: 3px solid var(--tdc-git-pr-draft);
 }
 
-.tdc-issue-container.tdc-pr-accent-closed {
-	border-left: 3px solid var(--tdc-git-pr-closed);
+.tdc-issue-header.tdc-pr-accent-closed {
+	border-bottom: 3px solid var(--tdc-git-pr-closed);
 }
 
 /* Ensure accent overlay doesn't interfere with relative positioning */
-.tdc-issue-container[class*="tdc-pr-accent-"] {
+.tdc-issue-header[class*="tdc-pr-accent-"] {
 	position: relative;
 }
 

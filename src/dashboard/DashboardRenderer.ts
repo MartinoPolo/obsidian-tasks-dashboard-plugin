@@ -36,14 +36,20 @@ import type {
 	RuntimeIssueActionLayout
 } from './dashboard-renderer-types';
 import { extractLastPathSegment } from '../utils/path-utils';
-import { renderBranchBadge, renderPrBadge, renderIssueBadge, applyPrStateAccent } from './git-status-indicator';
+import {
+	renderBranchBadge,
+	renderPrBadge,
+	renderIssueBadge,
+	applyPrStateAccent,
+	showBadgeContextMenu
+} from './git-status-indicator';
 import { getLinkedRepositories } from './dashboard-writer-helpers';
 import { appendInlineSvgIcon, createActionButton, ICONS } from './header-actions';
 import { renderSortControls } from './sort-controls';
 export { ReactiveRenderChild } from './dashboard-reactive-render-child';
 
 export interface DashboardRendererInstance {
-	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
+	render: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
 	renderSortButton: (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void;
 	renderGitHubNoteCard: (
 		source: string,
@@ -476,6 +482,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		});
 
 		// Async-fetch git status and update info panel data
+		let isDestroyed = false;
+		let handleBadgesContextMenu: ((event: MouseEvent) => void) | undefined;
 		if (isWorktreeIssue || params.githubLinks.length > 0) {
 			headerBadges.classList.add('tdc-header-badges-loading');
 			const linkedReposForInfo = getLinkedRepositories(dashboard);
@@ -490,6 +498,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					linkedRepos: linkedReposForInfo
 				})
 				.then((gitStatus) => {
+					if (isDestroyed) {
+						return;
+					}
 					const lines: string[] = [];
 					if (gitStatus.branchName !== undefined) {
 						lines.push(`Branch: ${gitStatus.branchName} (${gitStatus.branchStatus})`);
@@ -515,12 +526,29 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					for (const linkedIssue of gitStatus.linkedIssues) {
 						renderIssueBadge(headerBadges, linkedIssue);
 					}
-					applyPrStateAccent(container, gitStatus.aggregatePrState);
+					applyPrStateAccent(header, gitStatus.aggregatePrState);
+					applyBadgeCompaction();
 				})
 				.catch(() => {
 					gitStatusInfoLines = ['Last refreshed: Error'];
 					headerBadges.classList.remove('tdc-header-badges-loading');
 				});
+
+			// Right-click context menu on badges container (event delegation)
+			handleBadgesContextMenu = (event: MouseEvent): void => {
+				const target = event.target;
+				if (!(target instanceof Element)) {
+					return;
+				}
+				if (target.closest('.tdc-git-badge') === null) {
+					return;
+				}
+				showBadgeContextMenu(event, () => {
+					plugin.gitStatusService.invalidate(dashboard.id, params.issue);
+					plugin.triggerDashboardRefresh();
+				});
+			};
+			headerBadges.addEventListener('contextmenu', handleBadgesContextMenu);
 		}
 
 		const row1Container = header.createDiv({ cls: 'tdc-header-actions' });
@@ -594,17 +622,27 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		};
 		window.addEventListener('resize', handleWindowResize);
 		let resizeObserver: ResizeObserver | undefined;
+		const applyBadgeCompaction = (): void => {
+			const titleTruncated = link.scrollWidth > link.clientWidth;
+			headerBadges.classList.toggle('tdc-badges-compact', titleTruncated);
+		};
+
 		if (typeof ResizeObserver !== 'undefined') {
 			resizeObserver = new ResizeObserver(() => {
 				applyRow1PriorityLayout();
+				applyBadgeCompaction();
 			});
 			resizeObserver.observe(header);
 		}
 		headerRenderChild.register(() => {
+			isDestroyed = true;
 			disposeIssueInfoPanel();
 			disposeOverflowMenuPanel();
 			window.removeEventListener('resize', handleWindowResize);
 			resizeObserver?.disconnect();
+			if (handleBadgesContextMenu !== undefined) {
+				headerBadges.removeEventListener('contextmenu', handleBadgesContextMenu);
+			}
 		});
 		ctx.addChild(headerRenderChild);
 
@@ -627,7 +665,11 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			}
 		};
 		applyRow1PriorityLayout();
-		window.setTimeout(applyRow1PriorityLayout, 0);
+		applyBadgeCompaction();
+		window.setTimeout(() => {
+			applyRow1PriorityLayout();
+			applyBadgeCompaction();
+		}, 0);
 
 		return getVisibleActionKeys();
 	};
@@ -686,11 +728,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		return row2Visible;
 	};
 
-	const render = async (
-		source: string,
-		el: HTMLElement,
-		ctx: MarkdownPostProcessorContext
-	): Promise<void> => {
+	const render = (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext): void => {
 		const params = parseParams(source);
 		if (params === null) {
 			el.createEl('span', { text: 'Invalid control block', cls: 'tdc-error' });
@@ -703,8 +741,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 		}
 
 		const isCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
+		const prioritiesDisabled = dashboard.prioritiesEnabled === false;
 		const container = el.createDiv({
-			cls: `tdc-issue-container priority-${params.priority}${isCollapsed ? ' tdc-collapsed' : ''}`
+			cls: `tdc-issue-container priority-${params.priority}${isCollapsed ? ' tdc-collapsed' : ''}${prioritiesDisabled ? ' tdc-priorities-disabled' : ''}`
 		});
 		el.setAttribute('data-tdc-issue', params.issue);
 
@@ -731,7 +770,8 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const controls = container.createDiv({ cls: 'tdc-controls' });
 		const placeholderProgress: IssueProgress = { done: 0, total: 0, percentage: 0 };
-		renderProgressBar(controls, placeholderProgress, params.priority);
+		const progressBarPriority = prioritiesDisabled ? 'low' : params.priority;
+		renderProgressBar(controls, placeholderProgress, progressBarPriority);
 		row2VisibleActionKeys = renderRow2Buttons(controls, issueActions, actionLayout);
 		applyIssueSurfaceStyles(el, plugin.settings.issueColors[params.issue]);
 		window.setTimeout(() => {
@@ -743,27 +783,13 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 			if (placeholderElement !== null) {
 				placeholderElement.remove();
 			}
-			renderProgressBar(controls, progress, params.priority);
+			renderProgressBar(controls, progress, progressBarPriority);
 			// Move newly appended progress element before buttons
 			const updatedProgress = controls.querySelector('.tdc-progress');
 			if (updatedProgress !== null) {
 				controls.insertBefore(updatedProgress, controls.firstChild);
 			}
 		});
-
-		if (dashboard.githubEnabled && params.githubLinks.length > 0) {
-			const cardContainers = params.githubLinks.map(() => container.createDiv());
-			await Promise.all(
-				params.githubLinks.map((githubUrl, index) =>
-					renderGitHubCardWithRefresh(
-						cardContainers[index],
-						githubUrl,
-						params.issue,
-						dashboard
-					)
-				)
-			);
-		}
 
 		if (isCollapsed) {
 			setIssueCollapsed(el, true);
@@ -1009,7 +1035,7 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					void collectDashboardIssueIdSet(plugin.app, dashboard)
 						.then((dashboardIssueIds) => {
 							const quickDefaults: QuickCreateDefaults = {
-								priority: 'medium',
+								priority: dashboard.prioritiesEnabled === false ? 'low' : 'medium',
 								color: getNextAvailableIssueColor(
 									plugin.settings.issueColors,
 									dashboardIssueIds

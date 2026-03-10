@@ -274,10 +274,14 @@ export function renderSortControls(
 	let dropdownOpen = false;
 
 	const sortOptions: SortOption[] = [
-		{
-			label: 'Priority',
-			action: () => void plugin.dashboardWriter.sortByPriority(dashboard)
-		},
+		...(dashboard.prioritiesEnabled !== false
+			? [
+					{
+						label: 'Priority',
+						action: () => void plugin.dashboardWriter.sortByPriority(dashboard)
+					}
+				]
+			: []),
 		{
 			label: 'Newest Created',
 			action: () => void plugin.dashboardWriter.sortByCreatedDate(dashboard, 'newest')

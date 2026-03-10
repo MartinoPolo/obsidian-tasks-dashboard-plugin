@@ -35,6 +35,24 @@ const isImportableFile = (file: TFile, issuesPath: string, dashboardPath: string
 const formatPriority = (priority: Priority): string => {
 	return `${priority.charAt(0).toUpperCase()}${priority.slice(1)}`;
 };
+async function importNoteWithPriority(
+	plugin: TasksDashboardPlugin,
+	dashboard: DashboardConfig,
+	file: TFile,
+	priority: Priority
+): Promise<void> {
+	try {
+		const issue = await plugin.issueManager.importNoteAsIssue({
+			file,
+			priority,
+			dashboard
+		});
+		new Notice(`Imported note as issue: ${issue.name}`);
+	} catch (error) {
+		new Notice(`Error importing note: ${getErrorMessage(error)}`);
+	}
+}
+
 export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
@@ -70,6 +88,10 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	}
 
 	override onChooseItem(file: TFile): void {
+		if (this.dashboard.prioritiesEnabled === false) {
+			void importNoteWithPriority(this.plugin, this.dashboard, file, 'low');
+			return;
+		}
 		new ImportPriorityModal(this.app, this.plugin, this.dashboard, file).open();
 	}
 }
@@ -165,15 +187,6 @@ class ImportPriorityModal extends Modal {
 	}
 
 	private async importNote(priority: Priority): Promise<void> {
-		try {
-			const issue = await this.plugin.issueManager.importNoteAsIssue({
-				file: this.sourceFile,
-				priority,
-				dashboard: this.dashboard
-			});
-			new Notice(`Imported note as issue: ${issue.name}`);
-		} catch (error) {
-			new Notice(`Error importing note: ${getErrorMessage(error)}`);
-		}
+		await importNoteWithPriority(this.plugin, this.dashboard, this.sourceFile, priority);
 	}
 }

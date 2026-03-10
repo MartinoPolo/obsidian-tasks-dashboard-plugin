@@ -25,6 +25,7 @@ interface GitStatusServiceParams {
 export interface GitStatusServiceInstance {
 	getIssueGitStatus: (params: GitStatusServiceParams) => Promise<IssueGitStatus>;
 	clearCache: () => void;
+	invalidate: (dashboardId: string, issueId: string) => void;
 }
 
 const PR_STATE_PRIORITY: Record<PrState, number> = {
@@ -113,6 +114,10 @@ export function createGitStatusService(
 
 	const clearCache = (): void => {
 		cache.clear();
+	};
+
+	const invalidate = (dashboardId: string, issueId: string): void => {
+		cache.delete(`${dashboardId}:${issueId}`);
 	};
 
 	const getCached = (key: string): IssueGitStatus | undefined => {
@@ -249,5 +254,5 @@ export function createGitStatusService(
 		return status;
 	};
 
-	return { getIssueGitStatus, clearCache };
+	return { getIssueGitStatus, clearCache, invalidate };
 }

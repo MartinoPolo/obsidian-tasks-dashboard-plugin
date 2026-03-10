@@ -313,6 +313,17 @@ export class TasksDashboardSettingTab extends PluginSettingTab {
 			);
 		}
 
+		new Setting(dashboardContainer)
+			.setName('Enable priorities')
+			.setDesc('Show priority indicators and allow priority selection during issue creation')
+			.addToggle((toggle) =>
+				toggle.setValue(dashboard.prioritiesEnabled !== false).onChange((value) => {
+					dashboard.prioritiesEnabled = value;
+					void this.plugin.saveSettings();
+					this.plugin.triggerDashboardRefresh();
+				})
+			);
+
 		const dashboardFilesSetting = new Setting(dashboardContainer).setName('Dashboard files');
 
 		const updateDashboardButton = (): void => {

@@ -79,7 +79,7 @@ export function renderBranchBadge(container: HTMLElement, status: IssueGitStatus
 		status.branchName.length > BRANCH_NAME_MAX_DISPLAY_LENGTH
 			? status.branchName.slice(0, BRANCH_NAME_MAX_DISPLAY_LENGTH) + '\u2026'
 			: status.branchName;
-	badge.appendText(displayName);
+	badge.createSpan({ text: displayName });
 
 	const tooltipText =
 		status.branchStatus === 'active'
@@ -103,7 +103,7 @@ export function renderPrBadge(container: HTMLElement, pr: LinkedPullRequest): vo
 
 	const icon = PR_STATE_ICON[pr.state];
 	appendInlineSvgIcon(badge, icon);
-	badge.appendText(`#${pr.number} ${PR_STATE_LABEL[pr.state]}`);
+	badge.createSpan({ text: `#${pr.number} ${PR_STATE_LABEL[pr.state]}` });
 
 	setTooltip(badge, `${pr.title} — ${pr.state}`, { delay: 300 });
 }
@@ -124,16 +124,65 @@ export function renderIssueBadge(container: HTMLElement, issue: LinkedGitHubIssu
 
 	const stateLabel = ISSUE_STATE_LABEL[issue.state];
 	const labelText = stateLabel !== '' ? `#${issue.number} ${stateLabel}` : `#${issue.number}`;
-	badge.appendText(labelText);
+	badge.createSpan({ text: labelText });
 
 	setTooltip(badge, `${issue.title} — ${issue.state}`, { delay: 300 });
 }
 
-export function applyPrStateAccent(issueContainer: HTMLElement, prState: PrState): void {
+export function showBadgeContextMenu(event: MouseEvent, onRefresh: () => void): void {
+	event.preventDefault();
+	event.stopPropagation();
+
+	const dropdown = document.createElement('div');
+	dropdown.className = 'tdc-sort-dropdown tdc-sort-dropdown-portal';
+	document.body.appendChild(dropdown);
+
+	const refreshItem = dropdown.createDiv({ cls: 'tdc-sort-dropdown-item', text: 'Refresh' });
+
+	const removeDropdown = (): void => {
+		document.removeEventListener('click', handleOutsideClick, true);
+		document.removeEventListener('keydown', handleEscape, true);
+		dropdown.remove();
+	};
+
+	refreshItem.addEventListener('click', (clickEvent) => {
+		clickEvent.preventDefault();
+		clickEvent.stopPropagation();
+		removeDropdown();
+		onRefresh();
+	});
+
+	const handleOutsideClick = (outsideEvent: MouseEvent): void => {
+		const target = outsideEvent.target;
+		if (target instanceof Node && dropdown.contains(target)) {
+			return;
+		}
+		removeDropdown();
+	};
+
+	const handleEscape = (keyEvent: KeyboardEvent): void => {
+		if (keyEvent.key !== 'Escape') {
+			return;
+		}
+		keyEvent.preventDefault();
+		keyEvent.stopPropagation();
+		removeDropdown();
+	};
+
+	// Position at click location
+	const viewportPadding = 8;
+	dropdown.style.left = `${Math.max(viewportPadding, event.clientX)}px`;
+	dropdown.style.top = `${Math.max(viewportPadding, event.clientY)}px`;
+
+	document.addEventListener('click', handleOutsideClick, true);
+	document.addEventListener('keydown', handleEscape, true);
+}
+
+export function applyPrStateAccent(headerElement: HTMLElement, prState: PrState): void {
 	// Remove any existing accent classes
-	for (const cls of Array.from(issueContainer.classList)) {
+	for (const cls of Array.from(headerElement.classList)) {
 		if (cls.startsWith('tdc-pr-accent-')) {
-			issueContainer.classList.remove(cls);
+			headerElement.classList.remove(cls);
 		}
 	}
 
@@ -141,5 +190,5 @@ export function applyPrStateAccent(issueContainer: HTMLElement, prState: PrState
 		return;
 	}
 
-	issueContainer.classList.add(`tdc-pr-accent-${prState}`);
+	headerElement.classList.add(`tdc-pr-accent-${prState}`);
 }

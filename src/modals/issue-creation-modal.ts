@@ -723,6 +723,22 @@ class ColorPromptModal extends Modal {
 			return;
 		}
 		this.close();
+		if (this.dashboard.prioritiesEnabled === false) {
+			void createIssueWithGitHub(
+				this.app,
+				this.plugin,
+				this.dashboard,
+				this.issueName,
+				'low',
+				this.githubSelection.githubLink,
+				this.githubSelection.githubMetadata,
+				color,
+				this.mode,
+				this.worktreeOriginFolder,
+				this.sourceIssueLinkedRepository
+			);
+			return;
+		}
 		new PriorityPromptModal(
 			this.app,
 			this.plugin,

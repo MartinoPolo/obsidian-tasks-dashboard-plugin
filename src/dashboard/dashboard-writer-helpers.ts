@@ -44,7 +44,11 @@ export const buildIssueRelativePath = (issueId: string, isArchived: boolean): st
 };
 
 export const buildSortBlock = (dashboardId: string, dashboardFilename?: string): string => {
-	const displayName = (dashboardFilename !== undefined && dashboardFilename !== '' ? dashboardFilename : 'Dashboard').replace(/\.md$/i, '');
+	const displayName = (
+		dashboardFilename !== undefined && dashboardFilename !== ''
+			? dashboardFilename
+			: 'Dashboard'
+	).replace(/\.md$/i, '');
 	return `# ${displayName}\n\`\`\`tasks-dashboard-sort\ndashboard: ${dashboardId}\n\`\`\`\n`;
 };
 
