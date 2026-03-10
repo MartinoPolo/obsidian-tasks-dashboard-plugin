@@ -218,29 +218,29 @@ Also, it seems that in that modal the Create and Cancel buttons are reversed. Th
 
 ### Header Badges (Phase 29)
 
-- [ ] Move branch and PR badges from the git-status strip (below header) into the issue header, directly after the worktree icon
-- [ ] Add GitHub issue state badge in the header alongside branch/PR badges, with appropriate GitHub icons (open = green circle-dot, closed = purple circle-check) and clickable link to the GitHub issue
-- [ ] Badge text: branch name trimmed to 16 characters; PR shows `#number State`; issue shows `#number State`
-- [ ] Responsive badge behavior: when insufficient header space, badges collapse to icon-only mode (keeping state color and icon, dropping text)
-- [ ] PR badge is a clickable link opening the PR URL
-- [ ] Right-click context menu on PR/branch/issue badges with "Refresh" action to refresh git status for that specific issue
-- [ ] Remove the git-status strip container (`.tdc-git-status-container`) between header and controls — badges live in header now
-- [ ] PR state accent strip rendered at bottom border of issue header (not left border)
+- [x] Move branch and PR badges from the git-status strip (below header) into the issue header, directly after the worktree icon
+- [x] Add GitHub issue state badge in the header alongside branch/PR badges, with appropriate GitHub icons (open = green circle-dot, closed = purple circle-check) and clickable link to the GitHub issue
+- [x] Badge text: branch name trimmed to 16 characters; PR shows `#number State`; issue shows `#number State`
+- [x] Responsive badge behavior: when insufficient header space, badges collapse to icon-only mode (keeping state color and icon, dropping text)
+- [x] PR badge is a clickable link opening the PR URL
+- [x] Right-click context menu on PR/branch/issue badges with "Refresh" action to refresh git status for that specific issue
+- [x] Remove the git-status strip container (`.tdc-git-status-container`) between header and controls — badges live in header now
+- [x] PR state accent strip rendered at bottom border of issue header (not left border)
 
 ### Issue Card Simplification (Phase 29)
 
-- [ ] Remove embedded GitHub issue/PR cards from dashboard issue cards. Dashboard issue card contains only: header (with badges and buttons), controls (progress + action buttons), task query section
-- [ ] GitHub issue summary retained only inside the issue note file (via `tasks-dashboard-github` code block)
+- [x] Remove embedded GitHub issue/PR cards from dashboard issue cards. Dashboard issue card contains only: header (with badges and buttons), controls (progress + action buttons), task query section
+- [x] GitHub issue summary retained only inside the issue note file (via `tasks-dashboard-github` code block)
 
 ## Issue Header Styling (Phase 29)
 
-- [ ] Info icon color matches header text color (not `--text-muted`). On hover, show slightly gray background (no color change to `--text-normal`)
-- [ ] Worktree icon uses green color (`var(--tdc-priority-low)` / `#4caf50`) in active state (already implemented, verify)
-- [ ] Consistent spacing between worktree icon, info icon, and other header action buttons — remove the extra `margin-left: 6px` on info icon so all elements use the header's `gap: 8px`
+- [x] Info icon color matches header text color (not `--text-muted`). On hover, show slightly gray background (no color change to `--text-normal`)
+- [x] Worktree icon uses green color (`var(--tdc-priority-low)` / `#4caf50`) in active state (already implemented, verify)
+- [x] Consistent spacing between worktree icon, info icon, and other header action buttons — remove the extra `margin-left: 6px` on info icon so all elements use the header's `gap: 8px`
 
 ## Priority Toggle (Phase 29)
 
-- [ ] Per-dashboard setting `prioritiesEnabled` (default: `true`). When disabled:
+- [x] Per-dashboard setting `prioritiesEnabled` (default: `true`). When disabled:
   - Priority left-border strip hidden on issue cards (CSS-driven, priority class still applied)
   - Priority selection step skipped in all issue creation workflows
   - All issues auto-assigned `low` priority
@@ -249,7 +249,7 @@ Also, it seems that in that modal the Create and Cancel buttons are reversed. Th
 
 ## Issue Note Cleanup (Phase 29)
 
-- [ ] Remove the standalone GitHub issue markdown link (`[#number - title](url)`) from issue note creation (`generateIssueContent`) and GitHub linking (`updateBodyWithGitHubLink`). The `tasks-dashboard-github` code block remains as the sole GitHub section in issue notes
+- [x] Remove the standalone GitHub issue markdown link (`[#number - title](url)`) from issue note creation (`generateIssueContent`) and GitHub linking (`updateBodyWithGitHubLink`). The `tasks-dashboard-github` code block remains as the sole GitHub section in issue notes
 
 
 ## Manual Test cases

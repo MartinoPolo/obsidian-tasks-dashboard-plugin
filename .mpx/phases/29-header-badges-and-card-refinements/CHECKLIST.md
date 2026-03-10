@@ -12,16 +12,16 @@ Move git status badges into issue header, simplify card layout, refine header st
 - [x] `styles.css`: Add `background: var(--background-modifier-hover)` on `.tdc-issue-info-inline:hover` instead of color change
 - [x] `styles.css`: Remove the `color: var(--text-normal)` override on `.tdc-issue-info-inline:hover` (color stays constant now)
 - [x] Verify: Info icon color matches issue title text color in both light and dark themes
-- [ ] SPEC check: `Issue Header Styling > Info icon color matches header text color`
+- [x] SPEC check: `Issue Header Styling > Info icon color matches header text color`
 
 ### 1.2 Worktree Icon Active State (Verification)
 - [x] Verify `.tdc-worktree-status-active` uses green color (`var(--tdc-priority-low)` = `#4caf50`)
-- [ ] SPEC check: `Issue Header Styling > Worktree icon uses green color in active state`
+- [x] SPEC check: `Issue Header Styling > Worktree icon uses green color in active state`
 
 ### 1.3 Consistent Header Spacing
 - [x] `styles.css`: Remove `margin-left: 6px` from `.tdc-issue-info-inline` — let the parent `gap: 8px` handle spacing
 - [x] Verify all header elements (collapse, title, worktree icon, info icon, badges, actions) use uniform gap
-- [ ] SPEC check: `Issue Header Styling > Consistent spacing between worktree icon, info icon, and other header action buttons`
+- [x] SPEC check: `Issue Header Styling > Consistent spacing between worktree icon, info icon, and other header action buttons`
 
 ---
 
@@ -72,7 +72,7 @@ Move git status badges into issue header, simplify card layout, refine header st
 - [x] `src/dashboard/DashboardRenderer.ts`: Apply `tdc-pr-accent-*` class to `header` element instead of `container`
 - [x] `src/dashboard/git-status-indicator.ts`: Update `applyPrStateAccent` to accept header element
 - [x] Verify accent doesn't conflict with priority left-border on header
-- [ ] SPEC check: `Header Badges > PR state accent strip rendered at bottom border of issue header`
+- [x] SPEC check: `Header Badges > PR state accent strip rendered at bottom border of issue header`
 
 ---
 
@@ -82,7 +82,7 @@ Move git status badges into issue header, simplify card layout, refine header st
 - [x] `src/dashboard/DashboardRenderer.ts`: Remove the GitHub card rendering block (lines ~764-776 — the `if (dashboard.githubEnabled && params.githubLinks.length > 0)` section)
 - [x] Verify `tasks-dashboard-github` code block rendering in issue _notes_ still works (`renderGitHubNoteCard`)
 - [x] `styles.css`: Remove or scope `.tdc-github-container` CSS to note-only contexts if needed
-- [ ] SPEC check: `Issue Card Simplification > Remove embedded GitHub issue/PR cards from dashboard issue cards`
+- [x] SPEC check: `Issue Card Simplification > Remove embedded GitHub issue/PR cards from dashboard issue cards`
 
 ---
 
@@ -108,7 +108,7 @@ Move git status badges into issue header, simplify card layout, refine header st
 
 ### 5.5 Progress Bar Styling
 - [x] `src/dashboard/DashboardRenderer.ts`: When priorities disabled, use neutral color for progress fill instead of priority color (or keep low-priority green — decide)
-- [ ] SPEC check: `Priority Toggle > Per-dashboard setting prioritiesEnabled`
+- [x] SPEC check: `Priority Toggle > Per-dashboard setting prioritiesEnabled`
 
 ---
 
@@ -124,18 +124,18 @@ Move git status badges into issue header, simplify card layout, refine header st
 
 ### 6.3 Cleanup
 - [x] `src/issues/issue-manager-github.ts`: Remove `formatGitHubLinkText` if no other callers exist after link removal
-- [ ] SPEC check: `Issue Note Cleanup > Remove the standalone GitHub issue markdown link`
+- [x] SPEC check: `Issue Note Cleanup > Remove the standalone GitHub issue markdown link`
 
 ---
 
 ## 7. Final Verification
 
-- [ ] Build passes: `pnpm build`
-- [ ] Lint passes: `pnpm lint`
+- [x] Build passes: `pnpm build`
+- [x] Lint passes: `pnpm lint`
 - [ ] Manual test: create issue with and without GitHub link, verify no standalone link in note
 - [ ] Manual test: verify badges appear in header, responsive collapse to icon-only
 - [ ] Manual test: right-click badge → Refresh works
 - [ ] Manual test: disable priorities → no strip, no priority step, no sort option
 - [ ] Manual test: verify PR accent on header bottom border
 - [ ] Manual test: no GitHub card between controls and tasks section
-- [ ] Update SPEC.md: check off all Phase 29 items
+- [x] Update SPEC.md: check off all Phase 29 items
