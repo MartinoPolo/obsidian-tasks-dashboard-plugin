@@ -194,7 +194,7 @@
 - [x] PR badge shown only when a PR exists
 - [x] GitHub issue state badge with icons (open = green circle-dot, closed = purple circle-check). Clickable link to issue URL
 - [x] Badge text: branch name trimmed to 16 chars (full name in tooltip); PR and issue show `#number State`
-- [x] Badges rendered in issue header after title; visible in both expanded and collapsed card states
+- [x] Badges rendered in issue header after title
 - [x] Responsive badge compaction: badges collapse to icon-only mode when header space is insufficient (keeping state color and icon, dropping text)
 - [x] Right-click context menu on badges with "Refresh" action for per-issue git status refresh
 - [x] Works for both worktree issues (branch-based lookup) and non-worktree issues (GitHub-link-based lookup)
@@ -224,8 +224,8 @@
 - [x] Archive and delete confirmation modals display unfinished task count in red when incomplete tasks exist
 - [x] Archive modal includes worktree removal checkbox; Escape cancels the entire operation
 - [x] Issue notes use `tasks-dashboard-github` code block as the sole GitHub section (no standalone markdown link)
-- [ ] New issue files created without a default markdown checkbox to avoid false unfinished-task counts
-- [ ] Priority selection step displays a confirmation button; no skip action (every issue requires a priority, with default pre-selected)
+- [x] New issue files created without a default markdown checkbox to avoid false unfinished-task counts
+- [x] Priority selection step displays a confirmation button; no skip action (every issue requires a priority, with default pre-selected)
 
 ## External Tools
 
