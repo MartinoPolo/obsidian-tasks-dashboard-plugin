@@ -530,6 +530,9 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 					applyBadgeCompaction();
 				})
 				.catch(() => {
+					if (isDestroyed) {
+						return;
+					}
 					gitStatusInfoLines = ['Last refreshed: Error'];
 					headerBadges.classList.remove('tdc-header-badges-loading');
 				});
