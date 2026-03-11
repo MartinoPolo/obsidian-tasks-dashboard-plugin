@@ -148,7 +148,9 @@ export function createGitStatusService(
 			return 'active';
 		}
 		if (result === 'local') {
-			return 'local';
+			// Branch exists locally but not on remote — check if it was ever pushed
+			const hadUpstream = platformService.hasBranchUpstreamConfig(originFolder, branchName);
+			return hadUpstream ? 'remote-gone' : 'local';
 		}
 		return 'deleted';
 	};

@@ -1,5 +1,6 @@
 import { setTooltip } from 'obsidian';
 import type {
+	BranchStatus,
 	IssueGitStatus,
 	IssueState,
 	LinkedGitHubIssue,
@@ -58,19 +59,28 @@ const ISSUE_STATE_LABEL: Record<IssueState, string> = {
 
 const BRANCH_NAME_MAX_DISPLAY_LENGTH = 16;
 
+const BRANCH_STATUS_CSS_CLASS: Record<BranchStatus, string> = {
+	active: 'tdc-git-badge-branch-active',
+	local: 'tdc-git-badge-branch-local',
+	'remote-gone': 'tdc-git-badge-branch-remote-gone',
+	deleted: 'tdc-git-badge-branch-deleted',
+	unknown: 'tdc-git-badge-branch-unknown'
+};
+
+const BRANCH_STATUS_TOOLTIP_PREFIX: Record<BranchStatus, string> = {
+	active: 'Branch exists',
+	local: 'Branch local only (not pushed)',
+	'remote-gone': 'Remote branch deleted',
+	deleted: 'Branch deleted',
+	unknown: 'Branch status unknown'
+};
+
 export function renderBranchBadge(container: HTMLElement, status: IssueGitStatus): void {
 	if (status.branchName === undefined) {
 		return;
 	}
 
-	const branchStatusClass =
-		status.branchStatus === 'active'
-			? 'tdc-git-badge-branch-active'
-			: status.branchStatus === 'local'
-				? 'tdc-git-badge-branch-local'
-				: status.branchStatus === 'deleted'
-					? 'tdc-git-badge-branch-deleted'
-					: 'tdc-git-badge-branch-unknown';
+	const branchStatusClass = BRANCH_STATUS_CSS_CLASS[status.branchStatus];
 
 	const badge = container.createSpan({
 		cls: `tdc-git-badge ${branchStatusClass}`
@@ -83,15 +93,8 @@ export function renderBranchBadge(container: HTMLElement, status: IssueGitStatus
 			: status.branchName;
 	badge.createSpan({ text: displayName });
 
-	const tooltipText =
-		status.branchStatus === 'active'
-			? `Branch exists: ${status.branchName}`
-			: status.branchStatus === 'local'
-				? `Branch local only (not pushed): ${status.branchName}`
-				: status.branchStatus === 'deleted'
-					? `Branch deleted: ${status.branchName}`
-					: `Branch status unknown: ${status.branchName}`;
-	setTooltip(badge, tooltipText, { delay: 300 });
+	const tooltipPrefix = BRANCH_STATUS_TOOLTIP_PREFIX[status.branchStatus];
+	setTooltip(badge, `${tooltipPrefix}: ${status.branchName}`, { delay: 300 });
 }
 
 export function renderPrBadge(container: HTMLElement, pr: LinkedPullRequest): void {

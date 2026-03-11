@@ -29,6 +29,7 @@
 	--tdc-git-pr-review: #d29922;
 	--tdc-git-branch-active: #3fb950;
 	--tdc-git-branch-local: #a5d6a7;
+	--tdc-git-branch-remote-gone: #d29922;
 	--tdc-git-branch-deleted: #768390;
 }
 
@@ -2204,6 +2205,12 @@ a.tdc-git-badge:hover {
 	border-color: color-mix(in srgb, var(--tdc-git-branch-local) 40%, transparent);
 }
 
+.tdc-git-badge-branch-remote-gone {
+	color: var(--tdc-git-branch-remote-gone);
+	background: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 15%, transparent);
+	border-color: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 40%, transparent);
+}
+
 .tdc-git-badge-branch-deleted {
 	color: var(--tdc-git-branch-deleted);
 	background: color-mix(in srgb, var(--tdc-git-branch-deleted) 15%, transparent);
@@ -2282,6 +2289,9 @@ a.tdc-git-badge:hover {
 }
 .tdc-header-badges .tdc-git-badge-branch-local svg {
 	color: var(--tdc-git-branch-local);
+}
+.tdc-header-badges .tdc-git-badge-branch-remote-gone svg {
+	color: var(--tdc-git-branch-remote-gone);
 }
 .tdc-header-badges .tdc-git-badge-branch-deleted svg {
 	color: var(--tdc-git-branch-deleted);

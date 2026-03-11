@@ -46,6 +46,7 @@ export interface PlatformService {
 		repositoryFolder: string,
 		branchName: string
 	) => 'local' | 'remote' | 'none';
+	hasBranchUpstreamConfig: (repositoryFolder: string, branchName: string) => boolean;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
@@ -767,6 +768,17 @@ export function createPlatformService(): PlatformService {
 			return 'none';
 		}
 
+		// Check remote first — a pushed branch is active regardless of local state
+		const remoteStatus = runGitCommandStatus(repositoryFolder, [
+			'rev-parse',
+			'--verify',
+			'--quiet',
+			`refs/remotes/origin/${branchName}`
+		]);
+		if (remoteStatus === 0) {
+			return 'remote';
+		}
+
 		const localStatus = runGitCommandStatus(repositoryFolder, [
 			'rev-parse',
 			'--verify',
@@ -787,17 +799,23 @@ export function createPlatformService(): PlatformService {
 			return 'local';
 		}
 
-		const remoteStatus = runGitCommandStatus(repositoryFolder, [
-			'rev-parse',
-			'--verify',
-			'--quiet',
-			`refs/remotes/origin/${branchName}`
-		]);
-		if (remoteStatus === 0) {
-			return 'remote';
+		return 'none';
+	};
+
+	const hasBranchUpstreamConfig = (
+		repositoryFolder: string,
+		branchName: string
+	): boolean => {
+		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
+			return false;
 		}
 
-		return 'none';
+		// git config branch.<name>.remote — returns 0 if upstream tracking was configured
+		const status = runGitCommandStatus(repositoryFolder, [
+			'config',
+			`branch.${branchName}.remote`
+		]);
+		return status === 0;
 	};
 
 	return {
@@ -812,6 +830,7 @@ export function createPlatformService(): PlatformService {
 		getDefaultBranch,
 		getCurrentBranch,
 		checkBranchExists,
+		hasBranchUpstreamConfig,
 		pickFolder,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript
