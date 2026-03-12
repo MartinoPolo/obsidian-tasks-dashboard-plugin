@@ -1,4 +1,5 @@
 import esbuild from "esbuild";
+import esbuildSvelte from "esbuild-svelte";
 import process from "process";
 import builtins from "builtin-modules";
 const banner =
@@ -9,6 +10,9 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 const prod = (process.argv[2] === "production");
 const context = await esbuild.context({
+	plugins: [
+		esbuildSvelte({ compilerOptions: { css: 'injected', runes: true } })
+	],
 	banner: {
 		js: banner,
 	},
