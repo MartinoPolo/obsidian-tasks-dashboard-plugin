@@ -1,11 +1,10 @@
+import type { IconName } from '../components/icons/index';
 import type { IssueActionKey, WorktreeSetupState } from '../types';
-
-type IssueActionIconKey = keyof typeof import('./header-actions').ICONS;
 
 export interface IssueActionDescriptor {
 	key: IssueActionKey;
 	label: string;
-	iconKey: IssueActionIconKey;
+	iconKey: IconName;
 	cssClass: string;
 	shouldRender: boolean;
 	faded: boolean;

@@ -1,19 +1,15 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
+import { mount, unmount } from 'svelte';
 import TasksDashboardPlugin from '../../main';
-import { getErrorMessage } from '../settings/settings-helpers';
-import { DashboardConfig } from '../types';
-import {
-	createConfirmCancelButtons,
-	createInputWithEnterHandler,
-	setupPromptModal
-} from './modal-helpers';
+import type { DashboardConfig } from '../types';
+import RenameIssueContent from '../components/modals/RenameIssueContent.svelte';
 
 export class RenameIssueModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private issueId: string;
 	private currentName: string;
-	private input: HTMLInputElement | undefined;
+	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -30,55 +26,27 @@ export class RenameIssueModal extends Modal {
 	}
 
 	onOpen() {
-		setupPromptModal(this, 'Rename Issue');
-		const input = createInputWithEnterHandler(
-			this.contentEl,
-			'Enter new name...',
-			() => void this.confirm()
-		);
-		input.value = this.currentName;
-		input.select();
-		this.input = input;
-		createConfirmCancelButtons(
-			this.contentEl,
-			'Rename',
-			() => void this.confirm(),
-			() => this.close()
-		);
-	}
+		const { modalEl, containerEl } = this;
+		containerEl.addClass('tdc-top-modal');
+		modalEl.addClass('tdc-prompt-modal');
 
-	private getInput(): HTMLInputElement | undefined {
-		return this.input;
-	}
-
-	private async confirm() {
-		const input = this.getInput();
-		if (input === undefined) {
-			return;
-		}
-
-		const value = input.value.trim();
-		if (value === '') {
-			input.addClass('tdc-input-error');
-			input.focus();
-			return;
-		}
-
-		if (value === this.currentName) {
-			this.close();
-			return;
-		}
-
-		this.close();
-		try {
-			await this.plugin.issueManager.renameIssue(this.dashboard, this.issueId, value);
-		} catch (error) {
-			new Notice(`Error renaming issue: ${getErrorMessage(error)}`);
-		}
+		this.svelteComponent = mount(RenameIssueContent, {
+			target: this.contentEl,
+			props: {
+				plugin: this.plugin,
+				dashboard: this.dashboard,
+				issueId: this.issueId,
+				currentName: this.currentName,
+				onclose: () => this.close()
+			}
+		});
 	}
 
 	onClose() {
-		this.input = undefined;
+		if (this.svelteComponent !== undefined) {
+			void unmount(this.svelteComponent);
+			this.svelteComponent = undefined;
+		}
 		this.contentEl.empty();
 	}
 }
