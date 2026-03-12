@@ -28,7 +28,7 @@ Svelte manages section structure/layout. Individual settings use `new Setting(co
 | 2 | ✅ Done | GitHub: GitHubCard, GitHubRepoCard, GitHubCardContainer, GitHubSearchContent, thin modal shell |
 | 3 | Pending | Dashboard: IssueCard, IssueHeader, OverflowPanel, SortControls, ProgressBar, etc. |
 | 4 | Pending | Modals: wizard, confirmation, color picker, priority selector, all modal content |
-| **5** | **🔄 Current** | **Settings: SettingsTab, DashboardSettings, GitHubSettings** |
+| **5** | **✅ Done** | **Settings: SettingsTab, DashboardSettings, GitHubSettings** |
 | 6 | Pending | CSS audit: verify global vs scoped, remove dead CSS |
 | 7 | Pending | Cleanup: delete replaced files, dead imports, final verification |
 | 8 | Pending | Testing: vitest, component tests, CI |
@@ -37,12 +37,12 @@ Svelte manages section structure/layout. Individual settings use `new Setting(co
 
 ## Phase 5 Checklist
 
-- [ ] 5.1 Create `SettingsTab.svelte`
-- [ ] 5.2 Create `DashboardSettings.svelte`
-- [ ] 5.3 Create `GitHubSettings.svelte`
-- [ ] 5.4 Modify `settings.ts`
-- [ ] 5.5 Delete `settings/github-settings-renderer.ts`
-- [ ] 5.6 Verify Phase 5
+- [x] 5.1 Create `SettingsTab.svelte`
+- [x] 5.2 Create `DashboardSettings.svelte`
+- [x] 5.3 Create `GitHubSettings.svelte`
+- [x] 5.4 Modify `settings.ts`
+- [x] 5.5 Delete `settings/github-settings-renderer.ts`
+- [x] 5.6 Verify Phase 5
 
 ---
 

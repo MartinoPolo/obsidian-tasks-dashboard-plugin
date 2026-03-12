@@ -24,7 +24,7 @@ Key reminders:
 | 1 | ✅ Done | Shared components: icons, Icon, ActionButton, GitBadge, StatePill, LoadingIndicator, ErrorDisplay |
 | 2 | ✅ Done | GitHub: GitHubCard, GitHubRepoCard, GitHubCardContainer, GitHubSearchContent, thin modal shell |
 | 3 | Pending | Dashboard: IssueCard, IssueHeader, OverflowPanel, SortControls, ProgressBar, etc. |
-| **4** | **🔄 Current** | **Modals: wizard, confirmation, color picker, priority selector, all modal content** |
+| **4** | **✅ Done** | **Modals: wizard, confirmation, color picker, priority selector, all modal content** |
 | 5 | Pending | Settings: SettingsTab, DashboardSettings, GitHubSettings |
 | 6 | Pending | CSS audit: verify global vs scoped, remove dead CSS |
 | 7 | Pending | Cleanup: delete replaced files, dead imports, final verification |
@@ -34,17 +34,17 @@ Key reminders:
 
 ## Phase 4 Checklist
 
-- [ ] 4.1 Create `ModalLayout.svelte`
-- [ ] 4.2 Create `ConfirmationDialog.svelte`
-- [ ] 4.3 Create `ColorPicker.svelte`
-- [ ] 4.4 Create `PrioritySelector.svelte`
-- [ ] 4.5 Create `IssueCreationWizard.svelte`
-- [ ] 4.6 Create wizard sub-step components
-- [ ] 4.7 Create `WorktreeRetryContent.svelte`
-- [ ] 4.8 Create remaining modal content components
-- [ ] 4.9 Convert modal shell files to thin wrappers
-- [ ] 4.10 Delete files
-- [ ] 4.11 Verify Phase 4
+- [x] 4.1 Create `ModalLayout.svelte`
+- [x] 4.2 Create `ConfirmationDialog.svelte`
+- [x] 4.3 Create `ColorPicker.svelte`
+- [x] 4.4 Create `PrioritySelector.svelte`
+- [x] 4.5 Create `IssueCreationWizard.svelte`
+- [x] 4.6 Create wizard sub-step components
+- [x] 4.7 Create `WorktreeRetryContent.svelte`
+- [x] 4.8 Create remaining modal content components
+- [x] 4.9 Convert modal shell files to thin wrappers
+- [x] 4.10 Delete files
+- [x] 4.11 Verify Phase 4
 
 ---
 
@@ -228,21 +228,23 @@ All modal files in `src/modals/` become thin shells:
 ```
 src/components/modals/
   ModalLayout.svelte              — Shared modal layout
-  ConfirmationDialog.svelte       — Generic confirm/cancel
-  ColorPicker.svelte              — Color selection grid
-  PrioritySelector.svelte         — Priority selection list
-  IssueCreationWizard.svelte      — Multi-step wizard
-  NameStep.svelte                 — Wizard: name input
-  GitHubStep.svelte               — Wizard: GitHub linking
-  WorktreeStep.svelte             — Wizard: worktree decision
-  WorktreeRetryContent.svelte     — Worktree error retry
+  ConfirmationDialog.svelte       — Generic confirm/cancel (with warningText, checkbox props)
+  ColorPicker.svelte              — Color selection grid with keyboard nav
+  PrioritySelector.svelte         — Priority selection list with keyboard nav
+  IssueCreationWizard.svelte      — Multi-step wizard (name → worktree → color → priority)
+  NameStep.svelte                 — Wizard: name input + validation
+  WorktreeDecisionStep.svelte     — Wizard: yes/no worktree decision
+  WorktreeRetryContent.svelte     — Worktree error retry with repo selector
   GitHubLinksContent.svelte       — Link/unlink GitHub items
   FolderPathContent.svelte        — Folder path browser
-  NoteImportContent.svelte        — Note import dialog
-  RepositoryLinkerContent.svelte  — Repository linking
+  RepositoryLinkerContent.svelte  — Repository linking with search
   RenameIssueContent.svelte       — Issue rename input
+  NoteImportPriorityContent.svelte — Wraps PrioritySelector for note import
+  ManualGitHubLinkContent.svelte  — Optional GitHub URL input (skip/next)
+  ManualGitHubUrlContent.svelte   — GitHub URL input with validation
 
 src/modals/                       — All become thin Modal shells (~25-80 lines each)
+main.ts                           — Updated: NamePromptModal → openIssueCreationModal()
 
 Deleted:
   src/modals/modal-helpers.ts

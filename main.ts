@@ -23,7 +23,7 @@ import {
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
 import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
-import { NamePromptModal } from './src/modals/issue-creation-modal';
+import { openIssueCreationModal } from './src/modals/issue-creation-modal';
 import { TasksDashboardSettingTab } from './src/settings';
 import {
 	DashboardConfig,
@@ -258,7 +258,7 @@ export default class TasksDashboardPlugin extends Plugin {
 				id: `create-issue-${dashboard.id}`,
 				name: `Create issue: ${displayName}`,
 				callback: () => {
-					new NamePromptModal(this.app, this, dashboard).open();
+					openIssueCreationModal(this.app, this, dashboard);
 				}
 			});
 			this.registeredCommands.push(commandId);
@@ -345,7 +345,7 @@ export default class TasksDashboardPlugin extends Plugin {
 			return;
 		}
 		if (this.settings.dashboards.length === 1) {
-			new NamePromptModal(this.app, this, this.settings.dashboards[0]).open();
+			openIssueCreationModal(this.app, this, this.settings.dashboards[0]);
 			return;
 		}
 		const dashboards = this.settings.dashboards;
@@ -360,7 +360,7 @@ export default class TasksDashboardPlugin extends Plugin {
 				return getDashboardDisplayName(item);
 			}
 			onChooseItem(item: DashboardConfig): void {
-				new NamePromptModal(app, pluginRef, item).open();
+				openIssueCreationModal(app, pluginRef, item);
 			}
 		}
 		new DashboardSelectorModal(this.app).open();

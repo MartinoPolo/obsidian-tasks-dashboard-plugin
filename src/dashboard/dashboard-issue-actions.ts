@@ -11,7 +11,7 @@ import { openIssueCreationModal, openPrioritySelectionModal } from '../modals/is
 import { RenameIssueModal } from '../modals/rename-issue-modal';
 import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import type { DashboardConfig, IssueActionKey } from '../types';
-import { getGitHubLinkType } from '../utils/github';
+import { getGitHubLinkType, isGitHubWebUrl, parseGitHubUrlInfo } from '../utils/github';
 import { parseGitHubRepoFullName } from '../utils/github-url';
 import {
 	collectUsedIssueColors,
@@ -19,10 +19,56 @@ import {
 	isIssueColorUsed
 } from '../utils/issue-colors';
 import type { PlatformService } from '../utils/platform';
-import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
-import { getButtonVisibility } from './header-actions';
+
+interface ButtonVisibility {
+	folder: boolean;
+	terminal: boolean;
+	vscode: boolean;
+	github: boolean;
+}
+
+export function getButtonVisibility(dashboard: DashboardConfig): ButtonVisibility {
+	const showFolder = dashboard.showFolderButtons ?? true;
+	return {
+		folder: showFolder,
+		terminal: dashboard.showTerminalButtons ?? true,
+		vscode: dashboard.showVSCodeButtons ?? true,
+		github: (dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled
+	};
+}
+
+function formatGitHubLinkLabel(url: string): string {
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed !== undefined) {
+		const labelType = parsed.type === 'pr' ? 'PR' : 'Issue';
+		return `${labelType} #${parsed.number}`;
+	}
+
+	const repoName = parseGitHubRepoFullName(url);
+	if (repoName !== undefined) {
+		return `Repository ${repoName}`;
+	}
+
+	return url;
+}
+
+function getOpenableGitHubLinks(links: string[]): string[] {
+	return links.filter((link) => isGitHubWebUrl(link));
+}
+
+function openGitHubLinkChooser(event: MouseEvent, links: string[]): void {
+	const menu = new Menu();
+	for (const link of links) {
+		menu.addItem((item) => {
+			item.setTitle(formatGitHubLinkLabel(link)).onClick(() => {
+				window.open(link, '_blank');
+			});
+		});
+	}
+	menu.showAtPosition({ x: event.clientX, y: event.clientY });
+}
 
 const isNonEmptyString = (value: string | undefined): value is string => {
 	return value !== undefined && value !== '';

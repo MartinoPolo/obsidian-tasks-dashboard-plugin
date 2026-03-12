@@ -18,7 +18,7 @@ CSS migration is handled per-component during each phase — every component get
 | 3 | Pending | Dashboard: IssueCard, IssueHeader, OverflowPanel, SortControls, ProgressBar, etc. |
 | 4 | Pending | Modals: wizard, confirmation, color picker, priority selector, all modal content |
 | 5 | Pending | Settings: SettingsTab, DashboardSettings, GitHubSettings |
-| **6** | **🔄 Current** | **CSS audit: verify global vs scoped, remove dead CSS** |
+| **6** | **✅ Done** | **CSS audit: verify global vs scoped, remove dead CSS** |
 | 7 | Pending | Cleanup: delete replaced files, dead imports, final verification |
 | 8 | Pending | Testing: vitest, component tests, CI |
 
@@ -26,9 +26,9 @@ CSS migration is handled per-component during each phase — every component get
 
 ## Phase 6 Checklist
 
-- [ ] 6.1 Audit `styles.css`
-- [ ] 6.2 Remove dead CSS
-- [ ] 6.3 Verify
+- [x] 6.1 Audit `styles.css`
+- [x] 6.2 Remove dead CSS
+- [x] 6.3 Verify
 
 ---
 

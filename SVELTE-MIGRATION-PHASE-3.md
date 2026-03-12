@@ -31,7 +31,7 @@ Key reminders:
 | 0 | ✅ Done | Infrastructure: deps, esbuild, tsconfig, eslint, svelte.d.ts, attach utils |
 | 1 | ✅ Done | Shared components: icons, Icon, ActionButton, GitBadge, StatePill, LoadingIndicator, ErrorDisplay |
 | 2 | ✅ Done | GitHub: GitHubCard, GitHubRepoCard, GitHubCardContainer, GitHubSearchContent, thin modal shell |
-| **3** | **🔄 Current** | **Dashboard: IssueCard, IssueHeader, OverflowPanel, SortControls, ProgressBar, etc.** |
+| **3** | **✅ Done** | **Dashboard: IssueCard, IssueHeader, OverflowPanel, SortControls, ProgressBar, etc.** |
 | 4 | Pending | Modals: wizard, confirmation, color picker, priority selector, all modal content |
 | 5 | Pending | Settings: SettingsTab, DashboardSettings, GitHubSettings |
 | 6 | Pending | CSS audit: verify global vs scoped, remove dead CSS |
@@ -42,19 +42,19 @@ Key reminders:
 
 ## Phase 3 Checklist
 
-- [ ] 3.1 Create `ProgressBar.svelte`
-- [ ] 3.2 Create `IssueInfoPanel.svelte`
-- [ ] 3.3 Create `OverflowPanel.svelte`
-- [ ] 3.4 Create `SortDropdown.svelte`
-- [ ] 3.5 Create `SortControls.svelte`
-- [ ] 3.6 Create `IssueHeader.svelte`
-- [ ] 3.7 Create `IssueCard.svelte`
-- [ ] 3.8 Create `AssignedIssuesSection.svelte`
-- [ ] 3.9 Modify `DashboardRenderer.ts`
-- [ ] 3.10 Modify `dashboard-reactive-render-child.ts`
-- [ ] 3.11 Keep `dashboard-issue-surface.ts` as utility
-- [ ] 3.12 Delete files
-- [ ] 3.13 Verify Phase 3
+- [x] 3.1 Create `ProgressBar.svelte`
+- [x] 3.2 Create `IssueInfoPanel.svelte`
+- [x] 3.3 Create `OverflowPanel.svelte`
+- [x] 3.4 Create `SortDropdown.svelte`
+- [x] 3.5 Create `SortControls.svelte`
+- [x] 3.6 Create `IssueHeader.svelte`
+- [x] 3.7 Create `IssueCard.svelte`
+- [x] 3.8 Create `AssignedIssuesSection.svelte`
+- [x] 3.9 Modify `DashboardRenderer.ts`
+- [x] 3.10 Modify `dashboard-reactive-render-child.ts`
+- [x] 3.11 Keep `dashboard-issue-surface.ts` as utility
+- [x] 3.12 Delete files
+- [x] 3.13 Verify Phase 3
 
 ---
 

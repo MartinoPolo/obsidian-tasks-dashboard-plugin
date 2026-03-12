@@ -24,11 +24,11 @@ See `SVELTE-MIGRATION.md` for full migration plan. See `SVELTE_MIGRATION_GUIDELI
 
 ## Phase 7 Checklist
 
-- [ ] 7.1 Delete replaced files
-- [ ] 7.2 Remove dead imports
-- [ ] 7.3 Remove dead CSS
-- [ ] 7.4 Final build verification
-- [ ] 7.5 Full smoke test
+- [x] 7.1 Delete replaced files
+- [x] 7.2 Remove dead imports
+- [x] 7.3 Remove dead CSS
+- [x] 7.4 Final build verification
+- [ ] 7.5 Full smoke test (manual)
 
 ---
 

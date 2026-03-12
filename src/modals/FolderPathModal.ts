@@ -1,20 +1,14 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal } from 'obsidian';
+import { mount, unmount } from 'svelte';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig } from '../types';
-import { createPlatformService } from '../utils/platform';
-import {
-	createPromptButtonsContainer,
-	createPromptCancelButton,
-	createPromptConfirmButton,
-	registerEnterShortcut,
-	setupPromptModal
-} from './modal-helpers';
+import type { DashboardConfig } from '../types';
+import FolderPathContent from '../components/modals/FolderPathContent.svelte';
 
 export class FolderPathModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private issueId: string | undefined;
-	private input: HTMLInputElement | undefined;
+	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -28,161 +22,27 @@ export class FolderPathModal extends Modal {
 		this.issueId = issueId;
 	}
 
-	private getStorageKey(): string | undefined {
-		if (this.issueId === undefined) {
-			return undefined;
-		}
-		return `${this.dashboard.id}:${this.issueId}`;
-	}
-
-	private getCurrentValue(): string | undefined {
-		const key = this.getStorageKey();
-		if (key !== undefined) {
-			return this.plugin.settings.issueFolders[key];
-		}
-		return this.dashboard.projectFolder;
-	}
-
-	private setValue(value: string | undefined): void {
-		const key = this.getStorageKey();
-		if (key !== undefined) {
-			if (value === undefined) {
-				delete this.plugin.settings.issueFolders[key];
-			} else {
-				this.plugin.settings.issueFolders[key] = value;
-			}
-		} else {
-			this.dashboard.projectFolder = value;
-		}
-	}
-
-	private getModalTitle(): string {
-		if (this.issueId !== undefined) {
-			return 'Issue Folder';
-		}
-		return 'Project Folder';
-	}
-
-	private getSubjectLabel(): string {
-		if (this.issueId !== undefined) {
-			return 'Issue folder';
-		}
-
-		return 'Project folder';
-	}
-
-	private persistChanges(noticeMessage: string): void {
-		void this.plugin.saveSettings();
-		this.plugin.triggerDashboardRefresh();
-		new Notice(noticeMessage);
-		this.close();
-	}
-
-	private createInput(
-		contentEl: HTMLElement,
-		currentValue: string | undefined
-	): HTMLInputElement {
-		const input = contentEl.createEl('input', {
-			type: 'text',
-			cls: 'tdc-prompt-input',
-			attr: { placeholder: 'C:\\projects\\my-app' },
-			value: currentValue ?? ''
-		});
-
-		input.focus();
-		if (currentValue !== undefined) {
-			input.select();
-		}
-
-		registerEnterShortcut(input, () => {
-			this.confirm();
-		});
-
-		return input;
-	}
-
-	private createBrowseButton(contentEl: HTMLElement): void {
-		const browseButton = contentEl.createEl('button', {
-			cls: 'tdc-prompt-btn tdc-prompt-btn-browse',
-			text: 'Browse...'
-		});
-
-		browseButton.addEventListener('click', () => {
-			void this.handleBrowseClick();
-		});
-	}
-
-	private async handleBrowseClick(): Promise<void> {
-		if (this.input === undefined) {
-			return;
-		}
-
-		const platformService = createPlatformService();
-		const inputValue = this.input.value.trim();
-		const folderPath = await platformService.pickFolder(
-			inputValue !== '' ? inputValue : undefined
-		);
-		if (folderPath !== undefined) {
-			this.input.value = folderPath;
-			this.input.focus();
-		}
-	}
-
-	private createActionButtons(contentEl: HTMLElement, currentValue: string | undefined): void {
-		const buttonsContainer = createPromptButtonsContainer(contentEl);
-
-		void createPromptCancelButton(buttonsContainer, () => {
-			this.close();
-		});
-
-		if (currentValue !== undefined) {
-			const clearButton = buttonsContainer.createEl('button', {
-				cls: 'tdc-prompt-btn tdc-prompt-btn-cancel'
-			});
-			clearButton.textContent = 'Clear';
-			clearButton.addEventListener('click', () => {
-				this.setValue(undefined);
-				this.persistChanges(`${this.getSubjectLabel()} cleared`);
-			});
-		}
-
-		void createPromptConfirmButton(
-			buttonsContainer,
-			() => {
-				this.confirm();
-			},
-			'Save'
-		);
-	}
-
 	onOpen() {
-		const { contentEl } = this;
-		const currentValue = this.getCurrentValue();
+		const { modalEl, containerEl } = this;
+		containerEl.addClass('tdc-top-modal');
+		modalEl.addClass('tdc-prompt-modal');
 
-		setupPromptModal(this, this.getModalTitle());
-		contentEl.createEl('p', {
-			text: 'Enter the absolute path to your project folder on disk.',
-			cls: 'setting-item-description'
+		this.svelteComponent = mount(FolderPathContent, {
+			target: this.contentEl,
+			props: {
+				plugin: this.plugin,
+				dashboard: this.dashboard,
+				issueId: this.issueId,
+				onclose: () => this.close()
+			}
 		});
-		this.input = this.createInput(contentEl, currentValue);
-		this.createBrowseButton(contentEl);
-		this.createActionButtons(contentEl, currentValue);
-	}
-
-	private confirm() {
-		const inputValue = this.input?.value.trim() ?? '';
-		if (inputValue === '') {
-			this.setValue(undefined);
-			this.persistChanges(`${this.getSubjectLabel()} cleared`);
-			return;
-		}
-
-		this.setValue(inputValue);
-		this.persistChanges(`${this.getSubjectLabel()} set: ${inputValue}`);
 	}
 
 	onClose() {
-		this.input = undefined;
+		if (this.svelteComponent !== undefined) {
+			void unmount(this.svelteComponent);
+			this.svelteComponent = undefined;
+		}
 		this.contentEl.empty();
 	}
 }
