@@ -24,13 +24,13 @@ See `SVELTE-MIGRATION.md` for full migration plan. See `SVELTE_MIGRATION_GUIDELI
 
 ## Phase 8 Checklist
 
-- [ ] 8.1 Install test dependencies
-- [ ] 8.2 Create `vitest.config.ts`
-- [ ] 8.3 Create `src/test/setup.ts`
-- [ ] 8.4 Create `src/test/mocks/obsidian.ts`
-- [ ] 8.5 Add `package.json` scripts
-- [ ] 8.6 Write component tests
-- [ ] 8.7 Verify
+- [x] 8.1 Install test dependencies
+- [x] 8.2 Create `vitest.config.ts`
+- [x] 8.3 Create `src/test/setup.ts`
+- [x] 8.4 Create `src/test/mocks/obsidian.ts`
+- [x] 8.5 Add `package.json` scripts
+- [x] 8.6 Write component tests
+- [x] 8.7 Verify
 - [ ] 8.8 CI integration
 
 ---
