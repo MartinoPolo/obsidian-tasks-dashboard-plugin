@@ -21,6 +21,21 @@ Currently I'm running for example yarn frontend command in VSCode terminal so at
 ## Prune worktrees
 - [ ] Identify issues that have been closed, remote branch is removed, PR is merged. Remove all these worktrees and local branches automatically. We should have a new button: "Prune closed worktrees.". Clicking the button should spawn the automatic detection of which issues are assigned to these worktrees and it should ask the user if these worktrees are really about to be deleted so there should be a confirmation modal with a list of all the issues and worktrees to be removed after confirming it should spawn the remove worktree script with a parameter that ensures deletion of all these worktrees. Please inspect the script on how to instruct it with multiple worktrees. It should also archive all associated dashboard issues.
 
+## Colors picker
+- [ ] Whenever a dashboard issue has a closed or merged PR assigned to it and the remote branch is deleted (GitHub issue closed state), the color of that issue should change to something that looks disabled, so some sort of grayish color. Whenever a dashboard issue has a closed or merged PR assigned to it, and remote branch deleted and GitHub issue closed state. The color of that issue should change to something that looks disabled, so some sort of grayish color. Colors should be always available. They can be assigned to multiple issues and choose one of the gray colors as the default ones for those closed, merged issues I talked about
+- [ ] There is a text color picker in the Issue color dropdown. I would like it to be changed to Custom color:
+
+## Issue info
+- [ ] We still display way too much information in the issue info. I don't think we need information like the dashboard ID.
+- [ ] We should also improve the format so that the headers actually have different styling than the rest of the text. The headers should also be always on a separate line, so headers like issue, assigned folder, GitHub links, branch, and worktree should be visually distinguished.
+- [ ] We should list base branch, local branch and remote branch. And we should list it only once and not put it into multiple sections, like branch and worktree, for example.
+
+## Dashboard button
+- [ ]  Buttons should be reordered so that the settings button is always the rightmost button. The rebuild and refresh should be close together, as well as collapse and uncollapse. The import node is used very little, so it could even be hidden, and for that we might introduce a three dots and a button like "Show more", as we do in issue card headers. Add issue button should always be the leftmost. We might introduce layout settings similar to what we do in Issue card headers, which would allow the user to hide some buttons. These would then only be displayed with the three dot button.
+- [ ] We could also introduce grouping, which would mean that there would be a small gap between groups, like I mentioned above. For example:
+- One group would be "collapse" and "uncollapse"; then there would be a slightly larger gap than is the current one between this and the next group.
+- Another group would be "open folder", "open terminal", "open VS Code".
+- A separate group would probably be the GitHub button.
 
 ## TODO
 
