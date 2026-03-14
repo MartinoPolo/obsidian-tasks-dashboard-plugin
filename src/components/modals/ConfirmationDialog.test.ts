@@ -7,7 +7,7 @@ describe('ConfirmationDialog', () => {
 		title: 'Delete Issue',
 		message: 'Are you sure?',
 		onconfirm: vi.fn(),
-		oncancel: vi.fn(),
+		oncancel: vi.fn()
 	};
 
 	it('renders title', () => {
@@ -27,7 +27,7 @@ describe('ConfirmationDialog', () => {
 
 	it('renders custom confirm label', () => {
 		render(ConfirmationDialog, {
-			props: { ...defaultProps, confirmLabel: 'Delete Forever' },
+			props: { ...defaultProps, confirmLabel: 'Delete Forever' }
 		});
 		expect(screen.getByText('Delete Forever', { exact: false })).toBeInTheDocument();
 	});
@@ -35,7 +35,7 @@ describe('ConfirmationDialog', () => {
 	it('calls onconfirm when confirm is clicked', async () => {
 		const onconfirm = vi.fn();
 		const { container } = render(ConfirmationDialog, {
-			props: { ...defaultProps, onconfirm },
+			props: { ...defaultProps, onconfirm }
 		});
 		const confirmButton = container.querySelector('.tdc-prompt-btn-confirm') as HTMLElement;
 		await fireEvent.click(confirmButton);
@@ -45,7 +45,7 @@ describe('ConfirmationDialog', () => {
 	it('calls oncancel when cancel is clicked', async () => {
 		const oncancel = vi.fn();
 		render(ConfirmationDialog, {
-			props: { ...defaultProps, oncancel },
+			props: { ...defaultProps, oncancel }
 		});
 		await fireEvent.click(screen.getByText('Cancel', { exact: false }));
 		expect(oncancel).toHaveBeenCalledOnce();
@@ -53,7 +53,7 @@ describe('ConfirmationDialog', () => {
 
 	it('renders warning text when provided', () => {
 		render(ConfirmationDialog, {
-			props: { ...defaultProps, warningText: '3 unfinished tasks' },
+			props: { ...defaultProps, warningText: '3 unfinished tasks' }
 		});
 		expect(screen.getByText('3 unfinished tasks')).toBeInTheDocument();
 	});
@@ -65,7 +65,7 @@ describe('ConfirmationDialog', () => {
 
 	it('renders checkbox when checkboxLabel is provided', () => {
 		render(ConfirmationDialog, {
-			props: { ...defaultProps, checkboxLabel: 'Delete files too' },
+			props: { ...defaultProps, checkboxLabel: 'Delete files too' }
 		});
 		expect(screen.getByLabelText('Delete files too')).toBeInTheDocument();
 	});
@@ -76,8 +76,8 @@ describe('ConfirmationDialog', () => {
 			props: {
 				...defaultProps,
 				checkboxLabel: 'Delete files',
-				oncheckboxchange,
-			},
+				oncheckboxchange
+			}
 		});
 		await fireEvent.click(screen.getByLabelText('Delete files'));
 		expect(oncheckboxchange).toHaveBeenCalled();

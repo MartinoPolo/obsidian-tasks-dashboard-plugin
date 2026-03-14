@@ -93,7 +93,7 @@ export const Platform = {
 	isDesktop: true,
 	isMobile: false,
 	isDesktopApp: true,
-	isMacOS: false,
+	isMacOS: false
 };
 
 export const setTooltip = vi.fn();

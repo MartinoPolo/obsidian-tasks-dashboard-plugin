@@ -5,7 +5,7 @@ import PrioritySelector from './PrioritySelector.svelte';
 describe('PrioritySelector', () => {
 	const defaultProps = {
 		onselect: vi.fn(),
-		oncancel: vi.fn(),
+		oncancel: vi.fn()
 	};
 
 	it('renders all four priority options', () => {
@@ -23,14 +23,14 @@ describe('PrioritySelector', () => {
 
 	it('renders custom title', () => {
 		render(PrioritySelector, {
-			props: { ...defaultProps, title: 'Select Priority' },
+			props: { ...defaultProps, title: 'Select Priority' }
 		});
 		expect(screen.getByText('Select Priority')).toBeInTheDocument();
 	});
 
 	it('selects initial priority', () => {
 		render(PrioritySelector, {
-			props: { ...defaultProps, initialPriority: 'high' },
+			props: { ...defaultProps, initialPriority: 'high' }
 		});
 		const highButton = screen.getByText('High').closest('button');
 		expect(highButton?.getAttribute('aria-pressed')).toBe('true');
@@ -52,7 +52,7 @@ describe('PrioritySelector', () => {
 	it('calls onselect with priority on confirm', async () => {
 		const onselect = vi.fn();
 		const { container } = render(PrioritySelector, {
-			props: { ...defaultProps, onselect },
+			props: { ...defaultProps, onselect }
 		});
 		const confirmButton = container.querySelector('.tdc-prompt-btn-confirm') as HTMLElement;
 		await fireEvent.click(confirmButton);
@@ -62,7 +62,7 @@ describe('PrioritySelector', () => {
 	it('calls oncancel when cancel is clicked', async () => {
 		const oncancel = vi.fn();
 		render(PrioritySelector, {
-			props: { ...defaultProps, oncancel },
+			props: { ...defaultProps, oncancel }
 		});
 		await fireEvent.click(screen.getByText('Cancel', { exact: false }));
 		expect(oncancel).toHaveBeenCalledOnce();
@@ -84,7 +84,7 @@ describe('PrioritySelector', () => {
 
 	it('wraps around with arrow keys', async () => {
 		render(PrioritySelector, {
-			props: { ...defaultProps, initialPriority: 'top' },
+			props: { ...defaultProps, initialPriority: 'top' }
 		});
 
 		// Press ArrowDown from Top wraps to Low
@@ -96,7 +96,7 @@ describe('PrioritySelector', () => {
 	it('confirms with Enter key', async () => {
 		const onselect = vi.fn();
 		render(PrioritySelector, {
-			props: { ...defaultProps, onselect, initialPriority: 'high' },
+			props: { ...defaultProps, onselect, initialPriority: 'high' }
 		});
 		await fireEvent.keyDown(window, { key: 'Enter' });
 		expect(onselect).toHaveBeenCalledWith('high');
@@ -105,7 +105,7 @@ describe('PrioritySelector', () => {
 	it('cancels with Escape key', async () => {
 		const oncancel = vi.fn();
 		render(PrioritySelector, {
-			props: { ...defaultProps, oncancel },
+			props: { ...defaultProps, oncancel }
 		});
 		await fireEvent.keyDown(window, { key: 'Escape' });
 		expect(oncancel).toHaveBeenCalledOnce();
@@ -113,7 +113,7 @@ describe('PrioritySelector', () => {
 
 	it('renders back button when onback is provided', () => {
 		render(PrioritySelector, {
-			props: { ...defaultProps, onback: vi.fn() },
+			props: { ...defaultProps, onback: vi.fn() }
 		});
 		expect(screen.getByText('Back', { exact: false })).toBeInTheDocument();
 	});

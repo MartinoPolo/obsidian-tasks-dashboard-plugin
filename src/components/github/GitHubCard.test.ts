@@ -16,7 +16,7 @@ function makeMetadata(overrides: Partial<GitHubIssueMetadata> = {}): GitHubIssue
 		repository: 'owner/repo',
 		url: 'https://github.com/owner/repo/issues/42',
 		isPR: false,
-		...overrides,
+		...overrides
 	};
 }
 
@@ -25,27 +25,27 @@ describe('GitHubCard', () => {
 		metadata: makeMetadata(),
 		displayMode: 'full' as const,
 		onrefresh: vi.fn(),
-		onunlink: vi.fn(),
+		onunlink: vi.fn()
 	};
 
 	describe('minimal mode', () => {
 		it('renders issue number', () => {
 			render(GitHubCard, {
-				props: { ...defaultProps, displayMode: 'minimal' },
+				props: { ...defaultProps, displayMode: 'minimal' }
 			});
 			expect(screen.getByText('#42')).toBeInTheDocument();
 		});
 
 		it('renders state text', () => {
 			render(GitHubCard, {
-				props: { ...defaultProps, displayMode: 'minimal' },
+				props: { ...defaultProps, displayMode: 'minimal' }
 			});
 			expect(screen.getByText('Open')).toBeInTheDocument();
 		});
 
 		it('links to the issue URL', () => {
 			render(GitHubCard, {
-				props: { ...defaultProps, displayMode: 'minimal' },
+				props: { ...defaultProps, displayMode: 'minimal' }
 			});
 			const link = screen.getByRole('link');
 			expect(link).toHaveAttribute('href', 'https://github.com/owner/repo/issues/42');
@@ -55,7 +55,7 @@ describe('GitHubCard', () => {
 	describe('compact mode', () => {
 		it('renders title and number', () => {
 			render(GitHubCard, {
-				props: { ...defaultProps, displayMode: 'compact' },
+				props: { ...defaultProps, displayMode: 'compact' }
 			});
 			expect(screen.getByText('#42')).toBeInTheDocument();
 			expect(screen.getByText('Fix bug in parser')).toBeInTheDocument();
@@ -64,14 +64,14 @@ describe('GitHubCard', () => {
 		it('renders labels with limit', () => {
 			const labels = Array.from({ length: 8 }, (_, i) => ({
 				name: `label-${i}`,
-				color: 'ff0000',
+				color: 'ff0000'
 			}));
 			render(GitHubCard, {
 				props: {
 					...defaultProps,
 					displayMode: 'compact',
-					metadata: makeMetadata({ labels }),
-				},
+					metadata: makeMetadata({ labels })
+				}
 			});
 			expect(screen.getByText('+3')).toBeInTheDocument();
 		});
@@ -87,8 +87,8 @@ describe('GitHubCard', () => {
 			render(GitHubCard, {
 				props: {
 					...defaultProps,
-					metadata: makeMetadata({ assignees: ['alice', 'bob'] }),
-				},
+					metadata: makeMetadata({ assignees: ['alice', 'bob'] })
+				}
 			});
 			expect(screen.getByText('@alice, @bob')).toBeInTheDocument();
 		});
@@ -108,7 +108,7 @@ describe('GitHubCard', () => {
 		it('calls onrefresh when refresh button is clicked', async () => {
 			const onrefresh = vi.fn();
 			const { container } = render(GitHubCard, {
-				props: { ...defaultProps, onrefresh },
+				props: { ...defaultProps, onrefresh }
 			});
 			const refreshButton = container.querySelector('.tdc-gh-refresh') as HTMLElement;
 			await fireEvent.click(refreshButton);
@@ -118,7 +118,7 @@ describe('GitHubCard', () => {
 		it('calls onunlink when unlink button is clicked', async () => {
 			const onunlink = vi.fn();
 			const { container } = render(GitHubCard, {
-				props: { ...defaultProps, onunlink },
+				props: { ...defaultProps, onunlink }
 			});
 			const unlinkButton = container.querySelector('.tdc-gh-unlink') as HTMLElement;
 			await fireEvent.click(unlinkButton);
@@ -127,7 +127,7 @@ describe('GitHubCard', () => {
 
 		it('does not render unlink button when onunlink is not provided', () => {
 			const { container } = render(GitHubCard, {
-				props: { ...defaultProps, onunlink: undefined },
+				props: { ...defaultProps, onunlink: undefined }
 			});
 			expect(container.querySelector('.tdc-gh-unlink')).not.toBeInTheDocument();
 		});
@@ -142,9 +142,9 @@ describe('GitHubCard', () => {
 					metadata: makeMetadata({
 						isPR: true,
 						prStatus: 'merged',
-						state: 'closed',
-					}),
-				},
+						state: 'closed'
+					})
+				}
 			});
 			expect(screen.getByText('Merged')).toBeInTheDocument();
 		});
@@ -154,8 +154,8 @@ describe('GitHubCard', () => {
 				props: {
 					...defaultProps,
 					displayMode: 'minimal',
-					metadata: makeMetadata({ isPR: true, prStatus: 'draft', state: 'open' }),
-				},
+					metadata: makeMetadata({ isPR: true, prStatus: 'draft', state: 'open' })
+				}
 			});
 			expect(screen.getByText('Draft')).toBeInTheDocument();
 		});
@@ -165,8 +165,8 @@ describe('GitHubCard', () => {
 				props: {
 					...defaultProps,
 					displayMode: 'minimal',
-					metadata: makeMetadata({ state: 'closed' }),
-				},
+					metadata: makeMetadata({ state: 'closed' })
+				}
 			});
 			expect(screen.getByText('Closed')).toBeInTheDocument();
 		});

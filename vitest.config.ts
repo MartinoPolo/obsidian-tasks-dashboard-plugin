@@ -10,12 +10,12 @@ export default defineConfig({
 	resolve: {
 		conditions: ['browser'],
 		alias: {
-			obsidian: path.resolve(__dirname, 'src/test/mocks/obsidian.ts'),
-		},
+			obsidian: path.resolve(__dirname, 'src/test/mocks/obsidian.ts')
+		}
 	},
 	test: {
 		environment: 'jsdom',
 		setupFiles: ['src/test/setup.ts'],
-		include: ['src/**/*.test.ts'],
-	},
+		include: ['src/**/*.test.ts']
+	}
 });

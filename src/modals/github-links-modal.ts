@@ -111,23 +111,15 @@ export class GitHubLinksModal extends Modal {
 					).open();
 				},
 				onopenRepoPicker: (onResult: (repoFullName: string) => void) => {
-					void this.plugin.githubService
-						.getUserRepositories()
-						.then((repositories) => {
-							if (repositories.length === 0) {
-								new Notice(
-									'No repositories found. Paste a URL manually.'
-								);
-								return;
-							}
-							new RepositoryPickerModal(
-								this.app,
-								repositories,
-								(repository) => {
-									onResult(repository.fullName);
-								}
-							).open();
-						});
+					void this.plugin.githubService.getUserRepositories().then((repositories) => {
+						if (repositories.length === 0) {
+							new Notice('No repositories found. Paste a URL manually.');
+							return;
+						}
+						new RepositoryPickerModal(this.app, repositories, (repository) => {
+							onResult(repository.fullName);
+						}).open();
+					});
 				},
 				onopenManualUrl: (
 					title: string,

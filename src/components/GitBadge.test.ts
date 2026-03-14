@@ -7,7 +7,7 @@ describe('GitBadge', () => {
 		type: 'branch' as const,
 		icon: 'gitBranch' as const,
 		text: 'main',
-		tooltip: 'Branch: main',
+		tooltip: 'Branch: main'
 	};
 
 	it('renders as span when no href', () => {
@@ -19,7 +19,7 @@ describe('GitBadge', () => {
 
 	it('renders as anchor when href is provided', () => {
 		render(GitBadge, {
-			props: { ...baseProps, href: 'https://github.com/repo/tree/main' },
+			props: { ...baseProps, href: 'https://github.com/repo/tree/main' }
 		});
 		const link = screen.getByRole('link');
 		expect(link).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('GitBadge', () => {
 
 	it('applies type-based CSS class for pr', () => {
 		const { container } = render(GitBadge, {
-			props: { ...baseProps, type: 'pr' as const },
+			props: { ...baseProps, type: 'pr' as const }
 		});
 		const badge = container.querySelector('.tdc-git-badge');
 		expect(badge?.classList.contains('tdc-git-badge-pr')).toBe(true);
@@ -55,7 +55,7 @@ describe('GitBadge', () => {
 
 	it('applies type-based CSS class for issue', () => {
 		const { container } = render(GitBadge, {
-			props: { ...baseProps, type: 'issue' as const },
+			props: { ...baseProps, type: 'issue' as const }
 		});
 		const badge = container.querySelector('.tdc-git-badge');
 		expect(badge?.classList.contains('tdc-git-badge-issue')).toBe(true);
@@ -63,7 +63,7 @@ describe('GitBadge', () => {
 
 	it('applies additional custom class', () => {
 		const { container } = render(GitBadge, {
-			props: { ...baseProps, class: 'my-custom-class' },
+			props: { ...baseProps, class: 'my-custom-class' }
 		});
 		const badge = container.querySelector('.tdc-git-badge');
 		expect(badge?.classList.contains('my-custom-class')).toBe(true);

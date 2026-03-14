@@ -55,9 +55,7 @@ interface IssueCreateRequest {
 	githubMetadata?: GitHubIssueMetadata;
 }
 
-function getIssueLinkedRepositoryFromLinks(
-	githubLinks: string[] | undefined
-): string | undefined {
+function getIssueLinkedRepositoryFromLinks(githubLinks: string[] | undefined): string | undefined {
 	if (githubLinks === undefined || githubLinks.length === 0) {
 		return undefined;
 	}
@@ -219,8 +217,7 @@ class IssueCreationModal extends Modal {
 							).open();
 						},
 						{
-							issueRepository:
-								this.worktreeContext?.sourceIssueLinkedRepository,
+							issueRepository: this.worktreeContext?.sourceIssueLinkedRepository,
 							onCancel: () => {
 								new IssueCreationModal(
 									this.app,

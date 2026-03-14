@@ -802,10 +802,7 @@ export function createPlatformService(): PlatformService {
 		return 'none';
 	};
 
-	const hasBranchUpstreamConfig = (
-		repositoryFolder: string,
-		branchName: string
-	): boolean => {
+	const hasBranchUpstreamConfig = (repositoryFolder: string, branchName: string): boolean => {
 		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
 			return false;
 		}
