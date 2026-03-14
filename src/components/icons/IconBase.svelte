@@ -26,6 +26,8 @@
   class={['tdc-icon', className]}
   width={size}
   height={size}
+  style:width="{size}px"
+  style:height="{size}px"
   {viewBox}
   {fill}
   {stroke}
