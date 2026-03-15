@@ -231,115 +231,19 @@
       <div class="tdc-assigned-issues-message">No open assigned issues found.</div>
     {:else}
       <div class="tdc-assigned-issues-list">
-        {#if isMultiRepo}
-          {#each repoResults as { repoName, items, totalCount } (repoName)}
-            {#if totalCount > 0}
-              {@const shortName = repoName.includes('/') ? repoName.split('/')[1] : repoName}
-              <div class="tdc-assigned-issues-repo-section">
+        {#each repoResults as { repoName, items, totalCount } (repoName)}
+          {#if totalCount > 0}
+            {@const linkedIssues = getLinkedIssues(items)}
+            {@const unlinkedIssues = getUnlinkedIssues(items)}
+            <div class="tdc-assigned-issues-repo-section">
+              {#if isMultiRepo}
+                {@const shortName = repoName.includes('/') ? repoName.split('/')[1] : repoName}
                 <div class="tdc-assigned-issues-repo-header">
                   {shortName} ({items.length}/{totalCount} loaded)
                 </div>
+              {/if}
 
-                {#each getUnlinkedIssues(items) as issue (issue.url)}
-                  <div class="tdc-assigned-issues-row">
-                    <a
-                      class="tdc-assigned-issues-link"
-                      href={issue.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onclick={(event) => event.stopPropagation()}
-                    >
-                      #{issue.number} {issue.title}
-                    </a>
-                    <div class="tdc-assigned-issues-actions">
-                      <ActionButton
-                        icon="plus"
-                        label={`Add issue #${issue.number} to dashboard`}
-                        class="tdc-btn-square tdc-assigned-issues-add-btn"
-                        onclick={() => handleAddIssue(issue)}
-                      />
-                      <ActionButton
-                        icon="worktree"
-                        label={worktreeCreationAvailable
-                          ? `Quick worktree from #${issue.number}`
-                          : 'Set dashboard project folder to a Git repository to enable worktree creation'}
-                        class={`tdc-btn-square tdc-assigned-issues-worktree-btn`}
-                        faded={!worktreeCreationAvailable}
-                        onclick={() => handleWorktreeIssue(issue, repoName)}
-                      />
-                    </div>
-                  </div>
-                {/each}
-
-                {#if getLinkedIssues(items).length > 0}
-                  <div class="tdc-assigned-issues-divider">In dashboard</div>
-                  {#each getLinkedIssues(items) as issue (issue.url)}
-                    <div class="tdc-assigned-issues-row">
-                      <a
-                        class="tdc-assigned-issues-link"
-                        href={issue.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onclick={(event) => event.stopPropagation()}
-                      >
-                        #{issue.number} {issue.title}
-                      </a>
-                    </div>
-                  {/each}
-                {/if}
-
-                {#if items.length < totalCount}
-                  <button
-                    class="tdc-assigned-issues-load-more"
-                    onclick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      handleLoadMore(repoName);
-                    }}
-                  >
-                    Load more ({items.length}/{totalCount} loaded)
-                  </button>
-                {/if}
-              </div>
-            {/if}
-          {/each}
-        {:else}
-          {@const singleRepo = repoResults[0]}
-          {#if singleRepo !== undefined}
-            {#each getUnlinkedIssues(singleRepo.items) as issue (issue.url)}
-              <div class="tdc-assigned-issues-row">
-                <a
-                  class="tdc-assigned-issues-link"
-                  href={issue.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onclick={(event) => event.stopPropagation()}
-                >
-                  #{issue.number} {issue.title}
-                </a>
-                <div class="tdc-assigned-issues-actions">
-                  <ActionButton
-                    icon="plus"
-                    label={`Add issue #${issue.number} to dashboard`}
-                    class="tdc-btn-square tdc-assigned-issues-add-btn"
-                    onclick={() => handleAddIssue(issue)}
-                  />
-                  <ActionButton
-                    icon="worktree"
-                    label={worktreeCreationAvailable
-                      ? `Quick worktree from #${issue.number}`
-                      : 'Set dashboard project folder to a Git repository to enable worktree creation'}
-                    class={`tdc-btn-square tdc-assigned-issues-worktree-btn`}
-                    faded={!worktreeCreationAvailable}
-                    onclick={() => handleWorktreeIssue(issue, singleRepo.repoName)}
-                  />
-                </div>
-              </div>
-            {/each}
-
-            {#if getLinkedIssues(singleRepo.items).length > 0}
-              <div class="tdc-assigned-issues-divider">In dashboard</div>
-              {#each getLinkedIssues(singleRepo.items) as issue (issue.url)}
+              {#each unlinkedIssues as issue (issue.url)}
                 <div class="tdc-assigned-issues-row">
                   <a
                     class="tdc-assigned-issues-link"
@@ -350,24 +254,58 @@
                   >
                     #{issue.number} {issue.title}
                   </a>
+                  <div class="tdc-assigned-issues-actions">
+                    <ActionButton
+                      icon="plus"
+                      label={`Add issue #${issue.number} to dashboard`}
+                      class="tdc-btn-square tdc-assigned-issues-add-btn"
+                      onclick={() => handleAddIssue(issue)}
+                    />
+                    <ActionButton
+                      icon="worktree"
+                      label={worktreeCreationAvailable
+                        ? `Quick worktree from #${issue.number}`
+                        : 'Set dashboard project folder to a Git repository to enable worktree creation'}
+                      class={`tdc-btn-square tdc-assigned-issues-worktree-btn`}
+                      faded={!worktreeCreationAvailable}
+                      onclick={() => handleWorktreeIssue(issue, repoName)}
+                    />
+                  </div>
                 </div>
               {/each}
-            {/if}
 
-            {#if singleRepo.items.length < singleRepo.totalCount}
-              <button
-                class="tdc-assigned-issues-load-more"
-                onclick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleLoadMore(singleRepo.repoName);
-                }}
-              >
-                Load more ({singleRepo.items.length}/{singleRepo.totalCount} loaded)
-              </button>
-            {/if}
+              {#if linkedIssues.length > 0}
+                <div class="tdc-assigned-issues-divider">In dashboard</div>
+                {#each linkedIssues as issue (issue.url)}
+                  <div class="tdc-assigned-issues-row">
+                    <a
+                      class="tdc-assigned-issues-link"
+                      href={issue.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onclick={(event) => event.stopPropagation()}
+                    >
+                      #{issue.number} {issue.title}
+                    </a>
+                  </div>
+                {/each}
+              {/if}
+
+              {#if items.length < totalCount}
+                <button
+                  class="tdc-assigned-issues-load-more"
+                  onclick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleLoadMore(repoName);
+                  }}
+                >
+                  Load more ({items.length}/{totalCount} loaded)
+                </button>
+              {/if}
+            </div>
           {/if}
-        {/if}
+        {/each}
       </div>
     {/if}
   </details>
@@ -407,10 +345,6 @@
   border-top-color: var(--text-accent);
   border-radius: 50%;
   animation: tdc-spin 0.6s linear infinite;
-}
-
-@keyframes tdc-spin {
-  to { transform: rotate(360deg); }
 }
 
 .tdc-assigned-issues-row {

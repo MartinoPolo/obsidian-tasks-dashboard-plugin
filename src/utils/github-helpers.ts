@@ -89,6 +89,22 @@ export function formatRelativeDate(dateString: string): string {
 	return pluralize(years, 'year');
 }
 
+const MINUTE_IN_SECONDS = 60;
+const HOUR_IN_MINUTES = 60;
+
+export function formatRelativeTimestamp(timestamp: number): string {
+	const seconds = Math.floor((Date.now() - timestamp) / 1000);
+	if (seconds < MINUTE_IN_SECONDS) {
+		return 'just now';
+	}
+	const minutes = Math.floor(seconds / MINUTE_IN_SECONDS);
+	if (minutes < HOUR_IN_MINUTES) {
+		return `${minutes} min ago`;
+	}
+	const hours = Math.floor(minutes / HOUR_IN_MINUTES);
+	return `${hours}h ago`;
+}
+
 export function formatStarCount(count: number): string {
 	if (count >= 1000) {
 		return `${(count / 1000).toFixed(1)}k`;

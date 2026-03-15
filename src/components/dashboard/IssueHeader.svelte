@@ -19,6 +19,7 @@
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
+  import { formatRelativeTimestamp } from '../../utils/github-helpers';
   import { extractLastPathSegment } from '../../utils/path-utils';
   import { createPlatformService } from '../../utils/platform';
   import ActionButton from '../ActionButton.svelte';
@@ -168,19 +169,6 @@
   };
 
   const BRANCH_NAME_MAX_DISPLAY_LENGTH = 16;
-
-  function formatRelativeTime(timestamp: number): string {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) {
-      return 'just now';
-    }
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) {
-      return `${minutes} min ago`;
-    }
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
-  }
 
   const platformService = createPlatformService();
   const defaultBranchCache = new Map<string, string | undefined>();
@@ -431,7 +419,7 @@
             );
             lines.push(`PRs:\n${prLines.join('\n')}`);
           }
-          lines.push(`Last refreshed: ${formatRelativeTime(result.fetchedAt)}`);
+          lines.push(`Last refreshed: ${formatRelativeTimestamp(result.fetchedAt)}`);
           gitStatusInfoLines = lines;
 
           // PR accent class
@@ -834,10 +822,6 @@
   border-top-color: transparent;
   border-radius: 50%;
   animation: tdc-spin 0.6s linear infinite;
-}
-
-@keyframes tdc-spin {
-  to { transform: rotate(360deg); }
 }
 
 .tdc-badges-compact :global(.tdc-git-badge) {

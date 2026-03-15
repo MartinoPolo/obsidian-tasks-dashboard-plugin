@@ -187,35 +187,31 @@
     return options;
   }
 
-  function getModalTitle(): string {
-    if (searchMode === 'issues-only') {
-      return 'GitHub Issue (optional)';
-    }
-    if (searchMode === 'prs-only') {
-      return 'GitHub PR (optional)';
-    }
-    return 'GitHub Issue/PR (optional)';
+  interface SearchModeLabels {
+    modalTitle: string;
+    searchPlaceholder: string;
+    selectedResultsTitle: string;
   }
 
-  function getSearchPlaceholder(): string {
-    if (searchMode === 'issues-only') {
-      return 'Search issues or paste URL...';
+  const SEARCH_MODE_LABELS: Record<GitHubSearchMode, SearchModeLabels> = {
+    'issues-only': {
+      modalTitle: 'GitHub Issue (optional)',
+      searchPlaceholder: 'Search issues or paste URL...',
+      selectedResultsTitle: 'Selected GitHub Issue'
+    },
+    'prs-only': {
+      modalTitle: 'GitHub PR (optional)',
+      searchPlaceholder: 'Search pull requests or paste URL...',
+      selectedResultsTitle: 'Selected GitHub PR'
+    },
+    'issues-and-prs': {
+      modalTitle: 'GitHub Issue/PR (optional)',
+      searchPlaceholder: 'Search issues or paste URL...',
+      selectedResultsTitle: 'Selected GitHub Issue/PR'
     }
-    if (searchMode === 'prs-only') {
-      return 'Search pull requests or paste URL...';
-    }
-    return 'Search issues or paste URL...';
-  }
+  };
 
-  function getSelectedResultsTitle(): string {
-    if (searchMode === 'issues-only') {
-      return 'Selected GitHub Issue';
-    }
-    if (searchMode === 'prs-only') {
-      return 'Selected GitHub PR';
-    }
-    return 'Selected GitHub Issue/PR';
-  }
+  const searchModeLabels = SEARCH_MODE_LABELS[searchMode];
 
   function getRepoForCurrentScope(): string | undefined {
     if (searchScope === 'linked-issue') {
@@ -509,7 +505,7 @@
       return;
     }
     currentResults = [lockedSelection];
-    resultsTitle = getSelectedResultsTitle();
+    resultsTitle = searchModeLabels.selectedResultsTitle;
     isLoading = false;
     urlPreview = undefined;
     noResults = false;
@@ -700,7 +696,7 @@
   onmouseup={showBackButton && resolvedOnBack !== undefined ? handleMouseBack : undefined}
   onauxclick={showBackButton && resolvedOnBack !== undefined ? handleMouseBack : undefined}
 >
-  <div class="tdc-prompt-title">{getModalTitle()}</div>
+  <div class="tdc-prompt-title">{searchModeLabels.modalTitle}</div>
 
   <div class="tdc-gh-search-container">
     <input
@@ -708,7 +704,7 @@
       bind:value={searchQuery}
       type="text"
       class="tdc-prompt-input tdc-gh-search-input"
-      placeholder={getSearchPlaceholder()}
+      placeholder={searchModeLabels.searchPlaceholder}
       oninput={handleInputEvent}
       onkeydown={handleKeydown}
     />
