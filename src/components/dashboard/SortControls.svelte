@@ -244,7 +244,7 @@
           const hasGitFolder =
             folder !== undefined &&
             folder !== '' &&
-            createPlatformService().isGitRepositoryFolder(folder);
+            platformService.isGitRepositoryFolder(folder);
           openIssueCreationModal(plugin.app, plugin, dashboard, {
             worktreeContext: hasGitFolder
               ? { eligible: true, worktreeOriginFolder: folder }

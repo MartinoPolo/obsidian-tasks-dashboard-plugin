@@ -158,6 +158,24 @@
 }
 
 
+/* ===== Overflow Panel (shared by IssueInfoPanel + OverflowPanel) ===== */
+.tdc-overflow-panel {
+	position: fixed;
+	right: auto;
+	top: 0;
+	left: 0;
+	z-index: 10000;
+	min-width: 280px;
+	padding: 8px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--tdc-border-radius);
+	box-shadow: var(--shadow-s);
+	max-height: calc(100vh - 16px);
+	overflow-y: auto;
+	overflow-x: auto;
+}
+
 /* ===== Sort Code Block Overflow ===== */
 .block-language-tasks-dashboard-sort,
 .block-language-tasks-dashboard-sort pre {

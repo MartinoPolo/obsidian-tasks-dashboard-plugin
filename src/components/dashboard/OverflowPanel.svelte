@@ -5,7 +5,7 @@
   import { DEFAULT_ROW1_ACTIONS, ISSUE_ACTION_ORDER } from '../../dashboard/dashboard-renderer-constants';
   import { dedupeIssueActionKeys, saveIssueActionLayout } from '../../dashboard/dashboard-renderer-layout';
   import type { IssueActionDescriptor, RuntimeIssueActionLayout } from '../../dashboard/dashboard-renderer-types';
-  import { attachPortal } from '../../lib/attach-portal';
+  import { attachAnchoredPanel } from '../../lib/anchored-panel';
   import ActionButton from '../ActionButton.svelte';
   import Icon from '../Icon.svelte';
 
@@ -29,8 +29,6 @@
     onclose
   }: Props = $props();
 
-  let panelElement: HTMLDivElement | undefined = $state(undefined);
-  let position = $state({ top: 0, left: 0, maxHeight: 0 });
   let inSettingsMode = $state(false);
   let hasAutoSavedLayoutChanges = $state(false);
 
@@ -88,85 +86,6 @@
     }
     onclose();
   };
-
-  const positionPanel = () => {
-    if (panelElement === undefined || !anchorElement.isConnected) {
-      closePanel();
-      return;
-    }
-
-    const triggerRect = anchorElement.getBoundingClientRect();
-    const viewportPadding = 8;
-    const panelWidth = Math.max(panelElement.offsetWidth, 280);
-    const verticalOffset = 4;
-    const availableSpaceBelow = Math.max(
-      120,
-      window.innerHeight - triggerRect.bottom - viewportPadding - verticalOffset
-    );
-    const availableSpaceAbove = Math.max(
-      120,
-      triggerRect.top - viewportPadding - verticalOffset
-    );
-    const shouldOpenAbove = availableSpaceAbove > availableSpaceBelow;
-    const maxPanelHeight = shouldOpenAbove ? availableSpaceAbove : availableSpaceBelow;
-
-    const panelHeight = panelElement.offsetHeight;
-    const maxLeft = window.innerWidth - panelWidth - viewportPadding;
-    const alignedLeft = triggerRect.right - panelWidth;
-    const left = Math.max(viewportPadding, Math.min(alignedLeft, maxLeft));
-
-    let top = triggerRect.bottom + verticalOffset;
-    if (shouldOpenAbove) {
-      top = Math.max(viewportPadding, triggerRect.top - panelHeight - verticalOffset);
-    } else {
-      const maxTop = window.innerHeight - panelHeight - viewportPadding;
-      top = Math.max(viewportPadding, Math.min(top, maxTop));
-    }
-
-    position = { top, left, maxHeight: maxPanelHeight };
-  };
-
-  const handleOutsideClick = (event: MouseEvent) => {
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      closePanel();
-      return;
-    }
-    if (panelElement !== undefined && panelElement.contains(target)) {
-      return;
-    }
-    if (anchorElement.contains(target)) {
-      return;
-    }
-    closePanel();
-  };
-
-  const handleEscape = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    closePanel();
-  };
-
-  $effect(() => {
-    requestAnimationFrame(positionPanel);
-
-    window.addEventListener('scroll', positionPanel, true);
-    window.addEventListener('resize', positionPanel);
-    window.addEventListener('blur', closePanel);
-    document.addEventListener('click', handleOutsideClick, true);
-    document.addEventListener('keydown', handleEscape, true);
-
-    return () => {
-      window.removeEventListener('scroll', positionPanel, true);
-      window.removeEventListener('resize', positionPanel);
-      window.removeEventListener('blur', closePanel);
-      document.removeEventListener('click', handleOutsideClick, true);
-      document.removeEventListener('keydown', handleEscape, true);
-    };
-  });
 
   // Overflow actions — visible in non-settings mode
   let overflowActionKeys = $derived.by(() => {
@@ -306,89 +225,56 @@
 
 <div
   class="tdc-overflow-panel tdc-overflow-panel-portal"
-  bind:this={panelElement}
-  style:top="{position.top}px"
-  style:left="{position.left}px"
-  style:max-height="{position.maxHeight}px"
-  {@attach attachPortal()}
+  {@attach attachAnchoredPanel({
+    anchorElement,
+    onclose: closePanel,
+    minPanelWidth: 280
+  })}
 >
+  {#snippet settingsRow(keys: IssueActionKey[])}
+    {#each keys as key (key)}
+      {@const descriptor = actions.get(key)}
+      {#if descriptor !== undefined}
+        {@const isVisible = !draftHidden.includes(key)}
+        <div class={['tdc-overflow-settings-row', !isVisible && 'tdc-overflow-settings-row-hidden']}>
+          <div class="tdc-overflow-settings-action-info">
+            <span class="tdc-overflow-settings-item-icon">
+              <Icon name={descriptor.iconKey} size={16} />
+            </span>
+            <span>{descriptor.label}</span>
+          </div>
+          <div class="tdc-overflow-settings-actions">
+            <ActionButton
+              icon={isVisible ? 'eye' : 'eyeOff'}
+              label={isVisible ? `Hide ${descriptor.label}` : `Show ${descriptor.label}`}
+              class="tdc-overflow-settings-visibility"
+              onclick={() => toggleVisibility(key)}
+            />
+            <ActionButton
+              icon="up"
+              label={`Move ${descriptor.label} up`}
+              class="tdc-overflow-settings-move"
+              faded={!canMoveAction(key, 'up')}
+              onclick={() => handleMoveUp(key)}
+            />
+            <ActionButton
+              icon="down"
+              label={`Move ${descriptor.label} down`}
+              class="tdc-overflow-settings-move"
+              faded={!canMoveAction(key, 'down')}
+              onclick={() => handleMoveDown(key)}
+            />
+          </div>
+        </div>
+      {/if}
+    {/each}
+  {/snippet}
+
   {#if inSettingsMode}
     <div class="tdc-overflow-settings">
-      {#each draftRow1 as key (key)}
-        {@const descriptor = actions.get(key)}
-        {#if descriptor !== undefined}
-          {@const isVisible = !draftHidden.includes(key)}
-          <div class={['tdc-overflow-settings-row', !isVisible && 'tdc-overflow-settings-row-hidden']}>
-            <div class="tdc-overflow-settings-action-info">
-              <span class="tdc-overflow-settings-item-icon">
-                <Icon name={descriptor.iconKey} size={16} />
-              </span>
-              <span>{descriptor.label}</span>
-            </div>
-            <div class="tdc-overflow-settings-actions">
-              <ActionButton
-                icon={isVisible ? 'eye' : 'eyeOff'}
-                label={isVisible ? `Hide ${descriptor.label}` : `Show ${descriptor.label}`}
-                class="tdc-overflow-settings-visibility"
-                onclick={() => toggleVisibility(key)}
-              />
-              <ActionButton
-                icon="up"
-                label={`Move ${descriptor.label} up`}
-                class="tdc-overflow-settings-move"
-                faded={!canMoveAction(key, 'up')}
-                onclick={() => handleMoveUp(key)}
-              />
-              <ActionButton
-                icon="down"
-                label={`Move ${descriptor.label} down`}
-                class="tdc-overflow-settings-move"
-                faded={!canMoveAction(key, 'down')}
-                onclick={() => handleMoveDown(key)}
-              />
-            </div>
-          </div>
-        {/if}
-      {/each}
-
+      {@render settingsRow(draftRow1)}
       <div class="tdc-overflow-settings-divider"></div>
-
-      {#each draftRow2 as key (key)}
-        {@const descriptor = actions.get(key)}
-        {#if descriptor !== undefined}
-          {@const isVisible = !draftHidden.includes(key)}
-          <div class={['tdc-overflow-settings-row', !isVisible && 'tdc-overflow-settings-row-hidden']}>
-            <div class="tdc-overflow-settings-action-info">
-              <span class="tdc-overflow-settings-item-icon">
-                <Icon name={descriptor.iconKey} size={16} />
-              </span>
-              <span>{descriptor.label}</span>
-            </div>
-            <div class="tdc-overflow-settings-actions">
-              <ActionButton
-                icon={isVisible ? 'eye' : 'eyeOff'}
-                label={isVisible ? `Hide ${descriptor.label}` : `Show ${descriptor.label}`}
-                class="tdc-overflow-settings-visibility"
-                onclick={() => toggleVisibility(key)}
-              />
-              <ActionButton
-                icon="up"
-                label={`Move ${descriptor.label} up`}
-                class="tdc-overflow-settings-move"
-                faded={!canMoveAction(key, 'up')}
-                onclick={() => handleMoveUp(key)}
-              />
-              <ActionButton
-                icon="down"
-                label={`Move ${descriptor.label} down`}
-                class="tdc-overflow-settings-move"
-                faded={!canMoveAction(key, 'down')}
-                onclick={() => handleMoveDown(key)}
-              />
-            </div>
-          </div>
-        {/if}
-      {/each}
+      {@render settingsRow(draftRow2)}
 
       <div class="tdc-overflow-settings-footer">
         <button class="tdc-btn tdc-overflow-settings-save" onclick={handleResetDefaults}>
@@ -440,23 +326,6 @@
 </div>
 
 <style>
-.tdc-overflow-panel {
-  position: fixed;
-  right: auto;
-  top: 0;
-  left: 0;
-  z-index: 10000;
-  min-width: 280px;
-  padding: 8px;
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--tdc-border-radius);
-  box-shadow: var(--shadow-s);
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
-  overflow-x: auto;
-}
-
 .tdc-overflow-actions {
   display: flex;
   flex-direction: column;
