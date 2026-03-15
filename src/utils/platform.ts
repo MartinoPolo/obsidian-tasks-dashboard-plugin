@@ -68,8 +68,8 @@ export interface PlatformService {
 export function createPlatformService(): PlatformService {
 	// TODO MP: Before deployment, let's remove all these absolute paths and maybe add the script to the project.
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\setup-worktree.sh';
-	const WORKTREE_REMOVE_SCRIPT = 'C:\\_MP_projects\\mxp-claude-code\\scripts\\remove-worktree.sh';
+	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mpx-claude-code\\scripts\\setup-worktree.sh';
+	const WORKTREE_REMOVE_SCRIPT = 'C:\\_MP_projects\\mpx-claude-code\\scripts\\remove-worktree.sh';
 	const WINDOWS_GIT_BASH_CANDIDATES = [
 		'C:\\_MP_apps\\Git\\bin\\bash.exe',
 		'C:\\Program Files\\Git\\bin\\bash.exe',
