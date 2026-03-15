@@ -23,6 +23,10 @@
   } from '../../settings/settings-options';
   import { type DashboardConfig, getDashboardDisplayName } from '../../types';
   import { createPlatformService } from '../../utils/platform';
+  import {
+    saveSettings as pluginSaveSettings,
+    saveSettingsAndRefreshDashboard as pluginSaveSettingsAndRefreshDashboard
+  } from '../../utils/settings-helpers';
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -37,21 +41,20 @@
 
   const platformService = createPlatformService();
 
+  function saveSettings(): void {
+    pluginSaveSettings(plugin);
+  }
+
+  function saveSettingsAndRefreshDashboard(): void {
+    pluginSaveSettingsAndRefreshDashboard(plugin);
+  }
+
   let displayName = $derived(getDashboardDisplayName(dashboard));
 
   let isCollapsed = $derived.by(() => {
     const collapsedMap = resolveCollapsedDashboardSettingsMap(plugin.settings);
     return collapsedMap[dashboard.id] === true;
   });
-
-  function saveSettings(): void {
-    void plugin.saveSettings();
-  }
-
-  function saveSettingsAndRefreshDashboard(): void {
-    saveSettings();
-    plugin.triggerDashboardRefresh();
-  }
 
   function toggleCollapsed(): void {
     const collapsedMap = resolveCollapsedDashboardSettingsMap(plugin.settings);

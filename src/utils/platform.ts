@@ -174,31 +174,16 @@ export function createPlatformService(): PlatformService {
 		};
 	};
 
-	const runGitCommandStatus = (folderPath: string, args: string[]): number | undefined => {
-		try {
-			const childProcessModule = loadModule('child_process');
-			const spawnSyncFunction = getRequiredFunction(childProcessModule, 'spawnSync');
-			const spawnResult = spawnSyncFunction('git', args, {
-				shell: false,
-				cwd: folderPath,
-				windowsHide: true
-			});
-			if (!isObjectRecord(spawnResult)) {
-				return undefined;
-			}
+	interface SpawnSyncResult {
+		status: number | undefined;
+		stdout: string | undefined;
+	}
 
-			const statusCandidate = spawnResult.status;
-			if (typeof statusCandidate !== 'number') {
-				return undefined;
-			}
-
-			return statusCandidate;
-		} catch {
-			return undefined;
-		}
-	};
-
-	const runGitCommandOutput = (folderPath: string, args: string[]): string | undefined => {
+	const runSpawnSync = (
+		folderPath: string,
+		args: string[],
+		options?: { encoding?: string }
+	): SpawnSyncResult => {
 		try {
 			const childProcessModule = loadModule('child_process');
 			const spawnSyncFunction = getRequiredFunction(childProcessModule, 'spawnSync');
@@ -206,26 +191,32 @@ export function createPlatformService(): PlatformService {
 				shell: false,
 				cwd: folderPath,
 				windowsHide: true,
-				encoding: 'utf8'
+				...options
 			});
 			if (!isObjectRecord(spawnResult)) {
-				return undefined;
+				return { status: undefined, stdout: undefined };
 			}
 
 			const statusCandidate = spawnResult.status;
-			if (typeof statusCandidate !== 'number' || statusCandidate !== 0) {
-				return undefined;
-			}
-
+			const status = typeof statusCandidate === 'number' ? statusCandidate : undefined;
 			const stdoutCandidate = spawnResult.stdout;
-			if (typeof stdoutCandidate !== 'string') {
-				return undefined;
-			}
-
-			return stdoutCandidate;
+			const stdout = typeof stdoutCandidate === 'string' ? stdoutCandidate : undefined;
+			return { status, stdout };
 		} catch {
+			return { status: undefined, stdout: undefined };
+		}
+	};
+
+	const runGitCommandStatus = (folderPath: string, args: string[]): number | undefined => {
+		return runSpawnSync(folderPath, args).status;
+	};
+
+	const runGitCommandOutput = (folderPath: string, args: string[]): string | undefined => {
+		const result = runSpawnSync(folderPath, args, { encoding: 'utf8' });
+		if (result.status !== 0) {
 			return undefined;
 		}
+		return result.stdout;
 	};
 
 	const isFolderDialogResult = (value: unknown): value is FolderDialogResult => {
@@ -362,7 +353,7 @@ export function createPlatformService(): PlatformService {
 		}
 		const spawn = getSpawn();
 		const child = spawn('code', [folderPath], {
-			shell: process.platform === 'win32',
+			shell: false,
 			cwd: folderPath,
 			detached: true,
 			stdio: 'ignore'

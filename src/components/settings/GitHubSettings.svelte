@@ -3,6 +3,10 @@
   import type TasksDashboardPlugin from '../../../main';
   import { addDropdownOptions, isNonEmptyString } from '../../settings/settings-helpers';
   import {
+    saveSettings as pluginSaveSettings,
+    saveSettingsAndRefreshDashboard as pluginSaveSettingsAndRefreshDashboard
+  } from '../../utils/settings-helpers';
+  import {
     GITHUB_AUTH_METHOD_OPTIONS,
     GITHUB_DISPLAY_MODE_OPTIONS,
     GITHUB_TOKEN_CREATION_URL,
@@ -24,17 +28,16 @@
   let tokenSettingEl: HTMLElement | undefined = $state(undefined);
   let displayModeEl: HTMLElement | undefined = $state(undefined);
 
-  let settings = $derived(plugin.settings);
-  let showTokenField = $derived(settings.githubAuth.method === 'pat');
-
   function saveSettings(): void {
-    void plugin.saveSettings();
+    pluginSaveSettings(plugin);
   }
 
   function saveSettingsAndRefreshDashboard(): void {
-    saveSettings();
-    plugin.triggerDashboardRefresh();
+    pluginSaveSettingsAndRefreshDashboard(plugin);
   }
+
+  let settings = $derived(plugin.settings);
+  let showTokenField = $derived(settings.githubAuth.method === 'pat');
 
   function updateRateLimitDisplay(): void {
     if (rateLimitEl === undefined) {

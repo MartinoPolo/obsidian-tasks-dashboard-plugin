@@ -957,24 +957,4 @@
   font-size: 0.85em;
 }
 
-/* State colors for result items - shared with GitHubCard */
-.tdc-gh-state-open {
-  background: color-mix(in srgb, var(--tdc-gh-open) 20%, transparent);
-  color: var(--tdc-gh-open);
-}
-
-.tdc-gh-state-closed {
-  background: color-mix(in srgb, var(--tdc-gh-closed) 20%, transparent);
-  color: var(--tdc-gh-closed);
-}
-
-.tdc-gh-state-merged {
-  background: color-mix(in srgb, var(--tdc-gh-merged) 20%, transparent);
-  color: var(--tdc-gh-merged);
-}
-
-.tdc-gh-state-draft {
-  background: color-mix(in srgb, var(--tdc-gh-draft) 20%, transparent);
-  color: var(--tdc-gh-draft);
-}
 </style>

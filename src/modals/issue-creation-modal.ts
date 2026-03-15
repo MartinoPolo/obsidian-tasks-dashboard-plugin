@@ -10,6 +10,15 @@ import IssueCreationWizard from '../components/modals/IssueCreationWizard.svelte
 import PrioritySelector from '../components/modals/PrioritySelector.svelte';
 import ManualGitHubLinkContent from '../components/modals/ManualGitHubLinkContent.svelte';
 import { GitHubSearchModal } from './GitHubSearchModal';
+import type {
+	GitHubSelectionContext,
+	IssueCreateRequest,
+	IssueCreationMode,
+	QuickCreateDefaults,
+	WorktreeCreationContext
+} from './issue-creation-types';
+
+export type { QuickCreateDefaults };
 
 interface CreateIssueRequest {
 	name: string;
@@ -19,38 +28,6 @@ interface CreateIssueRequest {
 	worktree?: boolean;
 	worktreeOriginFolder?: string;
 	worktreeBaseRepository?: string;
-	githubLink?: string;
-	githubMetadata?: GitHubIssueMetadata;
-}
-
-export interface QuickCreateDefaults {
-	priority: Priority;
-	color: string;
-	worktree: boolean;
-	worktreeOriginFolder?: string;
-	worktreeBaseRepository?: string;
-}
-
-interface WorktreeCreationContext {
-	eligible: boolean;
-	worktreeOriginFolder?: string;
-	sourceIssueLinkedRepository?: string;
-}
-
-interface GitHubSelectionContext {
-	githubLink?: string;
-	githubMetadata?: GitHubIssueMetadata;
-}
-
-type IssueCreationMode = 'standard' | 'worktree';
-
-interface IssueCreateRequest {
-	name: string;
-	priority: Priority;
-	color: string;
-	mode: IssueCreationMode;
-	worktreeOriginFolder?: string;
-	sourceIssueLinkedRepository?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
 }
@@ -100,7 +77,7 @@ async function createIssueWithNotice(
 			await plugin.saveSettings();
 		}
 		if (request.worktree === true) {
-			plugin.issueManager.setupWorktree(
+			void plugin.issueManager.setupWorktree(
 				request.dashboard,
 				issue.id,
 				request.name,

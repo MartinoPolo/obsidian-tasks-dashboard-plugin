@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { setTooltip } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { attachTooltip } from '../../lib/attach-tooltip';
   import { createPlatformService, type PlatformService, type WorktreeEntry } from '../../utils/platform';
   import { extractLastPathSegment } from '../../utils/path-utils';
   import ModalLayout from './ModalLayout.svelte';
@@ -110,10 +110,6 @@
     void plugin.issueManager.retryWorktreeSetup(dashboard, issueId, trimmed);
   }
 
-  function applyTooltip(node: HTMLElement, text: string): () => void {
-    setTooltip(node, text, { delay: 500 });
-    return () => {};
-  }
 </script>
 
 <ModalLayout title="Worktree Setup" onsubmit={confirmCreation}>
@@ -143,7 +139,7 @@
           {#if defaultBranch !== undefined}
             <span
               class="tdc-worktree-base-branch-label"
-              {@attach (node) => applyTooltip(node, `Default branch: ${defaultBranch}`)}
+              {@attach attachTooltip(`Default branch: ${defaultBranch}`)}
             >
               (base: {defaultBranch})
             </span>
@@ -162,7 +158,7 @@
               <div class="tdc-worktree-list-branch">{branchText}</div>
               <div
                 class="tdc-worktree-list-path"
-                {@attach (node) => applyTooltip(node, entry.path)}
+                {@attach attachTooltip(entry.path)}
               >
                 {abbreviatePath(entry.path)}
               </div>

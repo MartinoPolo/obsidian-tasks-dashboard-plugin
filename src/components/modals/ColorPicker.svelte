@@ -11,6 +11,7 @@
   import { collectDashboardIssueIdSet } from '../../settings/dashboard-cleanup';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { getWrappedIndex } from '../../utils/array-utils';
   import { Notice, type App } from 'obsidian';
   import ModalLayout from './ModalLayout.svelte';
 
@@ -75,14 +76,6 @@
       colorInputValue = selectedColor;
     }
     isLoaded = true;
-  }
-
-  function getWrappedIndex(current: number, step: number, length: number): number {
-    if (length === 0) {
-      return 0;
-    }
-    const safe = current >= 0 ? current : 0;
-    return (((safe + step) % length) + length) % length;
   }
 
   async function movePresetSelection(step: number): Promise<void> {

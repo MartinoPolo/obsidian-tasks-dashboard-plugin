@@ -1,32 +1,19 @@
 <script lang="ts">
   import type TasksDashboardPlugin from '../../../main';
-  import type { DashboardConfig, GitHubIssueMetadata, Priority } from '../../types';
+  import type { DashboardConfig, Priority } from '../../types';
+  import type {
+    GitHubSelectionContext,
+    IssueCreateRequest,
+    IssueCreationMode,
+    QuickCreateDefaults,
+    WorktreeCreationContext
+  } from '../../modals/issue-creation-types';
   import NameStep from './NameStep.svelte';
   import WorktreeDecisionStep from './WorktreeDecisionStep.svelte';
   import ColorPicker from './ColorPicker.svelte';
   import PrioritySelector from './PrioritySelector.svelte';
 
   type WizardStep = 'name' | 'worktree-decision' | 'color' | 'priority';
-  type IssueCreationMode = 'standard' | 'worktree';
-
-  interface WorktreeCreationContext {
-    eligible: boolean;
-    worktreeOriginFolder?: string;
-    sourceIssueLinkedRepository?: string;
-  }
-
-  interface GitHubSelectionContext {
-    githubLink?: string;
-    githubMetadata?: GitHubIssueMetadata;
-  }
-
-  export interface QuickCreateDefaults {
-    priority: Priority;
-    color: string;
-    worktree: boolean;
-    worktreeOriginFolder?: string;
-    worktreeBaseRepository?: string;
-  }
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -42,17 +29,6 @@
     oncreate: (request: IssueCreateRequest) => void;
     onsearchopen?: (currentName: string) => void;
     canOpenSearch?: boolean;
-  }
-
-  export interface IssueCreateRequest {
-    name: string;
-    priority: Priority;
-    color: string;
-    mode: IssueCreationMode;
-    worktreeOriginFolder?: string;
-    sourceIssueLinkedRepository?: string;
-    githubLink?: string;
-    githubMetadata?: GitHubIssueMetadata;
   }
 
   let {
@@ -185,35 +161,41 @@
   let nameStepTitle = $derived(currentMode === 'worktree' ? 'Worktree Name' : 'Issue Name');
 </script>
 
-{#if step === 'name'}
-  <NameStep
-    title={nameStepTitle}
-    initialName={issueName}
-    onconfirm={handleNameConfirm}
-    oncancel={onclose}
-    {onsearchopen}
-    {canOpenSearch}
-  />
-{:else if step === 'worktree-decision'}
-  <WorktreeDecisionStep
-    onconfirm={handleWorktreeDecision}
-    oncancel={onclose}
-    onback={goBackFromStep}
-  />
-{:else if step === 'color'}
-  <ColorPicker
-    app={plugin.app}
-    {plugin}
-    {dashboard}
-    initialColor={issueColor !== '' ? issueColor : undefined}
-    onselect={handleColorSelect}
-    oncancel={onclose}
-    onback={goBackFromStep}
-  />
-{:else if step === 'priority'}
-  <PrioritySelector
-    onselect={handlePrioritySelect}
-    oncancel={onclose}
-    onback={goBackFromStep}
-  />
-{/if}
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+  onauxclick={(event) => { if (event.button === 3) { event.preventDefault(); event.stopPropagation(); } }}
+  onmousedown={(event) => { if (event.button === 3) { event.preventDefault(); event.stopPropagation(); } }}
+>
+  {#if step === 'name'}
+    <NameStep
+      title={nameStepTitle}
+      initialName={issueName}
+      onconfirm={handleNameConfirm}
+      oncancel={onclose}
+      {onsearchopen}
+      {canOpenSearch}
+    />
+  {:else if step === 'worktree-decision'}
+    <WorktreeDecisionStep
+      onconfirm={handleWorktreeDecision}
+      oncancel={onclose}
+      onback={goBackFromStep}
+    />
+  {:else if step === 'color'}
+    <ColorPicker
+      app={plugin.app}
+      {plugin}
+      {dashboard}
+      initialColor={issueColor !== '' ? issueColor : undefined}
+      onselect={handleColorSelect}
+      oncancel={onclose}
+      onback={goBackFromStep}
+    />
+  {:else if step === 'priority'}
+    <PrioritySelector
+      onselect={handlePrioritySelect}
+      oncancel={onclose}
+      onback={goBackFromStep}
+    />
+  {/if}
+</div>

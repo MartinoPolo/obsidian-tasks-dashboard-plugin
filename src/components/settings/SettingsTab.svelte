@@ -8,6 +8,10 @@
     isProgressDisplayMode
   } from '../../settings/settings-options';
   import type { DashboardConfig } from '../../types';
+  import {
+    saveSettings as pluginSaveSettings,
+    saveSettingsAndRefreshDashboard as pluginSaveSettingsAndRefreshDashboard
+  } from '../../utils/settings-helpers';
   import { generateId } from '../../utils/slugify';
   import DashboardSettings from './DashboardSettings.svelte';
   import GitHubSettings from './GitHubSettings.svelte';
@@ -22,19 +26,18 @@
   let releaseColorsEl: HTMLElement | undefined = $state(undefined);
   let addDashboardEl: HTMLElement | undefined = $state(undefined);
 
+  function saveSettings(): void {
+    pluginSaveSettings(plugin);
+  }
+
+  function saveSettingsAndRefreshDashboard(): void {
+    pluginSaveSettingsAndRefreshDashboard(plugin);
+  }
+
   let renderKey: number = $state(0);
 
   function refresh(): void {
     renderKey++;
-  }
-
-  function saveSettings(): void {
-    void plugin.saveSettings();
-  }
-
-  function saveSettingsAndRefreshDashboard(): void {
-    saveSettings();
-    plugin.triggerDashboardRefresh();
   }
 
   $effect(() => {

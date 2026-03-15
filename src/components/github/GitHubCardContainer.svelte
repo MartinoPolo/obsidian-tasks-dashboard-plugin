@@ -85,11 +85,7 @@
 
   function handleRefresh(): void {
     clearCacheForUrl();
-    void fetchMetadata().then(() => {
-      if (metadata === undefined && error === undefined) {
-        error = 'Failed to refresh';
-      }
-    });
+    void fetchMetadata();
   }
 
   $effect(() => {

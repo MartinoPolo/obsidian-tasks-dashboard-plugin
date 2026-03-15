@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Priority } from '../../types';
+  import { getWrappedIndex } from '../../utils/array-utils';
   import ModalLayout from './ModalLayout.svelte';
 
   interface Props {
@@ -25,14 +26,6 @@
 
   function formatPriorityLabel(priority: Priority): string {
     return priority.charAt(0).toUpperCase() + priority.slice(1);
-  }
-
-  function getWrappedIndex(current: number, step: number, length: number): number {
-    if (length === 0) {
-      return 0;
-    }
-    const safe = current >= 0 ? current : 0;
-    return (((safe + step) % length) + length) % length;
   }
 
   function moveSelection(step: number): void {
