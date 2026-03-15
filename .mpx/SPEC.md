@@ -42,6 +42,7 @@ Currently I'm running for example yarn frontend command in VSCode terminal so at
 
 ## Worktrees
 - [ ] We can have a linked github repository which is not linked to the linked folder (folder: C:\_MP_projects\hiring-fs-martin-poloch, repo: Finteractive/ATC-backoffice). Creating a worktree from the assigned issues list doesn't work in this case because the assigned issues are related to the linked repository, but the setup worktree script tries to create a worktree for the repository in that linked folder. This doesn't make sense and should be forbidden. We should either disable the worktree buttons or automatically ensure that the repository is linked correctly with the selected folder. However, this could mean that we need to allow multiple folders assigned for a dashboard because we now allow multiple repositories to be linked so that we can see all assigned issues in all of the selected repositories.
+- [ ] Decide what should happen with an assigned issue which went through the full cycle in the dashboard, meaning it was assigned to a dashboard issue and that issue was deleted. Should we again show the quick add buttons, or leave it so that it never is assigned again, or how to reset it if I make a mistake?
 
 ## TODO
 
