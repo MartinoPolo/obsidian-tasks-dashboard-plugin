@@ -65,11 +65,13 @@ export interface PlatformService {
 	) => boolean;
 }
 
-export function createPlatformService(): PlatformService {
-	// TODO MP: Before deployment, let's remove all these absolute paths and maybe add the script to the project.
+export interface WorktreeScriptPaths {
+	setupScriptPath?: string;
+	removeScriptPath?: string;
+}
+
+export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths): PlatformService {
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-	const WORKTREE_SETUP_SCRIPT = 'C:\\_MP_projects\\mpx-claude-code\\scripts\\setup-worktree.sh';
-	const WORKTREE_REMOVE_SCRIPT = 'C:\\_MP_projects\\mpx-claude-code\\scripts\\remove-worktree.sh';
 	const WINDOWS_GIT_BASH_CANDIDATES = [
 		'C:\\_MP_apps\\Git\\bin\\bash.exe',
 		'C:\\Program Files\\Git\\bin\\bash.exe',
@@ -697,12 +699,18 @@ export function createPlatformService(): PlatformService {
 		dashboardWorkingDirectory?: string,
 		bashExecutablePath?: string
 	): void => {
+		const setupScriptPath = worktreeScriptPaths?.setupScriptPath;
+		if (setupScriptPath === undefined || setupScriptPath.trim() === '') {
+			new Notice('Worktree setup script path is not configured. Set it in plugin settings.');
+			return;
+		}
+
 		const scriptArgs = [issueId];
 		if (color !== undefined && color !== '' && isValidHexColor(color)) {
 			scriptArgs.push('--color', color);
 		}
 		runScriptWithBash(
-			WORKTREE_SETUP_SCRIPT,
+			setupScriptPath,
 			scriptArgs,
 			'Could not run setup-worktree script',
 			dashboardWorkingDirectory,
@@ -720,13 +728,19 @@ export function createPlatformService(): PlatformService {
 			tabColor?: string;
 		}
 	): boolean => {
+		const removeScriptPath = worktreeScriptPaths?.removeScriptPath;
+		if (removeScriptPath === undefined || removeScriptPath.trim() === '') {
+			new Notice('Worktree remove script path is not configured. Set it in plugin settings.');
+			return false;
+		}
+
 		const scriptArgs = [issueId];
 		if (options?.skipConfirmation === true) {
 			scriptArgs.push('--skip-confirmation');
 		}
 
 		return runScriptWithBash(
-			WORKTREE_REMOVE_SCRIPT,
+			removeScriptPath,
 			scriptArgs,
 			'Could not run remove-worktree script',
 			dashboardWorkingDirectory,

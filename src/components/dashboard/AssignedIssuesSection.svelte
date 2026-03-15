@@ -84,10 +84,17 @@
     return assignedIssuesLimitByRepo.get(repoKey) ?? DEFAULT_ASSIGNED_ISSUES_PER_REPO;
   }
 
-  async function fetchAssignedIssues(): Promise<void> {
+  let isFetching = false;
+
+  async function fetchAssignedIssues(cancelSignal: { cancelled: boolean }): Promise<void> {
     if (dashboard === undefined || dashboardId === undefined) {
       return;
     }
+
+    if (isFetching) {
+      return;
+    }
+    isFetching = true;
 
     isLoading = true;
     errorMessage = undefined;
@@ -100,47 +107,67 @@
           return { repoName, items: result.items, totalCount: result.totalCount };
         })
       );
+
+      if (cancelSignal.cancelled) {
+        return;
+      }
+
       repoResults = results;
+
+      // Build set of existing dashboard issue URLs
+      const urls = new Set<string>();
+      try {
+        const filename = dashboard.dashboardFilename || 'Dashboard.md';
+        const dashboardPath = `${dashboard.rootPath}/${filename}`;
+        const dashboardFile = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+        if (dashboardFile instanceof TFile) {
+          const dashboardContent = await plugin.app.vault.read(dashboardFile);
+          const githubLinkPattern = /github_link:\s*(\S+)/g;
+          let match: RegExpExecArray | null;
+          while ((match = githubLinkPattern.exec(dashboardContent)) !== null) {
+            urls.add(match[1]);
+          }
+        }
+      } catch {
+        // ignore — proceed without filtering
+      }
+
+      if (cancelSignal.cancelled) {
+        return;
+      }
+
+      existingDashboardUrls = urls;
+
+      const totalLoaded = repoResults.reduce((sum, r) => sum + r.items.length, 0);
+      const totalAvailable = repoResults.reduce((sum, r) => sum + r.totalCount, 0);
+      summaryText = `Assigned Issues (${totalLoaded}/${totalAvailable} loaded)`;
+
+      isLoading = false;
     } catch (error: unknown) {
+      if (cancelSignal.cancelled) {
+        return;
+      }
       console.error('Tasks Dashboard: failed to fetch assigned issues', error);
       errorMessage = 'Failed to load assigned issues. Check your GitHub connection.';
       isLoading = false;
-      return;
+    } finally {
+      isFetching = false;
     }
-
-    // Build set of existing dashboard issue URLs
-    const urls = new Set<string>();
-    try {
-      const filename = dashboard.dashboardFilename || 'Dashboard.md';
-      const dashboardPath = `${dashboard.rootPath}/${filename}`;
-      const dashboardFile = plugin.app.vault.getAbstractFileByPath(dashboardPath);
-      if (dashboardFile instanceof TFile) {
-        const dashboardContent = await plugin.app.vault.read(dashboardFile);
-        const githubLinkPattern = /github_link:\s*(\S+)/g;
-        let match: RegExpExecArray | null;
-        while ((match = githubLinkPattern.exec(dashboardContent)) !== null) {
-          urls.add(match[1]);
-        }
-      }
-    } catch {
-      // ignore — proceed without filtering
-    }
-    existingDashboardUrls = urls;
-
-    const totalLoaded = repoResults.reduce((sum, r) => sum + r.items.length, 0);
-    const totalAvailable = repoResults.reduce((sum, r) => sum + r.totalCount, 0);
-    summaryText = `Assigned Issues (${totalLoaded}/${totalAvailable} loaded)`;
-
-    isLoading = false;
   }
 
-  // Fetch on mount
+  // Fetch on mount; cancel on unmount or re-run
   $effect(() => {
+    const cancelSignal = { cancelled: false };
+
     if (validationError === undefined) {
-      void fetchAssignedIssues();
+      void fetchAssignedIssues(cancelSignal);
     } else {
       isLoading = false;
     }
+
+    return () => {
+      cancelSignal.cancelled = true;
+    };
   });
 
   function handleAddIssue(issue: GitHubIssueMetadata): void {
@@ -196,7 +223,7 @@
     const currentLimit = getRepoLimit(repoName);
     const newLimit = currentLimit + DEFAULT_ASSIGNED_ISSUES_PER_REPO;
     assignedIssuesLimitByRepo.set(repoKey, newLimit);
-    void fetchAssignedIssues();
+    void fetchAssignedIssues({ cancelled: false });
   }
 
   function isLinkedToDashboard(issue: GitHubIssueMetadata): boolean {

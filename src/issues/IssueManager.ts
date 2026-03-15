@@ -15,6 +15,7 @@ import {
 import { migrateIssueSettings, removeIssueSettings } from './issue-manager-settings';
 import {
 	appendBeforeFrontmatterClose,
+	escapeForRegExp,
 	findIssueFilesByPath,
 	getDashboardFilename,
 	getFrontmatterCloseIndex,
@@ -57,7 +58,7 @@ function getFrontmatterStringField(content: string, fieldName: string): string |
 		return undefined;
 	}
 
-	const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const escapedFieldName = escapeForRegExp(fieldName);
 	const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*(.+)\\s*$`, 'm');
 	const fieldMatch = frontmatter.match(fieldRegex);
 	if (fieldMatch === null) {
@@ -85,7 +86,7 @@ function upsertFrontmatterField(content: string, fieldName: string, rawValue: st
 	}
 
 	const frontmatterBody = frontmatterMatch[1];
-	const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const escapedFieldName = escapeForRegExp(fieldName);
 	const fieldPattern = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
 	const updatedFrontmatterBody = fieldPattern.test(frontmatterBody)
 		? frontmatterBody.replace(fieldPattern, `${fieldName}: ${rawValue}`)
@@ -150,7 +151,10 @@ function sanitizeGitBranchName(preferredName: string, fallbackName: string): str
 export type { CreateIssueParams, ImportNoteParams, IssueManagerInstance };
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
-	const platformService = createPlatformService();
+	const platformService = createPlatformService({
+		get setupScriptPath() { return plugin.settings.worktreeSetupScriptPath; },
+		get removeScriptPath() { return plugin.settings.worktreeRemoveScriptPath; }
+	});
 	const activeOperationLocks = new Set<string>();
 	const activeWorktreeSetupLocks = new Set<string>();
 
@@ -309,7 +313,7 @@ export function createIssueManager(app: App, plugin: TasksDashboardPlugin): Issu
 		}
 
 		const controlsSection = block.slice(controlsStart, firstFenceEnd);
-		const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const escapedFieldName = escapeForRegExp(fieldName);
 		const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
 		const updatedControlsSection = fieldRegex.test(controlsSection)
 			? controlsSection.replace(fieldRegex, `${fieldName}: ${fieldValue}`)

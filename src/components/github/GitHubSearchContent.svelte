@@ -274,7 +274,12 @@
   }
 
   async function loadAuthenticatedUsername(): Promise<void> {
-    authenticatedUsername = await plugin.githubService.getAuthenticatedUser();
+    try {
+      authenticatedUsername = await plugin.githubService.getAuthenticatedUser();
+    } catch {
+      // Proceed without username — ranking will skip assignee boosting
+      authenticatedUsername = undefined;
+    }
   }
 
   async function ensureAuthenticatedUsernameLoaded(): Promise<void> {
@@ -293,12 +298,17 @@
   }
 
   async function loadUserRepositories(): Promise<void> {
-    userRepositories = await plugin.githubService.getUserRepositories();
-    if (userRepositories.length > 0) {
-      const nextRepository = userRepositories[0].fullName;
-      if (nextRepository !== '') {
-        selectedOtherRepository = nextRepository;
+    try {
+      userRepositories = await plugin.githubService.getUserRepositories();
+      if (userRepositories.length > 0) {
+        const nextRepository = userRepositories[0].fullName;
+        if (nextRepository !== '') {
+          selectedOtherRepository = nextRepository;
+        }
       }
+    } catch {
+      // Fallback to empty list so the dropdown renders "No repositories available"
+      userRepositories = [];
     }
   }
 
@@ -402,34 +412,43 @@
   async function loadRecentIssues(requestId: number): Promise<void> {
     showLoadingState('Loading recent issues...');
     selectedIndex = -1;
-    await ensureAuthenticatedUsernameLoaded();
 
-    let results: GitHubIssueMetadata[] = [];
-    if (searchScope === 'my-repos') {
-      results = rankResults(await searchByMode('')).slice(0, RECENT_ISSUES_LIMIT);
-    } else {
-      const repo = getRepoForCurrentScope();
-      if (repo === undefined || repo === '') {
-        if (!isLatestRequest(requestId)) {
+    try {
+      await ensureAuthenticatedUsernameLoaded();
+
+      let results: GitHubIssueMetadata[] = [];
+      if (searchScope === 'my-repos') {
+        results = rankResults(await searchByMode('')).slice(0, RECENT_ISSUES_LIMIT);
+      } else {
+        const repo = getRepoForCurrentScope();
+        if (repo === undefined || repo === '') {
+          if (!isLatestRequest(requestId)) {
+            return;
+          }
+          setResultsWithSelection([], 'Recent Issues', false);
           return;
         }
-        setResultsWithSelection([], 'Recent Issues', false);
+        const recentResults = await plugin.githubService.getRecentIssues(
+          repo,
+          RECENT_ISSUES_LIMIT * 3
+        );
+        results = rankResults(
+          recentResults.filter((item) => isResultAllowedByMode(item))
+        ).slice(0, RECENT_ISSUES_LIMIT);
+      }
+
+      if (!isLatestRequest(requestId)) {
         return;
       }
-      const recentResults = await plugin.githubService.getRecentIssues(
-        repo,
-        RECENT_ISSUES_LIMIT * 3
-      );
-      results = rankResults(
-        recentResults.filter((item) => isResultAllowedByMode(item))
-      ).slice(0, RECENT_ISSUES_LIMIT);
-    }
 
-    if (!isLatestRequest(requestId)) {
-      return;
+      setResultsWithSelection(results, 'Recent Issues', false);
+    } catch {
+      if (!isLatestRequest(requestId)) {
+        return;
+      }
+      setResultsWithSelection([], 'Recent Issues', false);
+      noResults = true;
     }
-
-    setResultsWithSelection(results, 'Recent Issues', false);
   }
 
   async function performSearch(
@@ -439,25 +458,34 @@
   ): Promise<void> {
     showLoadingState('Searching...');
     selectedIndex = -1;
-    await ensureAuthenticatedUsernameLoaded();
 
-    const searchResults = await searchByMode(query);
-    const numericMatches = await getNumericRepositoryMatches(query);
+    try {
+      await ensureAuthenticatedUsernameLoaded();
 
-    if (!isLatestRequest(requestId)) {
-      return;
+      const searchResults = await searchByMode(query);
+      const numericMatches = await getNumericRepositoryMatches(query);
+
+      if (!isLatestRequest(requestId)) {
+        return;
+      }
+
+      const unique = new Map<string, GitHubIssueMetadata>();
+      for (const match of numericMatches) {
+        unique.set(match.url, match);
+      }
+      for (const result of rankResults(searchResults)) {
+        unique.set(result.url, result);
+      }
+
+      const combined = Array.from(unique.values()).slice(0, MAX_COMBINED_RESULTS);
+      setResultsWithSelection(combined, `Search Results (${combined.length})`, preselectFirstResult);
+    } catch {
+      if (!isLatestRequest(requestId)) {
+        return;
+      }
+      setResultsWithSelection([], 'Search Results (0)', false);
+      noResults = true;
     }
-
-    const unique = new Map<string, GitHubIssueMetadata>();
-    for (const match of numericMatches) {
-      unique.set(match.url, match);
-    }
-    for (const result of rankResults(searchResults)) {
-      unique.set(result.url, result);
-    }
-
-    const combined = Array.from(unique.values()).slice(0, MAX_COMBINED_RESULTS);
-    setResultsWithSelection(combined, `Search Results (${combined.length})`, preselectFirstResult);
   }
 
   function handleSearchInput(trigger: 'typing' | 'scope' | 'repository'): void {
