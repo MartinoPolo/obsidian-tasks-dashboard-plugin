@@ -238,7 +238,6 @@
       <ActionButton
         icon="plus"
         label="Add Issue"
-        class="tdc-btn-action"
         onclick={() => {
           if (dashboard === undefined) { return; }
           const folder = dashboard.projectFolder;
@@ -257,7 +256,6 @@
       <ActionButton
         icon="fileInput"
         label="Import Note"
-        class="tdc-btn-action"
         onclick={() => {
           if (dashboard === undefined) { return; }
           new NoteImportModal(plugin.app, plugin, dashboard).open();
@@ -268,7 +266,6 @@
         <ActionButton
           icon="sort"
           label="Sort"
-          class="tdc-btn-action"
           onclick={(event) => {
             event.stopPropagation();
             isSortOpen = !isSortOpen;
@@ -287,21 +284,21 @@
       <ActionButton
         icon="foldAll"
         label="Collapse All"
-        class="tdc-btn-action tdc-btn-action-secondary"
+        variant="secondary"
         onclick={() => toggleAllIssues(true)}
       />
 
       <ActionButton
         icon="unfoldAll"
         label="Expand All"
-        class="tdc-btn-action tdc-btn-action-secondary"
+        variant="secondary"
         onclick={() => toggleAllIssues(false)}
       />
 
       <ActionButton
         icon="refresh"
         label="Refresh Dashboard"
-        class="tdc-btn-action tdc-btn-action-secondary"
+        variant="secondary"
         onclick={() => {
           if (dashboard !== undefined) {
             void refreshDashboard(plugin, dashboard);
@@ -312,7 +309,7 @@
       <ActionButton
         icon="rebuild"
         label="Rebuild"
-        class="tdc-btn-action tdc-btn-action-secondary"
+        variant="secondary"
         onclick={() => {
           if (dashboard !== undefined) {
             void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
@@ -323,7 +320,7 @@
       <ActionButton
         icon="settings"
         label="Open Dashboard Settings"
-        class="tdc-btn-action tdc-btn-action-secondary"
+        variant="secondary"
         onclick={() => {
           if (hasSettingsTabApi(plugin.app)) {
             plugin.app.setting?.openTabById(plugin.manifest.id);
@@ -336,7 +333,7 @@
         <ActionButton
           icon="folder"
           label={hasFolder ? 'Open project folder' : 'Set project folder'}
-          class="tdc-btn-action tdc-btn-action-secondary tdc-btn-folder"
+          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openInFileExplorer(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -347,7 +344,7 @@
         <ActionButton
           icon="terminal"
           label={hasFolder ? 'Open terminal' : 'Set project folder'}
-          class="tdc-btn-action tdc-btn-action-secondary tdc-btn-terminal"
+          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openTerminal(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -358,7 +355,7 @@
         <ActionButton
           icon="vscode"
           label={hasFolder ? 'Open in VS Code' : 'Set project folder'}
-          class="tdc-btn-action tdc-btn-action-secondary tdc-btn-vscode"
+          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openVSCode(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -373,7 +370,7 @@
               ? 'Open GitHub repo'
               : `Open GitHub repos (${linkedRepos.length})`
             : 'Link GitHub repository'}
-          class="tdc-btn-action tdc-btn-action-secondary tdc-btn-github-quickopen"
+          variant="secondary"
           faded={!hasRepos}
           onclick={(event) => {
             if (linkedRepos.length === 0) {
@@ -463,16 +460,5 @@
   text-decoration: underline;
 }
 
-:global(.tdc-btn-action) {
-  border-radius: var(--tdc-border-radius);
-  background: var(--background-modifier-hover);
-}
 
-:global(.tdc-btn-action-secondary) {
-  opacity: 0.7;
-}
-
-:global(.tdc-btn-action-secondary:hover) {
-  opacity: 1;
-}
 </style>

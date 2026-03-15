@@ -412,6 +412,7 @@
               label={descriptor.label}
               labelText={descriptor.label}
               class={`tdc-overflow-item ${descriptor.cssClass}`}
+              variant={descriptor.variant}
               faded={descriptor.faded}
               onclick={(event) => {
                 event.preventDefault();

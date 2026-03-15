@@ -646,6 +646,7 @@
             icon={descriptor.iconKey}
             label={descriptor.label}
             class={descriptor.cssClass}
+            variant={descriptor.variant}
             faded={descriptor.faded}
             onclick={(event) => descriptor.onClick(event)}
             oncontextmenu={descriptor.onContextMenu}

@@ -114,57 +114,13 @@
 }
 
 .tdc-btn:hover {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
-.tdc-btn svg,
-.tdc-btn-action svg {
-	width: var(--tdc-btn-icon-size);
-	height: var(--tdc-btn-icon-size);
-}
-
-/* ===== Action Buttons (icon-only squares) ===== */
-.tdc-btn-action {
-	width: var(--tdc-btn-square-size);
-	height: var(--tdc-btn-square-size);
-	padding: 0;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-	border: none;
-	border-radius: var(--tdc-border-radius);
-	cursor: pointer;
-	transition: var(--tdc-transition-fast);
-}
-
-.tdc-btn-action:hover {
-	background: var(--interactive-accent-hover);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* ===== Secondary Action Buttons (Collapse/Expand All) ===== */
-.tdc-btn-action-secondary {
-	background: var(--background-modifier-hover);
+	background: color-mix(in srgb, var(--text-normal) 15%, transparent);
 	color: var(--text-normal);
 }
 
-.tdc-btn-action-secondary:hover {
-	background: var(--interactive-accent-hover);
-	color: var(--text-on-accent);
-	transform: translateY(-1px);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.tdc-btn-action-secondary.tdc-btn-faded {
-	opacity: 0.4;
-}
-
-.tdc-btn-action-secondary.tdc-btn-faded:hover {
-	opacity: 0.8;
+.tdc-btn svg {
+	width: var(--tdc-btn-icon-size);
+	height: var(--tdc-btn-icon-size);
 }
 
 /* ===== Collapse Button ===== */
@@ -201,59 +157,6 @@
 	transform: rotate(0deg);
 }
 
-/* ===== Accent Buttons ===== */
-.tdc-btn-archive,
-.tdc-btn-folder,
-.tdc-btn-terminal,
-.tdc-btn-github-quickopen {
-	background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
-	color: var(--interactive-accent);
-}
-
-.tdc-btn-archive:hover,
-.tdc-btn-folder:hover,
-.tdc-btn-terminal:hover,
-.tdc-btn-github-quickopen:hover {
-	background: var(--interactive-accent);
-	color: var(--text-on-accent);
-}
-
-/* ===== Delete Button ===== */
-.tdc-btn-delete {
-	background: color-mix(in srgb, var(--tdc-priority-high) 15%, transparent);
-	color: var(--tdc-priority-high);
-}
-
-.tdc-btn-delete:hover {
-	background: var(--tdc-priority-high);
-	color: white;
-}
-
-.tdc-btn-vscode {
-	background: color-mix(in srgb, var(--tdc-vscode-accent) 15%, transparent);
-	color: var(--tdc-vscode-accent);
-}
-
-.tdc-btn-vscode:hover {
-	background: var(--tdc-vscode-accent);
-	color: white;
-}
-
-.tdc-btn-folder.tdc-btn-faded,
-.tdc-btn-terminal.tdc-btn-faded,
-.tdc-btn-vscode.tdc-btn-faded,
-.tdc-btn-worktree.tdc-btn-faded,
-.tdc-btn-github-quickopen.tdc-btn-faded {
-	opacity: 0.4;
-}
-
-.tdc-btn-folder.tdc-btn-faded:hover,
-.tdc-btn-terminal.tdc-btn-faded:hover,
-.tdc-btn-vscode.tdc-btn-faded:hover,
-.tdc-btn-worktree.tdc-btn-faded:hover,
-.tdc-btn-github-quickopen.tdc-btn-faded:hover {
-	opacity: 0.8;
-}
 
 /* ===== Sort Code Block Overflow ===== */
 .block-language-tasks-dashboard-sort,
@@ -644,14 +547,6 @@
 	width: 100%;
 	height: 100%;
 	box-sizing: border-box;
-}
-
-.tdc-btn-worktree {
-	position: relative;
-}
-
-.tdc-btn-priority {
-	color: var(--text-accent);
 }
 
 .tdc-issue-color-dropdown {

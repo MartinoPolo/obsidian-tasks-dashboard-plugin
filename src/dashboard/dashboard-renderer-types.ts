@@ -1,11 +1,14 @@
 import type { IconName } from '../components/icons/index';
 import type { IssueActionKey, WorktreeSetupState } from '../types';
 
+export type ButtonVariant = 'default' | 'accent' | 'delete' | 'vscode' | 'secondary';
+
 export interface IssueActionDescriptor {
 	key: IssueActionKey;
 	label: string;
 	iconKey: IconName;
 	cssClass: string;
+	variant?: ButtonVariant;
 	shouldRender: boolean;
 	faded: boolean;
 	onClick: (event?: MouseEvent) => void;
