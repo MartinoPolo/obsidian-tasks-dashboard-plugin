@@ -463,7 +463,8 @@
   margin-bottom: 8px;
 }
 
-:global(.tdc-overflow-item) {
+/* Parent-scoped :global to beat ActionButton's scoped .tdc-btn specificity */
+.tdc-overflow-actions :global(.tdc-overflow-item) {
   justify-content: flex-start;
   width: 100%;
   height: auto;
@@ -471,16 +472,16 @@
   gap: 8px;
 }
 
-:global(.tdc-overflow-item .tdc-btn-label) {
+.tdc-overflow-actions :global(.tdc-overflow-item .tdc-btn-label) {
   font-size: 1em;
   margin-left: 0;
 }
 
-:global(.tdc-overflow-item.tdc-btn-delete) {
+.tdc-overflow-actions :global(.tdc-overflow-item.tdc-btn-delete) {
   color: var(--tdc-priority-high);
 }
 
-:global(.tdc-overflow-item.tdc-btn-archive) {
+.tdc-overflow-actions :global(.tdc-overflow-item.tdc-btn-archive) {
   color: var(--tdc-priority-medium);
 }
 
@@ -559,14 +560,14 @@
   gap: 6px;
 }
 
-:global(.tdc-overflow-settings-visibility),
-:global(.tdc-overflow-settings-move) {
+.tdc-overflow-settings-actions :global(.tdc-overflow-settings-visibility),
+.tdc-overflow-settings-actions :global(.tdc-overflow-settings-move) {
   width: var(--tdc-btn-square-size);
   height: var(--tdc-btn-square-size);
   padding: 0;
 }
 
-:global(.tdc-overflow-settings-move) {
+.tdc-overflow-settings-actions :global(.tdc-overflow-settings-move) {
   font-size: 1em;
 }
 

@@ -578,13 +578,12 @@
 }
 
 .tdc-color-preset-btn.is-selected {
-	border: 3px solid var(--text-normal);
-	box-shadow: 0 0 0 2px var(--background-primary);
+	border: 3px solid var(--tdc-swatch-fg, var(--text-normal));
+	box-shadow: 0 0 0 2px var(--tdc-swatch-bg, var(--background-primary));
 }
 
 .tdc-color-preset-btn:focus-visible {
-	outline: 2px solid var(--interactive-accent);
-	outline-offset: 2px;
+	outline: none;
 }
 
 .tdc-color-preset-btn.is-disabled {

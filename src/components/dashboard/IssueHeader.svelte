@@ -1,28 +1,26 @@
 <script lang="ts">
-  import { setTooltip } from 'obsidian';
+  import { tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
-  import type { DashboardConfig, IssueActionKey } from '../../types';
-  import type {
-    BranchStatus,
-    IssueGitStatus,
-    IssueState,
-    LinkedGitHubIssue,
-    LinkedPullRequest,
-    PrState
-  } from '../../git-status/git-status-types';
-  import type {
-    ControlParams,
-    IssueActionDescriptor,
-    RuntimeIssueActionLayout
-  } from '../../dashboard/dashboard-renderer-types';
   import { setIssueCollapsed } from '../../dashboard/dashboard-issue-surface';
+  import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
+  import type {
+  	ControlParams,
+  	IssueActionDescriptor,
+  	RuntimeIssueActionLayout
+  } from '../../dashboard/dashboard-renderer-types';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
+  import type {
+  	BranchStatus,
+  	IssueGitStatus,
+  	IssueState,
+  	PrState
+  } from '../../git-status/git-status-types';
+  import { attachResizeObserver } from '../../lib/attach-resize-observer';
+  import { attachTooltip } from '../../lib/attach-tooltip';
+  import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
+  import type { DashboardConfig, IssueActionKey } from '../../types';
   import { extractLastPathSegment } from '../../utils/path-utils';
   import { createPlatformService } from '../../utils/platform';
-  import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
-  import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
-  import { attachTooltip } from '../../lib/attach-tooltip';
-  import { attachResizeObserver } from '../../lib/attach-resize-observer';
   import ActionButton from '../ActionButton.svelte';
   import GitBadge from '../GitBadge.svelte';
   import Icon from '../Icon.svelte';
@@ -286,21 +284,32 @@
     }
   }
 
-  // Badge compaction
-  function applyBadgeCompaction(): void {
+  // Badge compaction — measure at non-compact size to decide if compaction is needed.
+  // Uses tick() so Svelte applies shouldCompact=false to the DOM before measuring.
+  let badgeCompactionPending = false;
+  async function applyBadgeCompaction(): Promise<void> {
     if (badgesElement === undefined || headerElement === undefined || linkElement === undefined) {
       return;
     }
-    badgesElement.classList.remove('tdc-badges-compact');
+    if (badgeCompactionPending) {
+      return;
+    }
+    badgeCompactionPending = true;
+
+    // Remove compact to measure at full size
+    shouldCompact = false;
+    await tick();
+
     const headerOverflowing = headerElement.scrollWidth > headerElement.clientWidth;
     const titleTruncated = linkElement.scrollWidth > linkElement.clientWidth;
     shouldCompact = headerOverflowing || titleTruncated;
+    badgeCompactionPending = false;
   }
 
   // Resize observer callback
   function handleResize(): void {
     applyRow1PriorityLayout();
-    applyBadgeCompaction();
+    void applyBadgeCompaction();
   }
 
   // Toggle collapse
@@ -432,7 +441,7 @@
 
           // Apply badge compaction after render
           requestAnimationFrame(() => {
-            applyBadgeCompaction();
+            void applyBadgeCompaction();
           });
         })
         .catch(() => {
@@ -453,10 +462,10 @@
   $effect(() => {
     if (headerElement !== undefined) {
       applyRow1PriorityLayout();
-      applyBadgeCompaction();
+      void applyBadgeCompaction();
       window.setTimeout(() => {
         applyRow1PriorityLayout();
-        applyBadgeCompaction();
+        void applyBadgeCompaction();
       }, 0);
     }
   });
@@ -750,8 +759,8 @@
 }
 
 .tdc-btn-collapse:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent);
+  color: var(--tdc-issue-header-link-color, var(--text-normal));
 }
 
 .tdc-btn-collapse :global(svg) {
@@ -795,8 +804,8 @@
 .tdc-issue-info-inline:hover,
 .tdc-issue-info-inline:focus-visible,
 .tdc-issue-info-inline.is-open {
-  background: var(--background-modifier-hover) !important;
-  background-color: var(--background-modifier-hover) !important;
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent) !important;
+  background-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent) !important;
   background-image: none !important;
   border: 0 !important;
   border-radius: var(--tdc-border-radius-sm) !important;
@@ -900,7 +909,7 @@
 }
 
 :global(.tdc-worktree-status):hover {
-  background: var(--background-modifier-hover);
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent);
 }
 
 :global(button.tdc-worktree-action-retry) {
@@ -923,7 +932,7 @@
 
 :global(button.tdc-worktree-status.tdc-worktree-status-active):hover {
   color: #66bb6a !important;
-  background: var(--background-modifier-hover) !important;
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent) !important;
 }
 
 /* PR accent — bottom border + gradient */
@@ -986,6 +995,15 @@
 /* Issue 3 — Header button icon colors respect issue color */
 .tdc-issue-header :global(.tdc-btn) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
+}
+
+.tdc-issue-header :global(.tdc-btn):hover {
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent);
+  color: var(--tdc-issue-header-link-color, var(--text-normal));
+}
+
+.tdc-issue-header :global(.tdc-btn):active {
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
 }
 
 /* Issue 7 — Badge text color overrides */

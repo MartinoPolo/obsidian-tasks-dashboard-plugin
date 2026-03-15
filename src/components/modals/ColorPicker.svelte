@@ -40,6 +40,20 @@
     void loadAndRender();
   });
 
+  $effect(() => {
+    if (isLoaded) {
+      void focusSelectedPresetButton();
+    }
+  });
+
+  async function focusSelectedPresetButton(): Promise<void> {
+    await tick();
+    const button = presetButtonRefs.get(selectedColor);
+    if (button !== undefined) {
+      button.focus();
+    }
+  }
+
   async function loadAndRender(): Promise<void> {
     try {
       dashboardIssueIds = await collectDashboardIssueIdSet(app, dashboard);
@@ -95,36 +109,6 @@
   }
 
   function handlePresetKeydown(event: KeyboardEvent, color: string): void {
-    if (event.key === 'Backspace' && onback !== undefined) {
-      event.preventDefault();
-      onback();
-      return;
-    }
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      void movePresetSelection(-1);
-      return;
-    }
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      void movePresetSelection(1);
-      return;
-    }
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      void movePresetSelection(-ISSUE_COLOR_PICKER_COLUMNS);
-      return;
-    }
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      void movePresetSelection(ISSUE_COLOR_PICKER_COLUMNS);
-      return;
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      confirmSelection();
-      return;
-    }
     if (event.key === ' ') {
       event.preventDefault();
       selectColor(color);
@@ -153,7 +137,46 @@
     }
   }
 
-  function handleContentKeydown(event: KeyboardEvent): void {
+  function handleWindowKeydown(event: KeyboardEvent): void {
+    // Skip if user is interacting with the color input
+    if (event.target instanceof HTMLInputElement && event.target.type === 'color') {
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      void movePresetSelection(-1);
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      void movePresetSelection(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      void movePresetSelection(-ISSUE_COLOR_PICKER_COLUMNS);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      void movePresetSelection(ISSUE_COLOR_PICKER_COLUMNS);
+      return;
+    }
+    if (event.key === 'Enter') {
+      if (event.target instanceof HTMLButtonElement) {
+        const isPresetButton = event.target.closest('.tdc-color-preset-row') !== null;
+        if (isPresetButton) {
+          event.preventDefault();
+          confirmSelection();
+          return;
+        }
+        return; // action buttons keep native click behavior
+      }
+      event.preventDefault();
+      confirmSelection();
+      return;
+    }
     if (event.key === 'Backspace' && onback !== undefined) {
       event.preventDefault();
       onback();
@@ -175,8 +198,9 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="tdc-color-preset-row-six-columns" onkeydown={handleContentKeydown}>
+<svelte:window onkeydown={handleWindowKeydown} />
+
+<div class="tdc-color-preset-row-six-columns">
   <ModalLayout title="Issue Color">
     {#snippet children()}
       {#if isLoaded}
@@ -188,6 +212,8 @@
               class={['tdc-color-preset-btn', isSelected && 'is-selected', isUnavailable && 'is-disabled']}
               type="button"
               style:background-color={entry.background}
+              style:--tdc-swatch-fg={entry.foreground}
+              style:--tdc-swatch-bg={entry.background}
               aria-checked={isSelected}
               role="radio"
               tabindex={isSelected ? 0 : -1}

@@ -190,7 +190,6 @@ const openIssueColorDropdown = async (options: {
 	const dropdown = document.createElement('div');
 	dropdown.className = 'tdc-issue-color-dropdown';
 	dropdown.setAttribute('role', 'dialog');
-	dropdown.setAttribute('aria-label', 'Issue color picker');
 
 	const title = dropdown.createDiv({
 		cls: 'tdc-issue-color-dropdown-title',
@@ -252,11 +251,12 @@ const openIssueColorDropdown = async (options: {
 			cls: 'tdc-color-preset-btn',
 			attr: {
 				type: 'button',
-				'aria-label': `Select color ${entry.background}`,
 				'aria-disabled': isUnavailable ? 'true' : 'false'
 			}
 		});
 		preset.style.backgroundColor = entry.background;
+		preset.style.setProperty('--tdc-swatch-fg', entry.foreground);
+		preset.style.setProperty('--tdc-swatch-bg', entry.background);
 		preset.disabled = isUnavailable;
 		preset.toggleClass('is-disabled', isUnavailable);
 		preset.toggleClass('is-selected', entry.background === currentColor);
@@ -302,6 +302,10 @@ const openIssueColorDropdown = async (options: {
 			const target = buttons[nextIndex];
 			if (!target.disabled) {
 				target.focus();
+				for (const button of buttons) {
+					button.removeClass('is-selected');
+				}
+				target.addClass('is-selected');
 				return;
 			}
 		}
@@ -348,10 +352,13 @@ const openIssueColorDropdown = async (options: {
 	document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onWindowResize);
 
-	const firstAvailableButton = grid.querySelector<HTMLButtonElement>(
+	const selectedButton = grid.querySelector<HTMLButtonElement>(
+		'button.tdc-color-preset-btn.is-selected'
+	);
+	const fallbackButton = grid.querySelector<HTMLButtonElement>(
 		'button.tdc-color-preset-btn:not(:disabled)'
 	);
-	firstAvailableButton?.focus();
+	(selectedButton ?? fallbackButton)?.focus();
 };
 
 export const buildIssueActionDescriptors = (options: {
