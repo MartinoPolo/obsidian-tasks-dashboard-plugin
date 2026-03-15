@@ -37,6 +37,15 @@ import { hasMarkers, initializeDashboardStructure, MARKERS } from './DashboardPa
 
 export type { DashboardWriterInstance, SortDirection } from './dashboard-writer-types';
 
+const prStateSortOrder: Record<string, number> = {
+	none: 0,
+	open: 0,
+	draft: 1,
+	'review-requested': 2,
+	merged: 3,
+	closed: 4
+};
+
 export function createDashboardWriter(
 	app: App,
 	plugin: TasksDashboardPlugin
@@ -459,16 +468,6 @@ export function createDashboardWriter(
 		}
 
 		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
-
-		// Extract PR state from git status cache for each issue
-		const prStateSortOrder: Record<string, number> = {
-			none: 0,
-			open: 0,
-			draft: 1,
-			'review-requested': 2,
-			merged: 3,
-			closed: 4
-		};
 
 		// Extract PR state from issue blocks via GitHub link patterns
 		const issuePrStateOrder = new Map<string, number>();

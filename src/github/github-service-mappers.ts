@@ -14,9 +14,7 @@ function isValidLabelColor(color: string | undefined): color is string {
 	return color !== undefined && color !== '' && VALID_HEX_COLOR_PATTERN.test(color);
 }
 
-const mapLabels = (
-	labels: Array<string | { name: string; color?: string }>
-): GitHubLabel[] => {
+const mapLabels = (labels: Array<string | { name: string; color?: string }>): GitHubLabel[] => {
 	return labels.map((label): GitHubLabel => {
 		if (typeof label === 'string') {
 			return { name: label, color: DEFAULT_LABEL_COLOR };

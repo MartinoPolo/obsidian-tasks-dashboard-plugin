@@ -152,8 +152,12 @@ export type { CreateIssueParams, ImportNoteParams, IssueManagerInstance };
 
 export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
 	const platformService = createPlatformService({
-		get setupScriptPath() { return plugin.settings.worktreeSetupScriptPath; },
-		get removeScriptPath() { return plugin.settings.worktreeRemoveScriptPath; }
+		get setupScriptPath() {
+			return plugin.settings.worktreeSetupScriptPath;
+		},
+		get removeScriptPath() {
+			return plugin.settings.worktreeRemoveScriptPath;
+		}
 	});
 	const activeOperationLocks = new Set<string>();
 	const activeWorktreeSetupLocks = new Set<string>();

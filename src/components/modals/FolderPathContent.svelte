@@ -2,6 +2,7 @@
   import { Notice } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
   import { createPlatformService } from '../../utils/platform';
   import ModalLayout from './ModalLayout.svelte';
 
@@ -20,7 +21,7 @@
     if (issueId === undefined) {
       return undefined;
     }
-    return `${dashboard.id}:${issueId}`;
+    return getIssueFolderStorageKey(dashboard.id, issueId);
   }
 
   function getCurrentValue(): string | undefined {

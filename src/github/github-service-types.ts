@@ -17,11 +17,6 @@ export interface GitHubSearchResult {
 	totalCount: number;
 }
 
-export interface AssignedIssuesResult {
-	items: GitHubIssueMetadata[];
-	totalCount: number;
-}
-
 export type GitHubIssueState = GitHubIssueMetadata['state'];
 
 export interface GitHubServiceInstance {
@@ -41,7 +36,7 @@ export interface GitHubServiceInstance {
 	searchPullRequests: (query: string, repo?: string) => Promise<GitHubSearchResult>;
 	searchIssuesInMyRepos: (query: string) => Promise<GitHubSearchResult>;
 	searchPullRequestsInMyRepos: (query: string) => Promise<GitHubSearchResult>;
-	getAssignedIssues: (repo: string, limit?: number) => Promise<AssignedIssuesResult>;
+	getAssignedIssues: (repo: string, limit?: number) => Promise<GitHubSearchResult>;
 	getRecentIssues: (repo?: string, limit?: number) => Promise<GitHubIssueMetadata[]>;
 	parseGitHubUrl: (url: string) => ParsedGitHubUrl | undefined;
 	getMetadataFromUrl: (url: string) => Promise<GitHubIssueMetadata | undefined>;

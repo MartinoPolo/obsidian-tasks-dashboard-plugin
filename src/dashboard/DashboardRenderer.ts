@@ -70,10 +70,13 @@ export function createDashboardRenderer(plugin: TasksDashboardPlugin): Dashboard
 
 		const container = el.createDiv({ cls: 'tdc-github-note-container' });
 		const githubContainer = container.createDiv({ cls: 'tdc-github-container' });
-		mount(GitHubCardContainer, {
+		const component = mount(GitHubCardContainer, {
 			target: githubContainer,
 			props: { plugin, githubUrl: params.url }
 		});
+		const child = new MarkdownRenderChild(container);
+		child.register(() => unmount(component));
+		_ctx.addChild(child);
 	};
 
 	const renderAssignedIssuesSection = (

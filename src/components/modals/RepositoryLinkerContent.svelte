@@ -1,8 +1,7 @@
 <script lang="ts">
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig, GitHubRepository } from '../../types';
-
-  const DESCRIPTION_MAX_LENGTH = 80;
+  import { truncateDescription } from '../../utils/string-utils';
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -68,13 +67,6 @@
     const newSet = new Set(linkedRepos);
     newSet.delete(repoFullName);
     linkedRepos = newSet;
-  }
-
-  function truncateDescription(description: string): string {
-    if (description.length > DESCRIPTION_MAX_LENGTH) {
-      return `${description.slice(0, DESCRIPTION_MAX_LENGTH)}...`;
-    }
-    return description;
   }
 
   function saveAndClose(): void {
