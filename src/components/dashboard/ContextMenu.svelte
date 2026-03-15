@@ -48,7 +48,7 @@
 
 {#if anchorElement !== undefined}
   <div
-    class="tdc-sort-dropdown tdc-sort-dropdown-portal"
+    class="tdc-context-menu tdc-context-menu-portal"
     {@attach attachAnchoredPanel({
       anchorElement,
       onclose,
@@ -60,7 +60,7 @@
   >
     {#each items as item (item.label)}
       <div
-        class="tdc-sort-dropdown-item"
+        class="tdc-context-menu-item"
         role="button"
         tabindex="0"
         onclick={(event) => {

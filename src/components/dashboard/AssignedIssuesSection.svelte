@@ -70,11 +70,15 @@
 
   const platformService = createPlatformService();
   let dashboardProjectFolder = $derived(dashboard?.projectFolder);
-  let worktreeCreationAvailable = $derived(
-    dashboardProjectFolder !== undefined &&
-    dashboardProjectFolder !== '' &&
-    platformService.isGitRepositoryFolder(dashboardProjectFolder)
-  );
+  let worktreeCreationAvailable = $state(false);
+
+  $effect(() => {
+    const folder = dashboardProjectFolder;
+    worktreeCreationAvailable =
+      folder !== undefined &&
+      folder !== '' &&
+      platformService.isGitRepositoryFolder(folder);
+  });
 
   function getRepoLimit(repoName: string): number {
     if (dashboardId === undefined) {
@@ -85,6 +89,7 @@
   }
 
   let isFetching = false;
+  let activeCancelSignal: { cancelled: boolean } = { cancelled: false };
 
   async function fetchAssignedIssues(cancelSignal: { cancelled: boolean }): Promise<void> {
     if (dashboard === undefined || dashboardId === undefined) {
@@ -158,6 +163,7 @@
   // Fetch on mount; cancel on unmount or re-run
   $effect(() => {
     const cancelSignal = { cancelled: false };
+    activeCancelSignal = cancelSignal;
 
     if (validationError === undefined) {
       void fetchAssignedIssues(cancelSignal);
@@ -223,7 +229,7 @@
     const currentLimit = getRepoLimit(repoName);
     const newLimit = currentLimit + DEFAULT_ASSIGNED_ISSUES_PER_REPO;
     assignedIssuesLimitByRepo.set(repoKey, newLimit);
-    void fetchAssignedIssues({ cancelled: false });
+    void fetchAssignedIssues(activeCancelSignal);
   }
 
   function isLinkedToDashboard(issue: GitHubIssueMetadata): boolean {

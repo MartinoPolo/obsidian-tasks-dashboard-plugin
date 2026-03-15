@@ -36,6 +36,7 @@ export const parseSourceKeyValueLines = (source: string): ParsedKeyValueLine[] =
 };
 
 // Memoize by source string identity — avoids N full rebuilds per settings write
+const PARSE_PARAMS_CACHE_MAX_SIZE = 512;
 const parseParamsCache = new Map<string, ControlParams | null>();
 
 export const parseParams = (source: string): ControlParams | null => {
@@ -125,10 +126,16 @@ export const parseParams = (source: string): ControlParams | null => {
 
 	if (hasAllParams) {
 		const result = params as ControlParams;
+		if (parseParamsCache.size > PARSE_PARAMS_CACHE_MAX_SIZE) {
+			parseParamsCache.clear();
+		}
 		parseParamsCache.set(source, result);
 		return result;
 	}
 
+	if (parseParamsCache.size > PARSE_PARAMS_CACHE_MAX_SIZE) {
+		parseParamsCache.clear();
+	}
 	parseParamsCache.set(source, null);
 	return null;
 };

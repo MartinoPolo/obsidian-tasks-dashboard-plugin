@@ -351,6 +351,7 @@
   // Async fetch git status
   $effect(() => {
     let isDestroyed = false;
+    let rafId: number | undefined;
 
     if (isWorktreeIssue || params.githubLinks.length > 0) {
       isBadgesLoading = true;
@@ -395,7 +396,8 @@
           }
 
           // Apply badge compaction after render
-          requestAnimationFrame(() => {
+          rafId = requestAnimationFrame(() => {
+            rafId = undefined;
             void applyBadgeCompaction();
           });
         })
@@ -410,6 +412,9 @@
 
     return () => {
       isDestroyed = true;
+      if (rafId !== undefined) {
+        cancelAnimationFrame(rafId);
+      }
     };
   });
 

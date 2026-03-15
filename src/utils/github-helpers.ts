@@ -91,19 +91,19 @@ export function formatRelativeDate(dateString: string): string {
 	return pluralize(years, 'year');
 }
 
-const MINUTE_IN_SECONDS = 60;
-const HOUR_IN_MINUTES = 60;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
 
 export function formatRelativeTimestamp(timestamp: number): string {
 	const seconds = Math.floor((Date.now() - timestamp) / 1000);
-	if (seconds < MINUTE_IN_SECONDS) {
+	if (seconds < SECONDS_PER_MINUTE) {
 		return 'just now';
 	}
-	const minutes = Math.floor(seconds / MINUTE_IN_SECONDS);
-	if (minutes < HOUR_IN_MINUTES) {
+	const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+	if (minutes < MINUTES_PER_HOUR) {
 		return `${minutes} min ago`;
 	}
-	const hours = Math.floor(minutes / HOUR_IN_MINUTES);
+	const hours = Math.floor(minutes / MINUTES_PER_HOUR);
 	return `${hours}h ago`;
 }
 

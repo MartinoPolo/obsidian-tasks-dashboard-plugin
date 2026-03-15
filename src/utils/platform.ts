@@ -487,6 +487,9 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
 			return undefined;
 		}
+		if (isUnsafeScriptArgument(branchName)) {
+			return undefined;
+		}
 		if (!isGitRepositoryFolder(repositoryFolder)) {
 			return undefined;
 		}
@@ -529,6 +532,9 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 
 	const isGitBranchMissing = (folderPath: string, branchName: string): boolean => {
 		if (folderPath.trim() === '' || branchName.trim() === '') {
+			return false;
+		}
+		if (isUnsafeScriptArgument(branchName)) {
 			return false;
 		}
 		if (!isGitRepositoryFolder(folderPath)) {
@@ -783,6 +789,9 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
 			return 'none';
 		}
+		if (isUnsafeScriptArgument(branchName)) {
+			return 'none';
+		}
 		if (!isGitRepositoryFolder(repositoryFolder)) {
 			return 'none';
 		}
@@ -823,6 +832,9 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 
 	const hasBranchUpstreamConfig = (repositoryFolder: string, branchName: string): boolean => {
 		if (repositoryFolder.trim() === '' || branchName.trim() === '') {
+			return false;
+		}
+		if (isUnsafeScriptArgument(branchName)) {
 			return false;
 		}
 
