@@ -14,6 +14,7 @@ import type { DashboardConfig, IssueActionKey } from '../types';
 import { getGitHubLinkType, isGitHubWebUrl, parseGitHubUrlInfo } from '../utils/github';
 import { parseGitHubRepoFullName } from '../utils/github-url';
 import {
+	ISSUE_COLOR_PICKER_COLUMNS,
 	collectUsedIssueColors,
 	getThemeAwareIssueColorPalette,
 	isIssueColorUsed
@@ -270,6 +271,42 @@ const openIssueColorDropdown = async (options: {
 		});
 	}
 
+	grid.addEventListener('keydown', (event: KeyboardEvent) => {
+		const buttons = Array.from(
+			grid.querySelectorAll<HTMLButtonElement>('button.tdc-color-preset-btn')
+		);
+		const focused = document.activeElement;
+		const currentIndex = focused instanceof HTMLButtonElement ? buttons.indexOf(focused) : -1;
+		if (currentIndex === -1) {
+			return;
+		}
+
+		let step: number | undefined;
+		if (event.key === 'ArrowRight') {
+			step = 1;
+		} else if (event.key === 'ArrowLeft') {
+			step = -1;
+		} else if (event.key === 'ArrowDown') {
+			step = ISSUE_COLOR_PICKER_COLUMNS;
+		} else if (event.key === 'ArrowUp') {
+			step = -ISSUE_COLOR_PICKER_COLUMNS;
+		}
+		if (step === undefined) {
+			return;
+		}
+
+		event.preventDefault();
+		const total = buttons.length;
+		for (let attempt = 0; attempt < total; attempt += 1) {
+			const nextIndex = (((currentIndex + step * (attempt + 1)) % total) + total) % total;
+			const target = buttons[nextIndex];
+			if (!target.disabled) {
+				target.focus();
+				return;
+			}
+		}
+	});
+
 	colorInput.addEventListener('input', () => {
 		applyIssueSurfaceStyles(container, colorInput.value);
 	});
@@ -310,6 +347,11 @@ const openIssueColorDropdown = async (options: {
 	document.addEventListener('mousedown', onDocumentMouseDown, true);
 	document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onWindowResize);
+
+	const firstAvailableButton = grid.querySelector<HTMLButtonElement>(
+		'button.tdc-color-preset-btn:not(:disabled)'
+	);
+	firstAvailableButton?.focus();
 };
 
 export const buildIssueActionDescriptors = (options: {
@@ -541,13 +583,14 @@ export const buildIssueActionDescriptors = (options: {
 		shouldRender: true,
 		faded: false,
 		onClick: (event) => {
-			const anchorElement = event?.currentTarget;
+			const anchor =
+				event?.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
 			void openIssueColorDropdown({
 				plugin,
 				dashboard,
 				issueId: params.issue,
 				container,
-				anchorElement: anchorElement instanceof HTMLElement ? anchorElement : undefined,
+				anchorElement: anchor,
 				applyIssueSurfaceStyles
 			});
 		}

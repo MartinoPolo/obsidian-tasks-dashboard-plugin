@@ -532,50 +532,6 @@
     {params.name}
   </a>
 
-  {#if isWorktreeIssue}
-    {#if isWorktreeClickable}
-      <ActionButton
-        icon="worktree"
-        label="Retry worktree setup"
-        class="tdc-worktree-action tdc-worktree-action-retry tdc-worktree-status-failed"
-        onclick={handleWorktreeRetry}
-      />
-    {:else if isWorktreeActive}
-      <button
-        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
-        type="button"
-        onclick={handleWorktreeRefresh}
-        {@attach attachTooltip(buildWorktreeLocationTooltip(
-          params.worktree_origin_folder,
-          params.worktree_branch,
-          params.worktree_base_branch
-        ))}
-      >
-        <Icon name="worktree" size={16} />
-      </button>
-    {:else}
-      <span
-        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
-        role="img"
-        {@attach attachTooltip(worktreeStatusText)}
-      >
-        <Icon name="worktree" size={16} />
-      </span>
-    {/if}
-  {/if}
-
-  <button
-    class={['tdc-issue-info-inline', isInfoPanelOpen && 'is-open']}
-    type="button"
-    aria-haspopup="dialog"
-    aria-expanded={isInfoPanelOpen ? 'true' : 'false'}
-    bind:this={infoButtonElement}
-    onclick={toggleInfoPanel}
-    {@attach attachTooltip('Issue info')}
-  >
-    <Icon name="info" size={20} />
-  </button>
-
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class={[
@@ -621,6 +577,50 @@
       {/each}
     {/if}
   </div>
+
+  {#if isWorktreeIssue}
+    {#if isWorktreeClickable}
+      <ActionButton
+        icon="worktree"
+        label="Retry worktree setup"
+        class="tdc-worktree-action tdc-worktree-action-retry tdc-worktree-status-failed"
+        onclick={handleWorktreeRetry}
+      />
+    {:else if isWorktreeActive}
+      <button
+        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
+        type="button"
+        onclick={handleWorktreeRefresh}
+        {@attach attachTooltip(buildWorktreeLocationTooltip(
+          params.worktree_origin_folder,
+          params.worktree_branch,
+          params.worktree_base_branch
+        ))}
+      >
+        <Icon name="worktree" size={16} />
+      </button>
+    {:else}
+      <span
+        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
+        role="img"
+        {@attach attachTooltip(worktreeStatusText)}
+      >
+        <Icon name="worktree" size={16} />
+      </span>
+    {/if}
+  {/if}
+
+  <button
+    class={['tdc-issue-info-inline', isInfoPanelOpen && 'is-open']}
+    type="button"
+    aria-haspopup="dialog"
+    aria-expanded={isInfoPanelOpen ? 'true' : 'false'}
+    bind:this={infoButtonElement}
+    onclick={toggleInfoPanel}
+    {@attach attachTooltip('Issue info')}
+  >
+    <Icon name="info" size={20} />
+  </button>
 
   <div class="tdc-header-actions">
     {#each row1ActionKeys as key (key)}
@@ -736,7 +736,7 @@
   min-width: var(--tdc-btn-square-size);
   border-radius: var(--tdc-border-radius-sm);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--tdc-issue-header-link-color, var(--text-muted));
   margin-right: 6px;
   width: var(--tdc-btn-square-size);
   height: var(--tdc-btn-square-size);
@@ -926,34 +926,90 @@
   background: var(--background-modifier-hover) !important;
 }
 
-/* PR accent */
-.tdc-issue-header.tdc-pr-accent-merged {
+/* PR accent — bottom border + gradient */
+.tdc-issue-header[class*='tdc-pr-accent-'] {
   position: relative;
+}
+
+.tdc-issue-header.tdc-pr-accent-merged {
+  border-bottom: 3px solid var(--tdc-git-pr-merged);
 }
 
 .tdc-issue-header.tdc-pr-accent-merged::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
+  right: 0;
   bottom: 0;
-  width: 4px;
-  background: var(--tdc-git-pr-merged);
-  border-radius: var(--tdc-border-radius) 0 0 var(--tdc-border-radius);
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--tdc-git-pr-merged) 8%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+  border-radius: inherit;
 }
 
 .tdc-issue-header.tdc-pr-accent-review-requested {
-  position: relative;
+  border-bottom: 3px solid var(--tdc-git-pr-review);
 }
 
 .tdc-issue-header.tdc-pr-accent-review-requested::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
+  right: 0;
   bottom: 0;
-  width: 4px;
-  background: var(--tdc-git-pr-review);
-  border-radius: var(--tdc-border-radius) 0 0 var(--tdc-border-radius);
+  height: 100%;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--tdc-git-pr-review) 8%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+  border-radius: inherit;
 }
+
+.tdc-issue-header.tdc-pr-accent-open {
+  border-bottom: 3px solid var(--tdc-git-pr-open);
+}
+
+.tdc-issue-header.tdc-pr-accent-draft {
+  border-bottom: 3px solid var(--tdc-git-pr-draft);
+}
+
+.tdc-issue-header.tdc-pr-accent-closed {
+  border-bottom: 3px solid var(--tdc-git-pr-closed);
+}
+
+/* Issue 3 — Header button icon colors respect issue color */
+.tdc-issue-header :global(.tdc-btn) {
+  color: var(--tdc-issue-header-link-color, var(--text-normal));
+}
+
+/* Issue 7 — Badge text color overrides */
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-branch-']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-open']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-merged']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-closed']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-draft']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-review']),
+.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-issue-']) {
+  color: var(--tdc-issue-header-link-color, var(--text-normal));
+}
+
+/* Per-state SVG color overrides */
+.tdc-header-badges :global(.tdc-git-badge-branch-active svg) { color: var(--tdc-git-branch-active); }
+.tdc-header-badges :global(.tdc-git-badge-branch-local svg) { color: var(--tdc-git-branch-local); }
+.tdc-header-badges :global(.tdc-git-badge-branch-remote-gone svg) { color: var(--tdc-git-branch-remote-gone); }
+.tdc-header-badges :global(.tdc-git-badge-branch-deleted svg) { color: var(--tdc-git-branch-deleted); }
+.tdc-header-badges :global(.tdc-git-badge-open svg) { color: var(--tdc-git-pr-open); }
+.tdc-header-badges :global(.tdc-git-badge-merged svg) { color: var(--tdc-git-pr-merged); }
+.tdc-header-badges :global(.tdc-git-badge-closed svg) { color: var(--tdc-git-pr-closed); }
+.tdc-header-badges :global(.tdc-git-badge-draft svg) { color: var(--tdc-git-pr-draft); }
+.tdc-header-badges :global(.tdc-git-badge-review svg) { color: var(--tdc-git-pr-review); }
+.tdc-header-badges :global(.tdc-git-badge-issue-open svg) { color: var(--tdc-gh-open); }
+.tdc-header-badges :global(.tdc-git-badge-issue-closed svg) { color: var(--tdc-gh-closed); }
+.tdc-header-badges :global(.tdc-git-badge-issue-not-planned svg) { color: var(--text-muted); }
 </style>

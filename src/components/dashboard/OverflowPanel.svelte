@@ -466,8 +466,14 @@
 :global(.tdc-overflow-item) {
   justify-content: flex-start;
   width: 100%;
+  height: auto;
   padding: 6px 8px;
   gap: 8px;
+}
+
+:global(.tdc-overflow-item .tdc-btn-label) {
+  font-size: 1em;
+  margin-left: 0;
 }
 
 :global(.tdc-overflow-item.tdc-btn-delete) {
@@ -487,6 +493,7 @@
 .tdc-overflow-settings-toggle,
 .tdc-overflow-settings-save {
   width: 100%;
+  height: auto;
   padding: 6px 8px;
 }
 

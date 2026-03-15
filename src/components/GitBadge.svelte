@@ -32,7 +32,7 @@
     rel="noopener noreferrer"
     {@attach attachTooltip(tooltip, 300)}
   >
-    <Icon name={icon} size={14} /> {text}
+    <Icon name={icon} size={14} /><span>{text}</span>
   </a>
 {:else}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -41,7 +41,7 @@
     {oncontextmenu}
     {@attach attachTooltip(tooltip, 300)}
   >
-    <Icon name={icon} size={14} /> {text}
+    <Icon name={icon} size={14} /><span>{text}</span>
   </span>
 {/if}
 

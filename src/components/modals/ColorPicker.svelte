@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { IssueColorEntry } from '../../utils/color';
   import {
     ISSUE_COLOR_PICKER_COLUMNS,
@@ -33,6 +34,7 @@
   let colorInputValue: string = $state(selectedColor);
   let dashboardIssueIds: Set<string> | undefined = $state.raw(undefined);
   let isLoaded: boolean = $state(false);
+  const presetButtonRefs = new Map<string, HTMLButtonElement>();
 
   $effect(() => {
     void loadAndRender();
@@ -69,7 +71,7 @@
     return (((safe + step) % length) + length) % length;
   }
 
-  function movePresetSelection(step: number): void {
+  async function movePresetSelection(step: number): Promise<void> {
     if (colorPresets.length === 0) {
       return;
     }
@@ -80,6 +82,8 @@
       const nextColor = colorPresets[nextIndex].background;
       if (!usedColors.has(nextColor)) {
         selectColor(nextColor);
+        await tick();
+        presetButtonRefs.get(nextColor)?.focus();
         return;
       }
     }
@@ -98,22 +102,22 @@
     }
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
-      movePresetSelection(-1);
+      void movePresetSelection(-1);
       return;
     }
     if (event.key === 'ArrowRight') {
       event.preventDefault();
-      movePresetSelection(1);
+      void movePresetSelection(1);
       return;
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      movePresetSelection(-ISSUE_COLOR_PICKER_COLUMNS);
+      void movePresetSelection(-ISSUE_COLOR_PICKER_COLUMNS);
       return;
     }
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      movePresetSelection(ISSUE_COLOR_PICKER_COLUMNS);
+      void movePresetSelection(ISSUE_COLOR_PICKER_COLUMNS);
       return;
     }
     if (event.key === 'Enter') {
@@ -140,12 +144,12 @@
     }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       event.preventDefault();
-      movePresetSelection(-1);
+      void movePresetSelection(-1);
       return;
     }
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault();
-      movePresetSelection(1);
+      void movePresetSelection(1);
     }
   }
 
@@ -176,7 +180,7 @@
   <ModalLayout title="Issue Color">
     {#snippet children()}
       {#if isLoaded}
-        <div class="tdc-color-preset-row" role="radiogroup" aria-label="Issue color presets">
+        <div class="tdc-color-preset-row" role="radiogroup">
           {#each colorPresets as entry, index (entry.background)}
             {@const isUnavailable = usedColors.has(entry.background)}
             {@const isSelected = entry.background === selectedColor}
@@ -184,7 +188,6 @@
               class={['tdc-color-preset-btn', isSelected && 'is-selected', isUnavailable && 'is-disabled']}
               type="button"
               style:background-color={entry.background}
-              aria-label={`Select color ${entry.background}`}
               aria-checked={isSelected}
               role="radio"
               tabindex={isSelected ? 0 : -1}
@@ -192,6 +195,10 @@
               disabled={isUnavailable}
               onclick={() => { if (!isUnavailable) { selectColor(entry.background); } }}
               onkeydown={(event) => handlePresetKeydown(event, entry.background)}
+              {@attach (node) => {
+                presetButtonRefs.set(entry.background, node as HTMLButtonElement);
+                return () => { presetButtonRefs.delete(entry.background); };
+              }}
             >
               <span class="tdc-color-preset-indicator" style:color={entry.foreground}>A</span>
             </button>

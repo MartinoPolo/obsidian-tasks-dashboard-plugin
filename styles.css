@@ -167,6 +167,40 @@
 	opacity: 0.8;
 }
 
+/* ===== Collapse Button ===== */
+.tdc-btn-collapse {
+	width: var(--tdc-btn-square-size);
+	height: var(--tdc-btn-square-size);
+	min-width: var(--tdc-btn-square-size);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	cursor: pointer;
+	transition: var(--tdc-transition-fast);
+	border-radius: var(--tdc-border-radius-sm);
+	background: transparent;
+	color: var(--text-muted);
+	margin-right: 6px;
+}
+
+.tdc-btn-collapse:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tdc-btn-collapse svg {
+	width: var(--tdc-btn-icon-size);
+	height: var(--tdc-btn-icon-size);
+	transition: transform 0.15s ease;
+	transform: rotate(90deg);
+}
+
+.tdc-btn-collapse.tdc-chevron-collapsed svg {
+	transform: rotate(0deg);
+}
+
 /* ===== Accent Buttons ===== */
 .tdc-btn-archive,
 .tdc-btn-folder,
@@ -673,7 +707,8 @@
 	margin: 0;
 }
 
-.tdc-dashboard-config-header + .setting-item {
+.tdc-dashboard-config-header + .setting-item,
+.tdc-dashboard-config-header + div {
 	margin-top: 8px;
 }
 
