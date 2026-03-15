@@ -11,12 +11,12 @@
 
 ### Critical
 
-- [ ] **C1: Anchored panel pattern duplicated across 3 components**
+- [x] **C1: Anchored panel pattern duplicated across 3 components**
   - `OverflowPanel.svelte:92-168`, `IssueInfoPanel.svelte:15-92`, `SortDropdown.svelte` (simpler variant)
   - `positionPanel` (viewport math), `handleOutsideClick`, `handleEscape`, scroll/resize/blur/click/keydown lifecycle — all identical
   - **Fix:** Extract `useAnchoredPanel(anchor, panel, { onclose })` attach directive or `AnchoredPanel.svelte` wrapper
 
-- [ ] **C2: `formatStarCount` duplicated + dead code in GitHubCard**
+- [x] **C2: `formatStarCount` duplicated + dead code in GitHubCard**
   - `GitHubCard.svelte:40-45` (dead — never called), `GitHubRepoCard.svelte:32-37`
   - **Fix:** Move to `src/utils/github-helpers.ts`. Remove dead copy from GitHubCard entirely
 
@@ -37,24 +37,24 @@
   - `StatePill` was created to centralize this, but other components don't use it
   - **Fix:** Use `StatePill` in GitHubCard/GitHubRepoCard/GitHubSearchContent, or move rules to `styles.css` globally
 
-- [ ] **I2: `saveSettings`/`saveSettingsAndRefreshDashboard` duplicated in 3 settings components**
+- [x] **I2: `saveSettings`/`saveSettingsAndRefreshDashboard` duplicated in 3 settings components**
   - `DashboardSettings.svelte:47-53`, `GitHubSettings.svelte:30-37`, `SettingsTab.svelte:31-37`
   - **Fix:** Export `createSettingsHelpers(plugin)` from shared module
 
-- [ ] **I3: `getWrappedIndex` duplicated across 3 modal components**
+- [x] **I3: `getWrappedIndex` duplicated across 3 modal components**
   - `ColorPicker.svelte:80`, `PrioritySelector.svelte:30`, `WorktreeDecisionStep.svelte:18`
   - **Fix:** Extract to `src/utils/array-utils.ts`
 
-- [ ] **I4: AssignedIssuesSection duplicates full issue-row template for single/multi-repo**
+- [x] **I4: AssignedIssuesSection duplicates full issue-row template for single/multi-repo**
   - Lines 243-302 (multi-repo) vs 309-368 (single-repo) — identical markup
   - Also: `getLinkedIssues`/`getUnlinkedIssues` called as inline functions in template (re-filter on every render)
   - **Fix:** Extract `{#snippet repoIssueList(...)}` or normalize single-repo into array and use one `{#each}`
 
-- [ ] **I5: `formatRelativeTime` duplicates `formatRelativeDate` intent**
+- [x] **I5: `formatRelativeTime` duplicates `formatRelativeDate` intent**
   - `IssueHeader.svelte:172-183` (accepts timestamp) vs `github-helpers.ts:78` (accepts ISO string)
   - **Fix:** Add `formatRelativeTimestamp(ts: number)` to `github-helpers.ts`, remove local function
 
-- [ ] **I6: `@keyframes tdc-spin` duplicated in 2 scoped style blocks**
+- [x] **I6: `@keyframes tdc-spin` duplicated in 2 scoped style blocks**
   - `IssueHeader.svelte:839-841`, `AssignedIssuesSection.svelte:412-414`
   - **Fix:** Move to `styles.css` as global rule
 
@@ -63,53 +63,53 @@
   - Potential listener leak if component destroyed while dropdown open
   - **Fix:** Use `SortDropdown.svelte` or extract reusable `ContextMenu` component
 
-- [ ] **I8: 3 parallel if-chains on `searchMode` in GitHubSearchContent**
+- [x] **I8: 3 parallel if-chains on `searchMode` in GitHubSearchContent**
   - `GitHubSearchContent.svelte:190-218` — `getModalTitle`/`getSearchPlaceholder`/`getSelectedResultsTitle`
   - **Fix:** Collapse into `SEARCH_MODE_LABELS` config map
 
-- [ ] **I9: Command injection via `shell: true` on Windows**
+- [x] **I9: Command injection via `shell: true` on Windows**
   - `platform.ts:365` — `spawn('code', [folderPath], { shell: process.platform === 'win32' })`
   - User-supplied `folderPath` parsed by OS shell when `shell: true`
   - **Fix:** Use `shell: false` unconditionally. `code` resolves from PATH without shell
 
-- [ ] **I10: Unvalidated GitHub label color injected into CSS style**
+- [x] **I10: Unvalidated GitHub label color injected into CSS style**
   - `GitHubCard.svelte:66` — `style:background-color={#${label.color}}`
   - Raw API string, no format validation
   - **Fix:** Validate `/^[0-9A-Fa-f]{6}$/` in `github-service-mappers.ts`, fallback to default
 
-- [ ] **I11: Hardcoded absolute developer paths in production code**
+- [x] **I11: Hardcoded absolute developer paths in production code**
   - `platform.ts:71-72` — `C:\\_MP_projects\\mpx-claude-code\\scripts\\setup-worktree.sh`
   - Must be resolved before release (marked with `// TODO MP: Before deployment`)
 
-- [ ] **I12: `loadRecentIssues`/`performSearch` swallow errors silently**
+- [x] **I12: `loadRecentIssues`/`performSearch` swallow errors silently**
   - `GitHubSearchContent.svelte:406-465` — called with `void`, no `.catch()`
   - Component stays in loading state permanently on API failure
   - **Fix:** Wrap in try/catch, show error message on failure
 
-- [ ] **I13: `loadAuthenticatedUsername`/`loadUserRepositories` swallow errors**
+- [x] **I13: `loadAuthenticatedUsername`/`loadUserRepositories` swallow errors**
   - `GitHubSearchContent.svelte:280-319`
   - Failure leaves permanent loading state for repo dropdown
   - **Fix:** Add try/catch, set fallback values on failure
 
-- [ ] **I14: AssignedIssuesSection $effect races with component unmount**
+- [x] **I14: AssignedIssuesSection $effect races with component unmount**
   - `AssignedIssuesSection.svelte:138-144` — no destroyed flag, concurrent fetch guard
   - **Fix:** Add cancel flag in `$effect` cleanup, `isFetching` guard
 
-- [ ] **I15: `GitHubCardContainer` mounted without cleanup registration**
+- [x] **I15: `GitHubCardContainer` mounted without cleanup registration**
   - `DashboardRenderer.ts:53-77` — `mount()` with no `ctx.addChild` / `unmount`
   - Component leaks, in-flight fetch writes to orphaned state
   - **Fix:** Register `MarkdownRenderChild` with `ctx.addChild`, `unmount` in cleanup
 
-- [ ] **I16: `issueActions` $derived rebuilds on every reactive update**
+- [x] **I16: `issueActions` $derived rebuilds on every reactive update**
   - `IssueCard.svelte:52-64` — depends on `params` (re-parsed from string each time)
   - N cards × every settings write = N full map rebuilds
   - **Fix:** Memoize `parseParams` by source string identity
 
-- [ ] **I17: Double `applyIssueSurfaceStyles` via setTimeout**
+- [x] **I17: Double `applyIssueSurfaceStyles` via setTimeout**
   - `IssueCard.svelte:99-108` — unconditional 60ms setTimeout for every re-render
   - **Fix:** Guard with mounted-once flag or remove redundant call
 
-- [ ] **I18: `handleResize` undebounced — two async layout passes per resize event**
+- [x] **I18: `handleResize` undebounced — two async layout passes per resize event**
   - `IssueHeader.svelte:310-313` + `attach-resize-observer.ts:1`
   - **Fix:** Add 16ms debounce in `attachResizeObserver` or at call site
 
@@ -118,7 +118,7 @@
   - `SortControls.svelte` only has generic "Add Issue" button
   - **Fix:** Add dedicated `ActionButton` with `icon="worktree"` and faded state
 
-- [ ] **I20: Mouse back-button not consumed in wizard steps 2-5**
+- [x] **I20: Mouse back-button not consumed in wizard steps 2-5**
   - Spec line 27: consume mouse back-button in multi-step modals
   - Only handled in `GitHubSearchContent.svelte:669-701`, not in other wizard steps
   - **Fix:** Add `onauxclick` handler in `IssueCreationWizard.svelte` or `ModalLayout.svelte`
@@ -168,13 +168,16 @@ No regressions introduced by the fixes.
 - [x] C4: `GitHubCardActions.svelte` extracted, deduplicating snippet + handlers
 - [x] I1: `tdc-gh-state-*` color rules moved to global `styles.css`, removed from 4 scoped blocks
 
-### Remaining (require manual refactoring)
-- C1: Anchored panel deduplication (OverflowPanel/IssueInfoPanel/SortDropdown)
-- I4: AssignedIssuesSection template deduplication
-- I5: formatRelativeTime consolidation
-- ~~I7: Context menu extraction from IssueHeader~~ (done)
-- I8: Search mode labels consolidation
-- I11: Hardcoded developer paths
-- I12-I14: Error handling improvements in GitHubSearchContent/AssignedIssuesSection
-- I16-I18: Performance optimizations (memoization, debouncing)
-- ~~I19: Global worktree button in dashboard header~~ (done)
+### All Items Complete
+
+All checklist items (C1-C4, I1-I20, M1-M12) have been resolved.
+
+Gate review fixes applied:
+- parseParamsCache max-size eviction (512 entries)
+- isGitRepositoryFolder moved from $derived to $effect
+- handleLoadMore cancel signal tracking
+- RAF cleanup in IssueHeader
+- Branch name validation in git helper functions
+- encodeURIComponent in GitHub API URL construction
+- Dedicated tdc-context-menu CSS classes
+- Time constant naming consistency
