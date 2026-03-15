@@ -46,7 +46,11 @@ export default tseslint.config(
 			'dist/**',
 			'*.config.js',
 			'*.config.mjs',
-			'**/*.json'
+			'*.config.ts',
+			'**/*.json',
+			'**/*.svelte',
+			'**/*.test.ts',
+			'src/test/**'
 		]
 	}
 );

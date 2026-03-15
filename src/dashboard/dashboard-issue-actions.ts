@@ -11,18 +11,65 @@ import { openIssueCreationModal, openPrioritySelectionModal } from '../modals/is
 import { RenameIssueModal } from '../modals/rename-issue-modal';
 import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import type { DashboardConfig, IssueActionKey } from '../types';
-import { getGitHubLinkType } from '../utils/github';
+import { getGitHubLinkType, isGitHubWebUrl, parseGitHubUrlInfo } from '../utils/github';
 import { parseGitHubRepoFullName } from '../utils/github-url';
 import {
+	ISSUE_COLOR_PICKER_COLUMNS,
 	collectUsedIssueColors,
 	getThemeAwareIssueColorPalette,
 	isIssueColorUsed
 } from '../utils/issue-colors';
 import type { PlatformService } from '../utils/platform';
-import { getOpenableGitHubLinks, openGitHubLinkChooser } from './dashboard-github-link-actions';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
-import { getButtonVisibility } from './header-actions';
+
+interface ButtonVisibility {
+	folder: boolean;
+	terminal: boolean;
+	vscode: boolean;
+	github: boolean;
+}
+
+export function getButtonVisibility(dashboard: DashboardConfig): ButtonVisibility {
+	const showFolder = dashboard.showFolderButtons ?? true;
+	return {
+		folder: showFolder,
+		terminal: dashboard.showTerminalButtons ?? true,
+		vscode: dashboard.showVSCodeButtons ?? true,
+		github: (dashboard.showGitHubButtons ?? true) && dashboard.githubEnabled
+	};
+}
+
+function formatGitHubLinkLabel(url: string): string {
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed !== undefined) {
+		const labelType = parsed.type === 'pr' ? 'PR' : 'Issue';
+		return `${labelType} #${parsed.number}`;
+	}
+
+	const repoName = parseGitHubRepoFullName(url);
+	if (repoName !== undefined) {
+		return `Repository ${repoName}`;
+	}
+
+	return url;
+}
+
+function getOpenableGitHubLinks(links: string[]): string[] {
+	return links.filter((link) => isGitHubWebUrl(link));
+}
+
+function openGitHubLinkChooser(event: MouseEvent, links: string[]): void {
+	const menu = new Menu();
+	for (const link of links) {
+		menu.addItem((item) => {
+			item.setTitle(formatGitHubLinkLabel(link)).onClick(() => {
+				window.open(link, '_blank');
+			});
+		});
+	}
+	menu.showAtPosition({ x: event.clientX, y: event.clientY });
+}
 
 const isNonEmptyString = (value: string | undefined): value is string => {
 	return value !== undefined && value !== '';
@@ -143,7 +190,6 @@ const openIssueColorDropdown = async (options: {
 	const dropdown = document.createElement('div');
 	dropdown.className = 'tdc-issue-color-dropdown';
 	dropdown.setAttribute('role', 'dialog');
-	dropdown.setAttribute('aria-label', 'Issue color picker');
 
 	const title = dropdown.createDiv({
 		cls: 'tdc-issue-color-dropdown-title',
@@ -205,11 +251,12 @@ const openIssueColorDropdown = async (options: {
 			cls: 'tdc-color-preset-btn',
 			attr: {
 				type: 'button',
-				'aria-label': `Select color ${entry.background}`,
 				'aria-disabled': isUnavailable ? 'true' : 'false'
 			}
 		});
 		preset.style.backgroundColor = entry.background;
+		preset.style.setProperty('--tdc-swatch-fg', entry.foreground);
+		preset.style.setProperty('--tdc-swatch-bg', entry.background);
 		preset.disabled = isUnavailable;
 		preset.toggleClass('is-disabled', isUnavailable);
 		preset.toggleClass('is-selected', entry.background === currentColor);
@@ -223,6 +270,46 @@ const openIssueColorDropdown = async (options: {
 			applyColorSelection(entry.background);
 		});
 	}
+
+	grid.addEventListener('keydown', (event: KeyboardEvent) => {
+		const buttons = Array.from(
+			grid.querySelectorAll<HTMLButtonElement>('button.tdc-color-preset-btn')
+		);
+		const focused = document.activeElement;
+		const currentIndex = focused instanceof HTMLButtonElement ? buttons.indexOf(focused) : -1;
+		if (currentIndex === -1) {
+			return;
+		}
+
+		let step: number | undefined;
+		if (event.key === 'ArrowRight') {
+			step = 1;
+		} else if (event.key === 'ArrowLeft') {
+			step = -1;
+		} else if (event.key === 'ArrowDown') {
+			step = ISSUE_COLOR_PICKER_COLUMNS;
+		} else if (event.key === 'ArrowUp') {
+			step = -ISSUE_COLOR_PICKER_COLUMNS;
+		}
+		if (step === undefined) {
+			return;
+		}
+
+		event.preventDefault();
+		const total = buttons.length;
+		for (let attempt = 0; attempt < total; attempt += 1) {
+			const nextIndex = (((currentIndex + step * (attempt + 1)) % total) + total) % total;
+			const target = buttons[nextIndex];
+			if (!target.disabled) {
+				target.focus();
+				for (const button of buttons) {
+					button.removeClass('is-selected');
+				}
+				target.addClass('is-selected');
+				return;
+			}
+		}
+	});
 
 	colorInput.addEventListener('input', () => {
 		applyIssueSurfaceStyles(container, colorInput.value);
@@ -264,6 +351,14 @@ const openIssueColorDropdown = async (options: {
 	document.addEventListener('mousedown', onDocumentMouseDown, true);
 	document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onWindowResize);
+
+	const selectedButton = grid.querySelector<HTMLButtonElement>(
+		'button.tdc-color-preset-btn.is-selected'
+	);
+	const fallbackButton = grid.querySelector<HTMLButtonElement>(
+		'button.tdc-color-preset-btn:not(:disabled)'
+	);
+	(selectedButton ?? fallbackButton)?.focus();
 };
 
 export const buildIssueActionDescriptors = (options: {
@@ -495,13 +590,14 @@ export const buildIssueActionDescriptors = (options: {
 		shouldRender: true,
 		faded: false,
 		onClick: (event) => {
-			const anchorElement = event?.currentTarget;
+			const anchor =
+				event?.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
 			void openIssueColorDropdown({
 				plugin,
 				dashboard,
 				issueId: params.issue,
 				container,
-				anchorElement: anchorElement instanceof HTMLElement ? anchorElement : undefined,
+				anchorElement: anchor,
 				applyIssueSurfaceStyles
 			});
 		}
