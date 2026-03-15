@@ -2,7 +2,7 @@
   import { Notice, TFile } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig, GitHubIssueMetadata } from '../../types';
-  import type { QuickCreateDefaults } from '../../modals/issue-creation-modal';
+  import type { QuickCreateDefaults } from '../../modals/issue-creation-types';
   import { openAssignedIssueNamePrompt } from '../../modals/issue-creation-modal';
   import { collectDashboardIssueIdSet } from '../../settings/dashboard-cleanup';
   import { getNextAvailableIssueColor } from '../../utils/issue-colors';

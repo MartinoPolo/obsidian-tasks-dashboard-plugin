@@ -45,6 +45,7 @@
   const SEARCH_DEBOUNCE_MS = 300;
   const MAX_COMBINED_RESULTS = 20;
   const RECENT_ISSUES_LIMIT = 20;
+  const RECENT_ISSUES_FETCH_LIMIT = RECENT_ISSUES_LIMIT * 3;
   const TITLE_TRUNCATION_LENGTH = 50;
   const OTHER_REPOSITORY_SCOPE: GitHubSearchScope = 'other-repo';
 
@@ -255,6 +256,10 @@
 
   function rankResults(results: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
     const currentUsername = authenticatedUsername?.toLowerCase();
+    const timestampMap = new Map<GitHubIssueMetadata, number>();
+    for (const item of results) {
+      timestampMap.set(item, new Date(item.updatedAt).getTime());
+    }
     return [...results].sort((left, right) => {
       const leftAssigned =
         currentUsername !== undefined &&
@@ -269,7 +274,7 @@
       if (leftAssigned !== rightAssigned) {
         return rightAssigned - leftAssigned;
       }
-      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+      return (timestampMap.get(right) ?? 0) - (timestampMap.get(left) ?? 0);
     });
   }
 
@@ -370,7 +375,7 @@
     if (scopedRepository === undefined || scopedRepository === '') {
       return [];
     }
-    const recent = await plugin.githubService.getRecentIssues(scopedRepository, 100);
+    const recent = await plugin.githubService.getRecentIssues(scopedRepository, RECENT_ISSUES_FETCH_LIMIT);
     return recent.filter((item) => {
       return String(item.number).includes(query) && isResultAllowedByMode(item);
     });
@@ -430,7 +435,7 @@
         }
         const recentResults = await plugin.githubService.getRecentIssues(
           repo,
-          RECENT_ISSUES_LIMIT * 3
+          RECENT_ISSUES_FETCH_LIMIT
         );
         results = rankResults(
           recentResults.filter((item) => isResultAllowedByMode(item))

@@ -18,8 +18,6 @@ import type {
 	WorktreeCreationContext
 } from './issue-creation-types';
 
-export type { QuickCreateDefaults };
-
 interface CreateIssueRequest {
 	name: string;
 	priority: Priority;

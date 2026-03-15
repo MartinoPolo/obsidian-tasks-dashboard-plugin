@@ -27,22 +27,13 @@ function parseIssuePathSegment(value: string): ParsedGitHubUrl['type'] | undefin
 	return undefined;
 }
 
-function getMatch(url: string, pattern: RegExp): RegExpMatchArray | undefined {
-	const match = url.match(pattern);
-	if (match === null) {
-		return undefined;
-	}
-
-	return match;
-}
-
 function parseRepoNameFromMatch(match: RegExpMatchArray): RepoName {
 	const [, owner, repo] = match;
 	return { owner, repo };
 }
 
 export function parseGitHubUrl(url: string): ParsedGitHubUrl | undefined {
-	const match = getMatch(url, GITHUB_ISSUE_PR_PATTERN);
+	const match = url.match(GITHUB_ISSUE_PR_PATTERN) ?? undefined;
 	if (match === undefined) {
 		return undefined;
 	}
@@ -67,7 +58,7 @@ export function isGitHubRepoUrl(url: string): boolean {
 }
 
 export function parseGitHubRepoName(url: string): { owner: string; repo: string } | undefined {
-	const match = getMatch(url, GITHUB_REPO_PATTERN);
+	const match = url.match(GITHUB_REPO_PATTERN) ?? undefined;
 	if (match === undefined) {
 		return undefined;
 	}

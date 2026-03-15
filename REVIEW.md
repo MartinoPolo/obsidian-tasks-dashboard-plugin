@@ -127,18 +127,18 @@
 
 ## Nice-to-Have
 
-- [ ] **M1:** `formatGitHubLinkLabel` near-duplicate between `dashboard-issue-actions.ts:43-56` and `GitHubLinksContent.svelte:55-68` — consolidate to `github-helpers.ts`
-- [ ] **M2:** `applyTooltip` in `WorktreeRetryContent.svelte:113-116` reimplements `attachTooltip` from `lib/attach-tooltip.ts` — replace with `{@attach attachTooltip(...)}`
-- [ ] **M3:** `attachTooltip` returns no cleanup function (unlike `attachResizeObserver`) — add cleanup or verify Obsidian self-cleans
-- [ ] **M4:** `QuickCreateDefaults` type defined in both `IssueCreationWizard.svelte:23` and imported from `issue-creation-modal.ts` — single source of truth
-- [ ] **M5:** `handleRefresh` in `GitHubCardContainer.svelte:86-93` has dead `.then()` callback — remove
-- [ ] **M6:** `createIssueWithNotice` calls `setupWorktree` without explicit `void` — add `void` for clarity
-- [ ] **M7:** `OverflowPanel` scroll/resize listeners call `positionPanel` (forced reflow) unthrottled — add RAF guard
-- [ ] **M8:** `rankResults` allocates `new Date()` per comparison — pre-map timestamps before sort
-- [ ] **M9:** `getNumericRepositoryMatches` fetches 100 items unconditionally — reuse cached smaller fetch
-- [ ] **M10:** `isGitHubWebUrl` too permissive — tighten to require `github.com/owner/repo` format
-- [ ] **M11:** WorktreeDecisionStep "Yes" button missing green tree icon per spec
-- [ ] **M12:** `issueId` passed as script arg without null-byte/newline validation — add guard
+- [x] **M1:** `formatGitHubLinkLabel` near-duplicate between `dashboard-issue-actions.ts:43-56` and `GitHubLinksContent.svelte:55-68` — consolidate to `github-helpers.ts`
+- [x] **M2:** `applyTooltip` in `WorktreeRetryContent.svelte:113-116` reimplements `attachTooltip` from `lib/attach-tooltip.ts` — replace with `{@attach attachTooltip(...)}`
+- [x] **M3:** `attachTooltip` returns no cleanup function (unlike `attachResizeObserver`) — add cleanup or verify Obsidian self-cleans
+- [x] **M4:** `QuickCreateDefaults` type defined in both `IssueCreationWizard.svelte:23` and imported from `issue-creation-modal.ts` — single source of truth
+- [x] **M5:** `handleRefresh` in `GitHubCardContainer.svelte:86-93` has dead `.then()` callback — remove
+- [x] **M6:** `createIssueWithNotice` calls `setupWorktree` without explicit `void` — add `void` for clarity
+- [x] **M7:** `OverflowPanel` scroll/resize listeners call `positionPanel` (forced reflow) unthrottled — add RAF guard
+- [x] **M8:** `rankResults` allocates `new Date()` per comparison — pre-map timestamps before sort
+- [x] **M9:** `getNumericRepositoryMatches` fetches 100 items unconditionally — reuse cached smaller fetch
+- [x] **M10:** `isGitHubWebUrl` too permissive — tighten to require `github.com/owner/repo` format
+- [x] **M11:** WorktreeDecisionStep "Yes" button missing green tree icon per spec
+- [x] **M12:** `issueId` passed as script arg without null-byte/newline validation — add guard
 
 ---
 

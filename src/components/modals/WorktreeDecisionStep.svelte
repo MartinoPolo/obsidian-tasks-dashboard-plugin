@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getWrappedIndex } from '../../utils/array-utils';
+  import Icon from '../Icon.svelte';
   import ModalLayout from './ModalLayout.svelte';
 
   type WorktreeChoice = 'yes' | 'no';
@@ -90,7 +91,10 @@
         }}
       >
         <div class="tdc-link-type-suggestion">
-          <div class="tdc-link-type-label">Yes</div>
+          <div class="tdc-link-type-label">
+            <span class="tdc-worktree-decision-icon"><Icon name="worktree" size={16} /></span>
+            Yes
+          </div>
           <div class="tdc-link-type-description">Create in worktree</div>
         </div>
       </button>
@@ -108,3 +112,13 @@
     </button>
   {/snippet}
 </ModalLayout>
+
+<style>
+.tdc-worktree-decision-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-green);
+  margin-right: 4px;
+  vertical-align: middle;
+}
+</style>

@@ -629,6 +629,10 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		return undefined;
 	};
 
+	const isUnsafeScriptArgument = (value: string): boolean => {
+		return value.includes('\0') || value.includes('\n') || value.includes('\r');
+	};
+
 	const buildBashCommand = (scriptPath: string, args: string[]): string => {
 		const quotedScriptPath = toBashSingleQuoted(toWindowsBashPath(scriptPath));
 		const quotedArgs = args.map((arg) => toBashSingleQuoted(arg));
@@ -699,6 +703,11 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		dashboardWorkingDirectory?: string,
 		bashExecutablePath?: string
 	): void => {
+		if (isUnsafeScriptArgument(issueId)) {
+			new Notice('Invalid issue ID — contains forbidden characters.');
+			return;
+		}
+
 		const setupScriptPath = worktreeScriptPaths?.setupScriptPath;
 		if (setupScriptPath === undefined || setupScriptPath.trim() === '') {
 			new Notice('Worktree setup script path is not configured. Set it in plugin settings.');
@@ -728,6 +737,11 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 			tabColor?: string;
 		}
 	): boolean => {
+		if (isUnsafeScriptArgument(issueId)) {
+			new Notice('Invalid issue ID — contains forbidden characters.');
+			return false;
+		}
+
 		const removeScriptPath = worktreeScriptPaths?.removeScriptPath;
 		if (removeScriptPath === undefined || removeScriptPath.trim() === '') {
 			new Notice('Worktree remove script path is not configured. Set it in plugin settings.');

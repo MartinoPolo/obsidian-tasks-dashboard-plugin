@@ -11,7 +11,8 @@ import { openIssueCreationModal, openPrioritySelectionModal } from '../modals/is
 import { RenameIssueModal } from '../modals/rename-issue-modal';
 import { collectDashboardIssueIdSet } from '../settings/dashboard-cleanup';
 import type { DashboardConfig, IssueActionKey } from '../types';
-import { getGitHubLinkType, isGitHubWebUrl, parseGitHubUrlInfo } from '../utils/github';
+import { getGitHubLinkType, isGitHubWebUrl } from '../utils/github';
+import { formatGitHubLinkLabel } from '../utils/github-helpers';
 import { parseGitHubRepoFullName } from '../utils/github-url';
 import {
 	ISSUE_COLOR_PICKER_COLUMNS,
@@ -20,6 +21,7 @@ import {
 	isIssueColorUsed
 } from '../utils/issue-colors';
 import type { PlatformService } from '../utils/platform';
+import { isNonEmptyString } from '../utils/string-utils';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 import { ControlParams, IssueActionDescriptor } from './dashboard-renderer-types';
 
@@ -40,21 +42,6 @@ export function getButtonVisibility(dashboard: DashboardConfig): ButtonVisibilit
 	};
 }
 
-function formatGitHubLinkLabel(url: string): string {
-	const parsed = parseGitHubUrlInfo(url);
-	if (parsed !== undefined) {
-		const labelType = parsed.type === 'pr' ? 'PR' : 'Issue';
-		return `${labelType} #${parsed.number}`;
-	}
-
-	const repoName = parseGitHubRepoFullName(url);
-	if (repoName !== undefined) {
-		return `Repository ${repoName}`;
-	}
-
-	return url;
-}
-
 function getOpenableGitHubLinks(links: string[]): string[] {
 	return links.filter((link) => isGitHubWebUrl(link));
 }
@@ -70,10 +57,6 @@ function openGitHubLinkChooser(event: MouseEvent, links: string[]): void {
 	}
 	menu.showAtPosition({ x: event.clientX, y: event.clientY });
 }
-
-const isNonEmptyString = (value: string | undefined): value is string => {
-	return value !== undefined && value !== '';
-};
 
 const getIssueLinkedRepositoryFromLinks = (githubLinks: string[]): string | undefined => {
 	for (const link of githubLinks) {

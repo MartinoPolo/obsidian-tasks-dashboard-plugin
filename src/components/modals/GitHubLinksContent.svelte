@@ -5,10 +5,9 @@
   import {
     getGitHubLinkType,
     isGitHubWebUrl,
-    parseGitHubUrlInfo,
     type GitHubLinkType
   } from '../../utils/github';
-  import { isGitHubRepoUrl, parseGitHubRepoFullName } from '../../utils/github-url';
+  import { formatGitHubLinkLabel } from '../../utils/github-helpers';
   import ModalLayout from './ModalLayout.svelte';
 
   interface Props {
@@ -50,21 +49,6 @@
     issue: string | undefined;
     pr: string | undefined;
     repository: string | undefined;
-  }
-
-  function formatLinkLabel(url: string): string {
-    const parsed = parseGitHubUrlInfo(url);
-    if (parsed !== undefined) {
-      const type = parsed.type === 'pr' ? 'PR' : 'Issue';
-      return `${type} #${parsed.number}`;
-    }
-    if (isGitHubRepoUrl(url)) {
-      const repoName = parseGitHubRepoFullName(url);
-      if (repoName !== undefined) {
-        return repoName;
-      }
-    }
-    return url;
   }
 
   function getAssignedLinks(): AssignedGitHubLinks {
@@ -220,7 +204,7 @@
             <div class="tdc-gh-links-label">{title}: Not assigned</div>
           {:else}
             <a class="tdc-gh-links-label" href={url} target="_blank">
-              {title}: {formatLinkLabel(url)}
+              {title}: {formatGitHubLinkLabel(url)}
             </a>
           {/if}
 
@@ -263,7 +247,7 @@
         {#each unknownLinks as url (url)}
           <div class="tdc-gh-links-row">
             <a class="tdc-gh-links-label" href={url} target="_blank">
-              {formatLinkLabel(url)}
+              {formatGitHubLinkLabel(url)}
             </a>
             <button
               class="tdc-prompt-btn tdc-prompt-btn-secondary tdc-gh-links-open"

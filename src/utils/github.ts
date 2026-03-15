@@ -44,5 +44,5 @@ export function getGitHubLinkType(url: string): GitHubLinkType | undefined {
 }
 
 export function isGitHubWebUrl(url: string): boolean {
-	return /^https?:\/\/github\.com\//.test(url.trim());
+	return /^https?:\/\/github\.com\/[^/]+\/[^/]/.test(url.trim());
 }

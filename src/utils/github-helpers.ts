@@ -1,5 +1,7 @@
 import { GitHubIssueMetadata } from '../types';
 import { getContrastingForegroundColor } from './color';
+import { parseGitHubUrlInfo } from './github';
+import { parseGitHubRepoFullName } from './github-url';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const WEEK_IN_DAYS = 7;
@@ -110,6 +112,21 @@ export function formatStarCount(count: number): string {
 		return `${(count / 1000).toFixed(1)}k`;
 	}
 	return count.toString();
+}
+
+export function formatGitHubLinkLabel(url: string): string {
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed !== undefined) {
+		const labelType = parsed.type === 'pr' ? 'PR' : 'Issue';
+		return `${labelType} #${parsed.number}`;
+	}
+
+	const repoName = parseGitHubRepoFullName(url);
+	if (repoName !== undefined) {
+		return repoName;
+	}
+
+	return url;
 }
 
 export function getContrastColor(hexColor: string): string {
