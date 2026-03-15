@@ -48,6 +48,9 @@
 
   const platformService = createPlatformService();
 
+  // Tracks whether the initial surface style application has fired
+  let hasMountedSurfaceStyles = false;
+
   // Build action descriptors
   let issueActions = $derived.by(() => {
     if (params === null || dashboard === undefined || issueContainerElement === undefined) {
@@ -63,25 +66,7 @@
     });
   });
 
-  // Row2 visible action keys
-  let row2VisibleActionKeys = $derived.by(() => {
-    if (actionLayout === undefined) {
-      return new Set<IssueActionKey>();
-    }
-    const visible = new Set<IssueActionKey>();
-    for (const key of actionLayout.row2) {
-      if (actionLayout.hidden.includes(key)) {
-        continue;
-      }
-      const descriptor = issueActions.get(key);
-      if (descriptor === undefined || !descriptor.shouldRender) {
-        continue;
-      }
-      visible.add(key);
-    }
-    return visible;
-  });
-
+  // Row2 action keys — single filter pass, then derive the Set from it
   let row2ActionKeys = $derived.by(() => {
     if (actionLayout === undefined) {
       return [] as IssueActionKey[];
@@ -95,6 +80,8 @@
     });
   });
 
+  let row2VisibleActionKeys = $derived(new Set(row2ActionKeys));
+
   // Apply surface styles + fetch progress
   $effect(() => {
     if (params === null || containerElement === undefined) {
@@ -102,9 +89,15 @@
     }
     containerElement.setAttribute('data-tdc-issue', params.issue);
     applyIssueSurfaceStyles(containerElement, plugin.settings.issueColors[params.issue]);
-    window.setTimeout(() => {
-      applyIssueSurfaceStyles(containerElement, plugin.settings.issueColors[params!.issue]);
-    }, 60);
+
+    // Deferred re-application only needed on initial mount (Obsidian DOM settling)
+    if (!hasMountedSurfaceStyles) {
+      hasMountedSurfaceStyles = true;
+      const currentIssue = params.issue;
+      window.setTimeout(() => {
+        applyIssueSurfaceStyles(containerElement, plugin.settings.issueColors[currentIssue]);
+      }, 60);
+    }
   });
 
   // Fetch progress async

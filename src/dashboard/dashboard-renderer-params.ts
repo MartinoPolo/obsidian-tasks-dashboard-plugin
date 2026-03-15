@@ -1,13 +1,6 @@
-import type { Priority } from '../types';
+import type { WorktreeSetupState } from '../types';
 import { ControlParams, ParsedKeyValueLine } from './dashboard-renderer-types';
-
-function parsePriority(value: string): Priority | undefined {
-	if (value === 'low' || value === 'medium' || value === 'high' || value === 'top') {
-		return value;
-	}
-
-	return undefined;
-}
+import { isPriority } from './priority-utils';
 
 function parseBoolean(value: string): boolean | undefined {
 	if (value === 'true') {
@@ -20,7 +13,7 @@ function parseBoolean(value: string): boolean | undefined {
 	return undefined;
 }
 
-function parseWorktreeSetupState(value: string): 'pending' | 'active' | 'failed' | undefined {
+function parseWorktreeSetupState(value: string): WorktreeSetupState | undefined {
 	if (value === 'pending' || value === 'active' || value === 'failed') {
 		return value;
 	}
@@ -42,7 +35,13 @@ export const parseSourceKeyValueLines = (source: string): ParsedKeyValueLine[] =
 	return entries;
 };
 
+// Memoize by source string identity — avoids N full rebuilds per settings write
+const parseParamsCache = new Map<string, ControlParams | null>();
+
 export const parseParams = (source: string): ControlParams | null => {
+	if (parseParamsCache.has(source)) {
+		return parseParamsCache.get(source)!;
+	}
 	const params: Partial<ControlParams> = {};
 	const collectedGithubLinks: string[] = [];
 
@@ -61,7 +60,7 @@ export const parseParams = (source: string): ControlParams | null => {
 				params.dashboard = line.value;
 				break;
 			case 'priority': {
-				const priority = parsePriority(line.value);
+				const priority = isPriority(line.value) ? line.value : undefined;
 				if (priority !== undefined) {
 					params.priority = priority;
 				}
@@ -125,9 +124,12 @@ export const parseParams = (source: string): ControlParams | null => {
 		params.priority !== undefined;
 
 	if (hasAllParams) {
-		return params as ControlParams;
+		const result = params as ControlParams;
+		parseParamsCache.set(source, result);
+		return result;
 	}
 
+	parseParamsCache.set(source, null);
 	return null;
 };
 
