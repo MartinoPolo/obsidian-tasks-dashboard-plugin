@@ -3,7 +3,7 @@
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
   import { FolderPathModal } from '../../modals/FolderPathModal';
-  import { openIssueCreationModal } from '../../modals/issue-creation-modal';
+  import { openIssueCreationModal, openWorktreeIssueCreationModal } from '../../modals/issue-creation-modal';
   import { NoteImportModal } from '../../modals/note-import-modal';
   import { RepositoryLinkerModal } from '../../modals/RepositoryLinkerModal';
   import { hasSettingsTabApi } from '../../settings/settings-helpers';
@@ -43,6 +43,9 @@
   let hasFolder = $derived(projectFolder !== undefined && projectFolder !== '');
   let hasRepos = $derived(linkedRepos.length > 0);
   let visibility = $derived(dashboard !== undefined ? getButtonVisibility(dashboard) : undefined);
+  let isGitRepository = $derived(
+    hasFolder && platformService.isGitRepositoryFolder(projectFolder!)
+  );
 
   let sortOptions = $derived.by(() => {
     if (dashboard === undefined) {
@@ -252,6 +255,29 @@
           });
         }}
       />
+
+      {#if visibility?.github}
+        <ActionButton
+          icon="worktree"
+          label={isGitRepository ? 'Add issue in worktree' : 'Set project folder for worktree'}
+          faded={!isGitRepository}
+          onclick={() => {
+            if (dashboard === undefined) { return; }
+            if (!isGitRepository) {
+              if (!hasFolder) {
+                openProjectFolderModal();
+                return;
+              }
+              new Notice('Project folder must be a Git repository to create worktrees.');
+              return;
+            }
+            openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
+              worktreeOriginFolder: projectFolder
+            });
+          }}
+          oncontextmenu={(event) => { event.preventDefault(); openProjectFolderModal(); }}
+        />
+      {/if}
 
       <ActionButton
         icon="fileInput"

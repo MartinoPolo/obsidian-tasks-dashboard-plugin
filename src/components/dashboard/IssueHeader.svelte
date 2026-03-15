@@ -26,6 +26,7 @@
   import GitBadge from '../GitBadge.svelte';
   import Icon from '../Icon.svelte';
   import type { IconName } from '../icons/index';
+  import ContextMenu from './ContextMenu.svelte';
   import IssueInfoPanel from './IssueInfoPanel.svelte';
   import OverflowPanel from './OverflowPanel.svelte';
 
@@ -56,6 +57,7 @@
   let gitStatusInfoLines: string[] = $state([]);
   let isInfoPanelOpen = $state(false);
   let isOverflowOpen = $state(false);
+  let badgesContextMenuPosition: { x: number; y: number } | undefined = $state(undefined);
   let shouldCompact = $state(false);
   let isBadgesLoading = $state(false);
   let prAccentClass = $state('');
@@ -334,52 +336,17 @@
     }
     event.preventDefault();
     event.stopPropagation();
-
-    // Simple context menu — "Refresh"
-    const dropdown = document.createElement('div');
-    dropdown.className = 'tdc-sort-dropdown tdc-sort-dropdown-portal';
-    document.body.appendChild(dropdown);
-
-    const refreshItem = dropdown.createDiv({ cls: 'tdc-sort-dropdown-item', text: 'Refresh' });
-
-    const removeDropdown = (): void => {
-      document.removeEventListener('click', handleOutsideClick, true);
-      document.removeEventListener('keydown', handleEscape, true);
-      dropdown.remove();
-    };
-
-    refreshItem.addEventListener('click', (clickEvent) => {
-      clickEvent.preventDefault();
-      clickEvent.stopPropagation();
-      removeDropdown();
-      plugin.gitStatusService.invalidate(dashboard.id, params.issue);
-      plugin.triggerDashboardRefresh();
-    });
-
-    const handleOutsideClick = (outsideEvent: MouseEvent): void => {
-      const outsideTarget = outsideEvent.target;
-      if (outsideTarget instanceof Node && dropdown.contains(outsideTarget)) {
-        return;
-      }
-      removeDropdown();
-    };
-
-    const handleEscape = (keyEvent: KeyboardEvent): void => {
-      if (keyEvent.key !== 'Escape') {
-        return;
-      }
-      keyEvent.preventDefault();
-      keyEvent.stopPropagation();
-      removeDropdown();
-    };
-
-    const viewportPadding = 8;
-    dropdown.style.left = `${Math.max(viewportPadding, event.clientX)}px`;
-    dropdown.style.top = `${Math.max(viewportPadding, event.clientY)}px`;
-
-    document.addEventListener('click', handleOutsideClick, true);
-    document.addEventListener('keydown', handleEscape, true);
+    badgesContextMenuPosition = { x: event.clientX, y: event.clientY };
   }
+
+  function handleBadgesRefresh(): void {
+    plugin.gitStatusService.invalidate(dashboard.id, params.issue);
+    plugin.triggerDashboardRefresh();
+  }
+
+  let badgesContextMenuItems = $derived([
+    { label: 'Refresh', action: handleBadgesRefresh }
+  ]);
 
   // Async fetch git status
   $effect(() => {
@@ -679,6 +646,14 @@
       content={infoContent}
       anchorElement={infoButtonElement}
       onclose={() => { isInfoPanelOpen = false; }}
+    />
+  {/if}
+
+  {#if badgesContextMenuPosition !== undefined}
+    <ContextMenu
+      items={badgesContextMenuItems}
+      position={badgesContextMenuPosition}
+      onclose={() => { badgesContextMenuPosition = undefined; }}
     />
   {/if}
 </div>

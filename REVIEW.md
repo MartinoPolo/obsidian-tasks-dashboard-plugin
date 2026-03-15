@@ -58,7 +58,7 @@
   - `IssueHeader.svelte:839-841`, `AssignedIssuesSection.svelte:412-414`
   - **Fix:** Move to `styles.css` as global rule
 
-- [ ] **I7: `handleBadgesContextMenu` hand-rolls dropdown duplicating SortDropdown**
+- [x] **I7: `handleBadgesContextMenu` hand-rolls dropdown duplicating SortDropdown**
   - `IssueHeader.svelte:339-394` — manual DOM dropdown creation with position/click/keydown logic
   - Potential listener leak if component destroyed while dropdown open
   - **Fix:** Use `SortDropdown.svelte` or extract reusable `ContextMenu` component
@@ -113,7 +113,7 @@
   - `IssueHeader.svelte:310-313` + `attach-resize-observer.ts:1`
   - **Fix:** Add 16ms debounce in `attachResizeObserver` or at call site
 
-- [ ] **I19: Global "Add issue in worktree" button missing from dashboard header**
+- [x] **I19: Global "Add issue in worktree" button missing from dashboard header**
   - Spec line 145: separate worktree button with tree icon, faded unless Git repo
   - `SortControls.svelte` only has generic "Add Issue" button
   - **Fix:** Add dedicated `ActionButton` with `icon="worktree"` and faded state
@@ -172,9 +172,9 @@ No regressions introduced by the fixes.
 - C1: Anchored panel deduplication (OverflowPanel/IssueInfoPanel/SortDropdown)
 - I4: AssignedIssuesSection template deduplication
 - I5: formatRelativeTime consolidation
-- I7: Context menu extraction from IssueHeader
+- ~~I7: Context menu extraction from IssueHeader~~ (done)
 - I8: Search mode labels consolidation
 - I11: Hardcoded developer paths
 - I12-I14: Error handling improvements in GitHubSearchContent/AssignedIssuesSection
 - I16-I18: Performance optimizations (memoization, debouncing)
-- I19: Global worktree button in dashboard header
+- ~~I19: Global worktree button in dashboard header~~ (done)
