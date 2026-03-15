@@ -37,6 +37,12 @@ Currently I'm running for example yarn frontend command in VSCode terminal so at
 - Another group would be "open folder", "open terminal", "open VS Code".
 - A separate group would probably be the GitHub button.
 
+## Issue creation workflow
+- [ ] Wheneve user inputs anything in the search of step one (github issue selection) and no issue is found/matched to it, pressing enter causes going to the next step without selecting any issue. This should copy the text from the search input into the input for issue name in the step 2
+
+## Worktrees
+- [ ] We can have a linked github repository which is not linked to the linked folder (folder: C:\_MP_projects\hiring-fs-martin-poloch, repo: Finteractive/ATC-backoffice). Creating a worktree from the assigned issues list doesn't work in this case because the assigned issues are related to the linked repository, but the setup worktree script tries to create a worktree for the repository in that linked folder. This doesn't make sense and should be forbidden. We should either disable the worktree buttons or automatically ensure that the repository is linked correctly with the selected folder. However, this could mean that we need to allow multiple folders assigned for a dashboard because we now allow multiple repositories to be linked so that we can see all assigned issues in all of the selected repositories.
+
 ## TODO
 
 - [ ] Refactor large files; clean code sweep across the project
