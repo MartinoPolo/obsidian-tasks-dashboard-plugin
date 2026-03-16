@@ -666,8 +666,9 @@ export function createPlatformService(scriptPathResolver?: ScriptPathResolver): 
 		return undefined;
 	};
 
+	const UNSAFE_SCRIPT_ARGUMENT_PATTERN = /[\0\n\r`$|&;><(){}]/;
 	const isUnsafeScriptArgument = (value: string): boolean => {
-		return value.includes('\0') || value.includes('\n') || value.includes('\r');
+		return UNSAFE_SCRIPT_ARGUMENT_PATTERN.test(value);
 	};
 
 	const buildBashCommand = (scriptPath: string, args: string[]): string => {

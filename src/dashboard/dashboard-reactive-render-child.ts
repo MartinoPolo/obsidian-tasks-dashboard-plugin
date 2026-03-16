@@ -55,7 +55,7 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 
 	private unmountCurrent(): void {
 		if (this.currentComponent !== undefined) {
-			unmount(this.currentComponent);
+			void unmount(this.currentComponent);
 			this.currentComponent = undefined;
 		}
 	}

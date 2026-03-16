@@ -43,9 +43,12 @@
   let hasFolder = $derived(projectFolder !== undefined && projectFolder !== '');
   let hasRepos = $derived(linkedRepos.length > 0);
   let visibility = $derived(dashboard !== undefined ? getButtonVisibility(dashboard) : undefined);
-  let isGitRepository = $derived(
-    hasFolder && platformService.isGitRepositoryFolder(projectFolder!)
-  );
+  let isGitRepository = $state(false);
+  $effect(() => {
+    isGitRepository = hasFolder && projectFolder !== undefined
+      ? platformService.isGitRepositoryFolder(projectFolder)
+      : false;
+  });
 
   let sortOptions = $derived.by(() => {
     if (dashboard === undefined) {

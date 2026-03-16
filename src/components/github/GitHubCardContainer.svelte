@@ -45,8 +45,10 @@
     if (issueId === undefined || dashboard === undefined) {
       return undefined;
     }
+    const currentDashboard = dashboard;
+    const currentIssueId = issueId;
     return (): void => {
-      void plugin.issueManager.removeGitHubLink(dashboard!, issueId!, githubUrl);
+      void plugin.issueManager.removeGitHubLink(currentDashboard, currentIssueId, githubUrl);
     };
   });
 

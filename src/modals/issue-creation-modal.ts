@@ -1,4 +1,5 @@
 import { App, MarkdownView, Modal, Notice, TFile } from 'obsidian';
+import type { Component } from 'svelte';
 import { mount, unmount } from 'svelte';
 import TasksDashboardPlugin from '../../main';
 import { getErrorMessage } from '../settings/settings-helpers';
@@ -10,6 +11,7 @@ import IssueCreationWizard from '../components/modals/IssueCreationWizard.svelte
 import PrioritySelector from '../components/modals/PrioritySelector.svelte';
 import ManualGitHubLinkContent from '../components/modals/ManualGitHubLinkContent.svelte';
 import { GitHubSearchModal } from './GitHubSearchModal';
+import { SvelteModal } from './SvelteModal';
 import type {
 	GitHubSelectionContext,
 	IssueCreateRequest,
@@ -29,6 +31,16 @@ interface CreateIssueRequest {
 	worktreeBaseRepository?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
+}
+
+interface IssueCreationModalOptions {
+	mode?: IssueCreationMode;
+	worktreeOriginFolder?: string;
+	sourceIssueLinkedRepository?: string;
+	initialIssueName?: string;
+	githubSelection?: GitHubSelectionContext;
+	worktreeContext?: WorktreeCreationContext;
+	quickCreateDefaults?: QuickCreateDefaults;
 }
 
 function getIssueLinkedRepositoryFromLinks(githubLinks: string[] | undefined): string | undefined {
@@ -95,37 +107,24 @@ async function createIssueWithNotice(
 class IssueCreationModal extends Modal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
-	private mode: IssueCreationMode;
-	private worktreeOriginFolder: string | undefined;
-	private sourceIssueLinkedRepository: string | undefined;
-	private initialIssueName: string | undefined;
-	private githubSelection: GitHubSelectionContext;
-	private worktreeContext: WorktreeCreationContext | undefined;
-	private quickCreateDefaults: QuickCreateDefaults | undefined;
+	private options: Required<Pick<IssueCreationModalOptions, 'mode' | 'githubSelection'>> &
+		Omit<IssueCreationModalOptions, 'mode' | 'githubSelection'>;
 	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
 		plugin: TasksDashboardPlugin,
 		dashboard: DashboardConfig,
-		mode: IssueCreationMode = 'standard',
-		worktreeOriginFolder?: string,
-		sourceIssueLinkedRepository?: string,
-		initialIssueName?: string,
-		githubSelection: GitHubSelectionContext = {},
-		worktreeContext?: WorktreeCreationContext,
-		quickCreateDefaults?: QuickCreateDefaults
+		options: IssueCreationModalOptions = {}
 	) {
 		super(app);
 		this.plugin = plugin;
 		this.dashboard = dashboard;
-		this.mode = mode;
-		this.worktreeOriginFolder = worktreeOriginFolder;
-		this.sourceIssueLinkedRepository = sourceIssueLinkedRepository;
-		this.initialIssueName = initialIssueName;
-		this.githubSelection = githubSelection;
-		this.worktreeContext = worktreeContext;
-		this.quickCreateDefaults = quickCreateDefaults;
+		this.options = {
+			...options,
+			mode: options.mode ?? 'standard',
+			githubSelection: options.githubSelection ?? {}
+		};
 	}
 
 	onOpen() {
@@ -134,7 +133,7 @@ class IssueCreationModal extends Modal {
 		modalEl.addClass('tdc-prompt-modal');
 
 		const canOpenSearch =
-			this.mode === 'standard' &&
+			this.options.mode === 'standard' &&
 			this.dashboard.githubEnabled &&
 			this.plugin.githubService.isAuthenticated();
 
@@ -143,13 +142,13 @@ class IssueCreationModal extends Modal {
 			props: {
 				plugin: this.plugin,
 				dashboard: this.dashboard,
-				mode: this.mode,
-				initialIssueName: this.initialIssueName ?? '',
-				worktreeOriginFolder: this.worktreeOriginFolder,
-				sourceIssueLinkedRepository: this.sourceIssueLinkedRepository,
-				githubSelection: this.githubSelection,
-				worktreeContext: this.worktreeContext,
-				quickCreateDefaults: this.quickCreateDefaults,
+				mode: this.options.mode,
+				initialIssueName: this.options.initialIssueName ?? '',
+				worktreeOriginFolder: this.options.worktreeOriginFolder,
+				sourceIssueLinkedRepository: this.options.sourceIssueLinkedRepository,
+				githubSelection: this.options.githubSelection,
+				worktreeContext: this.options.worktreeContext,
+				quickCreateDefaults: this.options.quickCreateDefaults,
 				canOpenSearch,
 				onclose: () => this.close(),
 				oncreate: (request: IssueCreateRequest) => {
@@ -175,39 +174,41 @@ class IssueCreationModal extends Modal {
 						this.app,
 						this.plugin,
 						this.dashboard,
-						(url, metadata) => {
+						(url, metadata, searchQuery) => {
 							const prefilledName =
 								getPrefilledIssueName(metadata) ??
+								(searchQuery !== undefined && searchQuery !== ''
+									? searchQuery
+									: undefined) ??
 								(currentName !== '' ? currentName : undefined);
-							new IssueCreationModal(
-								this.app,
-								this.plugin,
-								this.dashboard,
-								'standard',
-								this.worktreeContext?.worktreeOriginFolder,
-								this.worktreeContext?.sourceIssueLinkedRepository,
-								prefilledName,
-								{
+							new IssueCreationModal(this.app, this.plugin, this.dashboard, {
+								mode: 'standard',
+								worktreeOriginFolder:
+									this.options.worktreeContext?.worktreeOriginFolder,
+								sourceIssueLinkedRepository:
+									this.options.worktreeContext?.sourceIssueLinkedRepository,
+								initialIssueName: prefilledName,
+								githubSelection: {
 									githubLink: url,
 									githubMetadata: metadata
 								},
-								this.worktreeContext
-							).open();
+								worktreeContext: this.options.worktreeContext
+							}).open();
 						},
 						{
-							issueRepository: this.worktreeContext?.sourceIssueLinkedRepository,
+							issueRepository:
+								this.options.worktreeContext?.sourceIssueLinkedRepository,
 							onCancel: () => {
-								new IssueCreationModal(
-									this.app,
-									this.plugin,
-									this.dashboard,
-									'standard',
-									this.worktreeContext?.worktreeOriginFolder,
-									this.worktreeContext?.sourceIssueLinkedRepository,
-									currentName !== '' ? currentName : undefined,
-									this.githubSelection,
-									this.worktreeContext
-								).open();
+								new IssueCreationModal(this.app, this.plugin, this.dashboard, {
+									mode: 'standard',
+									worktreeOriginFolder:
+										this.options.worktreeContext?.worktreeOriginFolder,
+									sourceIssueLinkedRepository:
+										this.options.worktreeContext?.sourceIssueLinkedRepository,
+									initialIssueName: currentName !== '' ? currentName : undefined,
+									githubSelection: this.options.githubSelection,
+									worktreeContext: this.options.worktreeContext
+								}).open();
 							},
 							skipButtonLabel: 'Back',
 							selectionLockUntilCleared: true,
@@ -229,39 +230,27 @@ class IssueCreationModal extends Modal {
 	}
 }
 
-class PrioritySelectionModal extends Modal {
+class PrioritySelectionModal extends SvelteModal {
 	private readonly onSelected: (priority: Priority) => void;
-	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(app: App, onSelected: (priority: Priority) => void) {
 		super(app);
 		this.onSelected = onSelected;
 	}
 
-	override onOpen(): void {
-		const { modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal');
-
-		this.svelteComponent = mount(PrioritySelector, {
-			target: this.contentEl,
-			props: {
-				title: 'Select priority',
-				onselect: (priority: Priority) => {
-					this.close();
-					this.onSelected(priority);
-				},
-				oncancel: () => this.close()
-			}
-		});
+	protected getComponent(): Component {
+		return PrioritySelector as Component;
 	}
 
-	override onClose(): void {
-		if (this.svelteComponent !== undefined) {
-			void unmount(this.svelteComponent);
-			this.svelteComponent = undefined;
-		}
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			title: 'Select priority',
+			onselect: (priority: Priority) => {
+				this.close();
+				this.onSelected(priority);
+			},
+			oncancel: () => this.close()
+		};
 	}
 }
 
@@ -272,11 +261,10 @@ export const openPrioritySelectionModal = (
 	new PrioritySelectionModal(app, onSelected).open();
 };
 
-class ManualGitHubLinkFirstModal extends Modal {
+class ManualGitHubLinkFirstModal extends SvelteModal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private worktreeContext: WorktreeCreationContext | undefined;
-	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -290,39 +278,24 @@ class ManualGitHubLinkFirstModal extends Modal {
 		this.worktreeContext = worktreeContext;
 	}
 
-	onOpen(): void {
-		const { modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal');
-
-		this.svelteComponent = mount(ManualGitHubLinkContent, {
-			target: this.contentEl,
-			props: {
-				onconfirm: (value: string | undefined) => {
-					this.close();
-					new IssueCreationModal(
-						this.app,
-						this.plugin,
-						this.dashboard,
-						'standard',
-						this.worktreeContext?.worktreeOriginFolder,
-						this.worktreeContext?.sourceIssueLinkedRepository,
-						undefined,
-						{ githubLink: value },
-						this.worktreeContext
-					).open();
-				},
-				oncancel: () => this.close()
-			}
-		});
+	protected getComponent(): Component {
+		return ManualGitHubLinkContent as Component;
 	}
 
-	onClose(): void {
-		if (this.svelteComponent !== undefined) {
-			void unmount(this.svelteComponent);
-			this.svelteComponent = undefined;
-		}
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			onconfirm: (value: string | undefined) => {
+				this.close();
+				new IssueCreationModal(this.app, this.plugin, this.dashboard, {
+					mode: 'standard',
+					worktreeOriginFolder: this.worktreeContext?.worktreeOriginFolder,
+					sourceIssueLinkedRepository: this.worktreeContext?.sourceIssueLinkedRepository,
+					githubSelection: { githubLink: value },
+					worktreeContext: this.worktreeContext
+				}).open();
+			},
+			oncancel: () => this.close()
+		};
 	}
 }
 
@@ -422,21 +395,16 @@ export const openAssignedIssueNamePrompt = (
 	options: AssignedIssueCreationOptions
 ): void => {
 	const prefilledName = getPrefilledIssueName(options.githubMetadata);
-	new IssueCreationModal(
-		app,
-		plugin,
-		options.dashboard,
-		options.quickCreateDefaults?.worktree === true ? 'worktree' : 'standard',
-		options.quickCreateDefaults?.worktreeOriginFolder,
-		undefined,
-		prefilledName,
-		{
+	new IssueCreationModal(app, plugin, options.dashboard, {
+		mode: options.quickCreateDefaults?.worktree === true ? 'worktree' : 'standard',
+		worktreeOriginFolder: options.quickCreateDefaults?.worktreeOriginFolder,
+		initialIssueName: prefilledName,
+		githubSelection: {
 			githubLink: options.githubUrl,
 			githubMetadata: options.githubMetadata
 		},
-		undefined,
-		options.quickCreateDefaults
-	).open();
+		quickCreateDefaults: options.quickCreateDefaults
+	}).open();
 };
 
 export async function createIssueWithRepoLink(
@@ -507,17 +475,11 @@ export const openWorktreeIssueCreationModal = (
 	);
 	const sourceIssueLinkedRepository =
 		options?.sourceIssueLinkedRepository ?? linkedRepositoryFromLinks;
-	new IssueCreationModal(
-		app,
-		plugin,
-		dashboard,
-		'worktree',
-		options?.worktreeOriginFolder,
-		sourceIssueLinkedRepository,
-		undefined,
-		{},
-		undefined
-	).open();
+	new IssueCreationModal(app, plugin, dashboard, {
+		mode: 'worktree',
+		worktreeOriginFolder: options?.worktreeOriginFolder,
+		sourceIssueLinkedRepository
+	}).open();
 };
 
 export const openIssueCreationModal = (
@@ -530,17 +492,12 @@ export const openIssueCreationModal = (
 ): void => {
 	const worktreeContext = options?.worktreeContext;
 	if (!dashboard.githubEnabled) {
-		new IssueCreationModal(
-			app,
-			plugin,
-			dashboard,
-			'standard',
-			worktreeContext?.worktreeOriginFolder,
-			worktreeContext?.sourceIssueLinkedRepository,
-			undefined,
-			{},
+		new IssueCreationModal(app, plugin, dashboard, {
+			mode: 'standard',
+			worktreeOriginFolder: worktreeContext?.worktreeOriginFolder,
+			sourceIssueLinkedRepository: worktreeContext?.sourceIssueLinkedRepository,
 			worktreeContext
-		).open();
+		}).open();
 		return;
 	}
 
@@ -549,21 +506,21 @@ export const openIssueCreationModal = (
 			app,
 			plugin,
 			dashboard,
-			(url, metadata) => {
-				new IssueCreationModal(
-					app,
-					plugin,
-					dashboard,
-					'standard',
-					worktreeContext?.worktreeOriginFolder,
-					worktreeContext?.sourceIssueLinkedRepository,
-					getPrefilledIssueName(metadata),
-					{
+			(url, metadata, searchQuery) => {
+				const prefilledName =
+					getPrefilledIssueName(metadata) ??
+					(searchQuery !== undefined && searchQuery !== '' ? searchQuery : undefined);
+				new IssueCreationModal(app, plugin, dashboard, {
+					mode: 'standard',
+					worktreeOriginFolder: worktreeContext?.worktreeOriginFolder,
+					sourceIssueLinkedRepository: worktreeContext?.sourceIssueLinkedRepository,
+					initialIssueName: prefilledName,
+					githubSelection: {
 						githubLink: url,
 						githubMetadata: metadata
 					},
 					worktreeContext
-				).open();
+				}).open();
 			},
 			{
 				issueRepository: worktreeContext?.sourceIssueLinkedRepository,

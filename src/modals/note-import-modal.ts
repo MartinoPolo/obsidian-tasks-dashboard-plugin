@@ -1,10 +1,11 @@
-import { App, FuzzySuggestModal, Modal, Notice, TFile } from 'obsidian';
-import { mount, unmount } from 'svelte';
+import { App, FuzzySuggestModal, Notice, TFile } from 'obsidian';
+import type { Component } from 'svelte';
 import type TasksDashboardPlugin from '../../main';
 import { getErrorMessage } from '../settings/settings-helpers';
 import type { DashboardConfig, Priority } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
 import PrioritySelector from '../components/modals/PrioritySelector.svelte';
+import { SvelteModal } from './SvelteModal';
 
 const isRootPath = (path: string): boolean => {
 	return path === '' || path === '/';
@@ -83,11 +84,10 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	}
 }
 
-class ImportPriorityModal extends Modal {
+class ImportPriorityModal extends SvelteModal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
 	private readonly sourceFile: TFile;
-	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -101,34 +101,18 @@ class ImportPriorityModal extends Modal {
 		this.sourceFile = sourceFile;
 	}
 
-	override onOpen(): void {
-		const { modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal');
-
-		this.svelteComponent = mount(PrioritySelector, {
-			target: this.contentEl,
-			props: {
-				title: 'Select priority',
-				onselect: (priority: Priority) => {
-					this.close();
-					void importNoteWithPriority(
-						this.plugin,
-						this.dashboard,
-						this.sourceFile,
-						priority
-					);
-				},
-				oncancel: () => this.close()
-			}
-		});
+	protected getComponent(): Component {
+		return PrioritySelector as Component;
 	}
 
-	override onClose(): void {
-		if (this.svelteComponent !== undefined) {
-			void unmount(this.svelteComponent);
-			this.svelteComponent = undefined;
-		}
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			title: 'Select priority',
+			onselect: (priority: Priority) => {
+				this.close();
+				void importNoteWithPriority(this.plugin, this.dashboard, this.sourceFile, priority);
+			},
+			oncancel: () => this.close()
+		};
 	}
 }

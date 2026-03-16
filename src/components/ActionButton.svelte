@@ -31,7 +31,9 @@
 <button
   class={['tdc-btn', className, faded && 'tdc-btn-faded', variant !== 'default' && `tdc-btn-variant-${variant}`]}
   {onclick}
-  {oncontextmenu}
+  oncontextmenu={oncontextmenu !== undefined
+    ? (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); oncontextmenu(event); }
+    : undefined}
   {@attach attachTooltip(label)}
 >
   <Icon name={icon} size={16} />

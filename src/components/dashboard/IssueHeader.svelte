@@ -413,8 +413,6 @@
   // Initial layout after mount
   $effect(() => {
     if (headerElement !== undefined) {
-      applyRow1PriorityLayout();
-      void applyBadgeCompaction();
       window.setTimeout(() => {
         applyRow1PriorityLayout();
         void applyBadgeCompaction();

@@ -14,6 +14,7 @@ export interface GitHubCacheStore {
 
 export function createGitHubCacheStore(ttlMs: number, maxSize: number): GitHubCacheStore {
 	const cache = new Map<string, CacheEntry<unknown>>();
+	const pendingLoads = new Map<string, Promise<unknown>>();
 
 	const get = <T>(key: string): T | undefined => {
 		const entry = cache.get(key) as CacheEntry<T> | undefined;
@@ -47,9 +48,24 @@ export function createGitHubCacheStore(ttlMs: number, maxSize: number): GitHubCa
 			return cached;
 		}
 
-		const loaded = await load();
-		set(key, loaded);
-		return loaded;
+		const pending = pendingLoads.get(key);
+		if (pending !== undefined) {
+			return pending as Promise<T>;
+		}
+
+		const loadPromise = load().then(
+			(loaded) => {
+				pendingLoads.delete(key);
+				set(key, loaded);
+				return loaded;
+			},
+			(error) => {
+				pendingLoads.delete(key);
+				throw error;
+			}
+		);
+		pendingLoads.set(key, loadPromise);
+		return loadPromise;
 	};
 
 	const getOrLoadOptional = async <T>(
@@ -61,11 +77,26 @@ export function createGitHubCacheStore(ttlMs: number, maxSize: number): GitHubCa
 			return cached;
 		}
 
-		const loaded = await load();
-		if (loaded !== undefined) {
-			set(key, loaded);
+		const pending = pendingLoads.get(key);
+		if (pending !== undefined) {
+			return pending as Promise<T | undefined>;
 		}
-		return loaded;
+
+		const loadPromise = load().then(
+			(loaded) => {
+				pendingLoads.delete(key);
+				if (loaded !== undefined) {
+					set(key, loaded);
+				}
+				return loaded;
+			},
+			(error) => {
+				pendingLoads.delete(key);
+				throw error;
+			}
+		);
+		pendingLoads.set(key, loadPromise);
+		return loadPromise;
 	};
 
 	return {
@@ -76,6 +107,7 @@ export function createGitHubCacheStore(ttlMs: number, maxSize: number): GitHubCa
 		},
 		clear: (): void => {
 			cache.clear();
+			pendingLoads.clear();
 		},
 		getOrLoad,
 		getOrLoadOptional

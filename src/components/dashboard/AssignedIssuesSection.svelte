@@ -70,11 +70,43 @@
 
   const platformService = createPlatformService();
   let dashboardProjectFolder = $derived(dashboard?.projectFolder);
-  let worktreeCreationAvailable = $derived(
-    dashboardProjectFolder !== undefined &&
-    dashboardProjectFolder !== '' &&
-    platformService.isGitRepositoryFolder(dashboardProjectFolder)
-  );
+  let worktreeCreationAvailable = $state(false);
+  $effect(() => {
+    worktreeCreationAvailable = dashboardProjectFolder !== undefined && dashboardProjectFolder !== ''
+      ? platformService.isGitRepositoryFolder(dashboardProjectFolder)
+      : false;
+  });
+
+  async function readDashboardUrls(dashboardConfig: DashboardConfig): Promise<Set<string>> {
+    const urls = new Set<string>();
+    try {
+      const filename = dashboardConfig.dashboardFilename || 'Dashboard.md';
+      const dashboardPath = `${dashboardConfig.rootPath}/${filename}`;
+      const dashboardFile = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+      if (dashboardFile instanceof TFile) {
+        const dashboardContent = await plugin.app.vault.read(dashboardFile);
+        const githubLinkPattern = /github_link:\s*(\S+)/g;
+        let match: RegExpExecArray | null;
+        while ((match = githubLinkPattern.exec(dashboardContent)) !== null) {
+          urls.add(match[1]);
+        }
+      }
+    } catch {
+      // ignore — proceed without filtering
+    }
+    return urls;
+  }
+
+  // Cache dashboard URLs in a separate effect, keyed by dashboard identity
+  $effect(() => {
+    if (dashboard === undefined) {
+      return;
+    }
+    const currentDashboard = dashboard;
+    void readDashboardUrls(currentDashboard).then((urls) => {
+      existingDashboardUrls = urls;
+    });
+  });
 
   function getRepoLimit(repoName: string): number {
     if (dashboardId === undefined) {
@@ -114,30 +146,6 @@
       }
 
       repoResults = results;
-
-      // Build set of existing dashboard issue URLs
-      const urls = new Set<string>();
-      try {
-        const filename = dashboard.dashboardFilename || 'Dashboard.md';
-        const dashboardPath = `${dashboard.rootPath}/${filename}`;
-        const dashboardFile = plugin.app.vault.getAbstractFileByPath(dashboardPath);
-        if (dashboardFile instanceof TFile) {
-          const dashboardContent = await plugin.app.vault.read(dashboardFile);
-          const githubLinkPattern = /github_link:\s*(\S+)/g;
-          let match: RegExpExecArray | null;
-          while ((match = githubLinkPattern.exec(dashboardContent)) !== null) {
-            urls.add(match[1]);
-          }
-        }
-      } catch {
-        // ignore — proceed without filtering
-      }
-
-      if (cancelSignal.cancelled) {
-        return;
-      }
-
-      existingDashboardUrls = urls;
 
       const totalLoaded = repoResults.reduce((sum, r) => sum + r.items.length, 0);
       const totalAvailable = repoResults.reduce((sum, r) => sum + r.totalCount, 0);
@@ -191,7 +199,9 @@
       new Notice('Set dashboard project folder to a Git repository to enable worktree creation.');
       return;
     }
-    void collectDashboardIssueIdSet(plugin.app, dashboard)
+    const currentDashboard = dashboard;
+    const currentFolder = dashboardProjectFolder;
+    void collectDashboardIssueIdSet(plugin.app, currentDashboard)
       .then((dashboardIssueIds) => {
         const nextColor = getNextAvailableIssueColor(
           plugin.settings.issueColors,
@@ -199,14 +209,14 @@
           plugin.settings.lastUsedColorIndex
         );
         const quickDefaults: QuickCreateDefaults = {
-          priority: dashboard!.prioritiesEnabled === false ? 'low' : 'medium',
+          priority: currentDashboard.prioritiesEnabled === false ? 'low' : 'medium',
           color: nextColor,
           worktree: true,
-          worktreeOriginFolder: dashboardProjectFolder!,
+          worktreeOriginFolder: currentFolder,
           worktreeBaseRepository: sourceRepo
         };
         openAssignedIssueNamePrompt(plugin.app, plugin, {
-          dashboard: dashboard!,
+          dashboard: currentDashboard,
           githubMetadata: issue,
           githubUrl: issue.url,
           quickCreateDefaults: quickDefaults
@@ -228,16 +238,19 @@
     void fetchAssignedIssues(activeCancelSignal);
   }
 
-  function isLinkedToDashboard(issue: GitHubIssueMetadata): boolean {
-    return existingDashboardUrls.has(issue.url);
-  }
-
-  function getUnlinkedIssues(issues: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
-    return issues.filter((issue) => !existingDashboardUrls.has(issue.url));
-  }
-
-  function getLinkedIssues(issues: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
-    return issues.filter((issue) => existingDashboardUrls.has(issue.url));
+  function partitionByDashboardLink(
+    issues: GitHubIssueMetadata[]
+  ): [linked: GitHubIssueMetadata[], unlinked: GitHubIssueMetadata[]] {
+    const linked: GitHubIssueMetadata[] = [];
+    const unlinked: GitHubIssueMetadata[] = [];
+    for (const issue of issues) {
+      if (existingDashboardUrls.has(issue.url)) {
+        linked.push(issue);
+      } else {
+        unlinked.push(issue);
+      }
+    }
+    return [linked, unlinked];
   }
 
   let totalLoaded = $derived(repoResults.reduce((sum, r) => sum + r.items.length, 0));
@@ -262,8 +275,7 @@
       <div class="tdc-assigned-issues-list">
         {#each repoResults as { repoName, items, totalCount } (repoName)}
           {#if totalCount > 0}
-            {@const linkedIssues = getLinkedIssues(items)}
-            {@const unlinkedIssues = getUnlinkedIssues(items)}
+            {@const [linkedIssues, unlinkedIssues] = partitionByDashboardLink(items)}
             <div class="tdc-assigned-issues-repo-section">
               {#if isMultiRepo}
                 {@const shortName = repoName.includes('/') ? repoName.split('/')[1] : repoName}

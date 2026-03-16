@@ -1139,7 +1139,7 @@ ${originalBody}`;
 				}
 			} catch (error) {
 				console.error('Worktree removal failed:', error);
-				new Notice('Tasks Dashboard: worktree removal failed');
+				new Notice('Worktree removal failed');
 			}
 		})();
 	};

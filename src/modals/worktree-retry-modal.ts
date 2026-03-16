@@ -1,8 +1,9 @@
-import { App, Modal } from 'obsidian';
-import { mount, unmount } from 'svelte';
+import { App } from 'obsidian';
+import type { Component } from 'svelte';
 import TasksDashboardPlugin from '../../main';
 import type { DashboardConfig } from '../types';
 import WorktreeRetryContent from '../components/modals/WorktreeRetryContent.svelte';
+import { SvelteModal } from './SvelteModal';
 
 interface WorktreeRetryModalOptions {
 	dashboard: DashboardConfig;
@@ -11,10 +12,9 @@ interface WorktreeRetryModalOptions {
 	worktreeOriginFolder: string | undefined;
 }
 
-export class WorktreeRetryModal extends Modal {
+export class WorktreeRetryModal extends SvelteModal {
 	private plugin: TasksDashboardPlugin;
 	private options: WorktreeRetryModalOptions;
-	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(app: App, plugin: TasksDashboardPlugin, options: WorktreeRetryModalOptions) {
 		super(app);
@@ -22,29 +22,22 @@ export class WorktreeRetryModal extends Modal {
 		this.options = options;
 	}
 
-	onOpen(): void {
-		const { modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal', 'tdc-worktree-retry-modal');
-
-		this.svelteComponent = mount(WorktreeRetryContent, {
-			target: this.contentEl,
-			props: {
-				plugin: this.plugin,
-				dashboard: this.options.dashboard,
-				issueId: this.options.issueId,
-				suggestedBranchName: this.options.suggestedBranchName,
-				worktreeOriginFolder: this.options.worktreeOriginFolder,
-				onclose: () => this.close()
-			}
-		});
+	protected getComponent(): Component {
+		return WorktreeRetryContent as Component;
 	}
 
-	onClose(): void {
-		if (this.svelteComponent !== undefined) {
-			void unmount(this.svelteComponent);
-			this.svelteComponent = undefined;
-		}
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			plugin: this.plugin,
+			dashboard: this.options.dashboard,
+			issueId: this.options.issueId,
+			suggestedBranchName: this.options.suggestedBranchName,
+			worktreeOriginFolder: this.options.worktreeOriginFolder,
+			onclose: () => this.close()
+		};
+	}
+
+	protected override getModalClasses(): string[] {
+		return ['tdc-prompt-modal', 'tdc-worktree-retry-modal'];
 	}
 }

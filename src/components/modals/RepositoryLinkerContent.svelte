@@ -1,7 +1,17 @@
 <script lang="ts">
+  import { setTooltip } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig, GitHubRepository } from '../../types';
   import { truncateDescription } from '../../utils/string-utils';
+
+  function attachTooltip(node: HTMLElement, text: string): { update: (newText: string) => void } {
+    setTooltip(node, text, { delay: 500 });
+    return {
+      update(newText: string) {
+        setTooltip(node, newText, { delay: 500 });
+      }
+    };
+  }
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -140,7 +150,7 @@
           <span>{repoName}</span>
           <button
             class="tdc-repo-linker-unlink-btn"
-            aria-label={`Unlink ${repoName}`}
+            use:attachTooltip={`Unlink ${repoName}`}
             onclick={() => unlinkRepo(repoName)}
           >
             &times;

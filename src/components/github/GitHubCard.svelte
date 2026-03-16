@@ -24,6 +24,7 @@
   let iconName = $derived(metadata.isPR ? 'pr' as const : 'issue' as const);
 
   let hasBody = $derived(metadata.body !== undefined && metadata.body !== '');
+  let bodyText = $derived(hasBody ? metadata.body!.replace(/\r?\n/g, ' ') : '');
 </script>
 
 {#snippet labels(labelList: GitHubLabel[], maxCount?: number)}
@@ -66,7 +67,7 @@
     </div>
     {@render labels(metadata.labels, 5)}
     {#if hasBody}
-      <div class="tdc-gh-preview">{truncateText(metadata.body!.replace(/\r?\n/g, ' '), 100)}</div>
+      <div class="tdc-gh-preview">{truncateText(bodyText, 100)}</div>
     {/if}
   </div>
 {:else}
@@ -88,7 +89,7 @@
       </div>
     {/if}
     {#if hasBody}
-      <div class="tdc-gh-body">{truncateText(metadata.body!.replace(/\r?\n/g, ' '), 200)}</div>
+      <div class="tdc-gh-body">{truncateText(bodyText, 200)}</div>
     {/if}
     <div class="tdc-gh-footer">
       <span class="tdc-gh-repo">{metadata.repository}</span>

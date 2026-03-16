@@ -24,7 +24,7 @@
   interface Props {
     plugin: TasksDashboardPlugin;
     dashboard: DashboardConfig;
-    onselect: (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
+    onselect: (url: string | undefined, metadata?: GitHubIssueMetadata, searchQuery?: string) => void;
     linkedRepositories?: GitHubSearchModalLinkedRepositories;
     oncancel?: () => void;
     onback?: () => void;
@@ -243,10 +243,6 @@
 
   function rankResults(results: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
     const currentUsername = authenticatedUsername?.toLowerCase();
-    const timestampMap = new Map<GitHubIssueMetadata, number>();
-    for (const item of results) {
-      timestampMap.set(item, new Date(item.updatedAt).getTime());
-    }
     return [...results].sort((left, right) => {
       const leftAssigned =
         currentUsername !== undefined &&
@@ -261,7 +257,7 @@
       if (leftAssigned !== rightAssigned) {
         return rightAssigned - leftAssigned;
       }
-      return (timestampMap.get(right) ?? 0) - (timestampMap.get(left) ?? 0);
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
     });
   }
 
@@ -600,7 +596,8 @@
       return;
     }
     hasResolved = true;
-    onselect(url, metadata);
+    const trimmedQuery = searchQuery.trim();
+    onselect(url, metadata, trimmedQuery !== '' ? trimmedQuery : undefined);
   }
 
   function handleSearchScopeChange(): void {

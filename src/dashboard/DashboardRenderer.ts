@@ -1,4 +1,3 @@
-import { MarkdownPostProcessorContext } from 'obsidian';
 import { mount } from 'svelte';
 import TasksDashboardPlugin from '../../main';
 import IssueCard from '../components/dashboard/IssueCard.svelte';

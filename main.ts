@@ -3,8 +3,7 @@ import {
 	Notice,
 	Plugin,
 	TFile,
-	type App,
-	type MarkdownPostProcessorContext
+	type App
 } from 'obsidian';
 import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
 import {

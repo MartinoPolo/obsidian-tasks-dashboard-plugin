@@ -1,10 +1,15 @@
-import { App, Modal } from 'obsidian';
-import { mount, unmount } from 'svelte';
+import { App } from 'obsidian';
+import type { Component } from 'svelte';
 import TasksDashboardPlugin from '../../main';
 import GitHubSearchContent from '../components/github/GitHubSearchContent.svelte';
 import type { DashboardConfig, GitHubIssueMetadata } from '../types';
+import { SvelteModal } from './SvelteModal';
 
-type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
+type OnSelectCallback = (
+	url: string | undefined,
+	metadata?: GitHubIssueMetadata,
+	searchQuery?: string
+) => void;
 export type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
 
 export interface GitHubSearchModalLinkedRepositories {
@@ -22,12 +27,11 @@ export interface GitHubSearchModalLinkedRepositories {
 	showSkipButton?: boolean;
 }
 
-export class GitHubSearchModal extends Modal {
+export class GitHubSearchModal extends SvelteModal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
 	private readonly onSelect: OnSelectCallback;
 	private readonly linkedRepositories: GitHubSearchModalLinkedRepositories | undefined;
-	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -43,38 +47,35 @@ export class GitHubSearchModal extends Modal {
 		this.linkedRepositories = linkedRepositories;
 	}
 
-	onOpen(): void {
-		const { modalEl, containerEl } = this;
-		containerEl.addClass('tdc-top-modal');
-		modalEl.addClass('tdc-prompt-modal', 'tdc-github-search-modal');
-
-		this.svelteComponent = mount(GitHubSearchContent, {
-			target: this.contentEl,
-			props: {
-				plugin: this.plugin,
-				dashboard: this.dashboard,
-				onselect: (url: string | undefined, metadata?: GitHubIssueMetadata) => {
-					this.close();
-					this.onSelect(url, metadata);
-				},
-				linkedRepositories: this.linkedRepositories,
-				oncancel: () => {
-					this.close();
-					this.linkedRepositories?.onCancel?.();
-				},
-				onback: () => {
-					this.close();
-					this.linkedRepositories?.onBack?.();
-				}
-			}
-		});
+	protected getComponent(): Component {
+		return GitHubSearchContent as Component;
 	}
 
-	onClose(): void {
-		if (this.svelteComponent !== undefined) {
-			void unmount(this.svelteComponent);
-			this.svelteComponent = undefined;
-		}
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			plugin: this.plugin,
+			dashboard: this.dashboard,
+			onselect: (
+				url: string | undefined,
+				metadata?: GitHubIssueMetadata,
+				searchQuery?: string
+			) => {
+				this.close();
+				this.onSelect(url, metadata, searchQuery);
+			},
+			linkedRepositories: this.linkedRepositories,
+			oncancel: () => {
+				this.close();
+				this.linkedRepositories?.onCancel?.();
+			},
+			onback: () => {
+				this.close();
+				this.linkedRepositories?.onBack?.();
+			}
+		};
+	}
+
+	protected override getModalClasses(): string[] {
+		return ['tdc-prompt-modal', 'tdc-github-search-modal'];
 	}
 }

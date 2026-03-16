@@ -48,7 +48,7 @@
   const platformService = createPlatformService();
 
   // Tracks whether the initial surface style application has fired
-  let hasMountedSurfaceStyles = false;
+  let hasMountedSurfaceStyles = $state(false);
 
   // Build action descriptors
   let issueActions = $derived.by(() => {
