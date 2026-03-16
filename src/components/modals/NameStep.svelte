@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import ModalLayout from './ModalLayout.svelte';
 
   interface Props {
@@ -23,16 +24,6 @@
   let value: string = $state(initialName);
   let hasError: boolean = $state(false);
   let inputElement: HTMLInputElement | undefined = $state(undefined);
-
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-      if (initialName !== '') {
-        const length = inputElement.value.length;
-        inputElement.setSelectionRange(length, length);
-      }
-    }
-  });
 
   function confirm(): void {
     const trimmed = value.trim();
@@ -70,6 +61,7 @@
       placeholder="Enter issue name..."
       bind:value={value}
       bind:this={inputElement}
+      {@attach attachAutofocus({ cursorEnd: initialName !== '' })}
       onkeydown={handleInputKeydown}
       oninput={() => { hasError = false; }}
     />

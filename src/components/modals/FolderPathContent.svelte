@@ -2,6 +2,7 @@
   import { Notice } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
   import { createPlatformService } from '../../utils/platform';
   import ModalLayout from './ModalLayout.svelte';
@@ -50,14 +51,6 @@
   let currentValue = getCurrentValue();
   let value: string = $state(currentValue ?? '');
 
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-      if (currentValue !== undefined) {
-        inputElement.select();
-      }
-    }
-  });
 
   function persistChanges(noticeMessage: string): void {
     void plugin.saveSettings();
@@ -104,6 +97,7 @@
       placeholder="C:\projects\my-app"
       bind:value={value}
       bind:this={inputElement}
+      {@attach attachAutofocus({ select: currentValue !== undefined })}
       onkeydown={(event) => { if (event.key === 'Escape') { return; } event.stopPropagation(); }}
     />
     <button class="tdc-prompt-btn tdc-prompt-btn-browse" onclick={() => void handleBrowse()}>

@@ -2,6 +2,7 @@
   import { Notice } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import { getErrorMessage } from '../../settings/settings-helpers';
   import ModalLayout from './ModalLayout.svelte';
 
@@ -19,13 +20,6 @@
   let value: string = $state(currentName);
   let hasError: boolean = $state(false);
   let inputElement: HTMLInputElement | undefined = $state(undefined);
-
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-      inputElement.select();
-    }
-  });
 
   async function confirm(): Promise<void> {
     const trimmed = value.trim();
@@ -57,6 +51,7 @@
       placeholder="Enter new name..."
       bind:value={value}
       bind:this={inputElement}
+      {@attach attachAutofocus({ select: true })}
       oninput={() => { hasError = false; }}
       onkeydown={(event) => { if (event.key === 'Escape') { return; } event.stopPropagation(); }}
     />

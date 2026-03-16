@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Notice } from 'obsidian';
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import { isGitHubWebUrl } from '../../utils/github';
   import ModalLayout from './ModalLayout.svelte';
 
@@ -14,13 +15,6 @@
   let { title, placeholder, validate, onconfirm, oncancel }: Props = $props();
 
   let value: string = $state('');
-  let inputElement: HTMLInputElement | undefined = $state(undefined);
-
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-    }
-  });
 
   function confirm(): void {
     const trimmed = value.trim();
@@ -45,7 +39,7 @@
       class="tdc-prompt-input"
       {placeholder}
       bind:value={value}
-      bind:this={inputElement}
+      {@attach attachAutofocus()}
       onkeydown={(event) => { if (event.key === 'Escape') { return; } event.stopPropagation(); }}
     />
   {/snippet}

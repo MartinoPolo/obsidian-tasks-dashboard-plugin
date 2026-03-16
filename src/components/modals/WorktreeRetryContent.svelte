@@ -1,6 +1,7 @@
 <script lang="ts">
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig } from '../../types';
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { createPlatformService, type PlatformService, type WorktreeEntry } from '../../utils/platform';
   import { extractLastPathSegment } from '../../utils/path-utils';
@@ -25,12 +26,6 @@
   // svelte-ignore state_referenced_locally
   let selectedRepositoryFolder: string | undefined = $state(worktreeOriginFolder);
   let inputElement: HTMLInputElement | undefined = $state(undefined);
-
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-    }
-  });
 
   function getAvailableRepositories(): string[] {
     const repositories: string[] = [];
@@ -184,6 +179,7 @@
         placeholder="Branch name..."
         bind:value={branchName}
         bind:this={inputElement}
+        {@attach attachAutofocus()}
         oninput={() => { hasError = false; }}
         onkeydown={(event) => { if (event.key === 'Backspace') { event.stopPropagation(); } }}
       />

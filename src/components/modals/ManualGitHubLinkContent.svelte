@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import ModalLayout from './ModalLayout.svelte';
 
   interface Props {
@@ -20,13 +21,6 @@
   }: Props = $props();
 
   let value: string = $state('');
-  let inputElement: HTMLInputElement | undefined = $state(undefined);
-
-  $effect(() => {
-    if (inputElement !== undefined) {
-      inputElement.focus();
-    }
-  });
 
   function confirm(): void {
     const trimmed = value.trim();
@@ -41,7 +35,7 @@
       class="tdc-prompt-input"
       {placeholder}
       bind:value={value}
-      bind:this={inputElement}
+      {@attach attachAutofocus()}
       onkeydown={(event) => { if (event.key === 'Backspace') { event.stopPropagation(); } }}
     />
   {/snippet}

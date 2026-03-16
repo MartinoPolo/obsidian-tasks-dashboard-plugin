@@ -10,6 +10,7 @@
     GitHubSearchMode,
     GitHubSearchModalLinkedRepositories
   } from '../../modals/GitHubSearchModal';
+  import { attachAutofocus } from '../../lib/attach-autofocus';
   import { getStateClass, getStateText, truncateText } from '../../utils/github-helpers';
   import Icon from '../Icon.svelte';
 
@@ -101,7 +102,6 @@
   let activeRequestId = 0;
   let authenticatedUsernamePromise: Promise<void> | undefined;
   let userRepositoriesPromise: Promise<void> | undefined;
-  let searchInputElement: HTMLInputElement | undefined = $state(undefined);
 
   let showOtherRepositorySelector: boolean = $derived(searchScope === OTHER_REPOSITORY_SCOPE);
 
@@ -695,7 +695,6 @@
   $effect(() => {
     void ensureAuthenticatedUsernameLoaded();
     void loadRecentIssues(nextRequestId());
-    searchInputElement?.focus();
   });
 
   // Cleanup debounce on destroy
@@ -720,8 +719,8 @@
 
   <div class="tdc-gh-search-container">
     <input
-      bind:this={searchInputElement}
       bind:value={searchQuery}
+      {@attach attachAutofocus()}
       type="text"
       class="tdc-prompt-input tdc-gh-search-input"
       placeholder={searchModeLabels.searchPlaceholder}
