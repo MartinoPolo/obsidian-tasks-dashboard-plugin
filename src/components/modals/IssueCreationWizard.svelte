@@ -59,6 +59,20 @@
   let currentSourceIssueLinkedRepository: string | undefined = $state(sourceIssueLinkedRepository);
   let currentWorktreeScriptDirectory: string | undefined = $state(undefined);
 
+  function buildCreateRequest(priority: Priority, color: string): IssueCreateRequest {
+    return {
+      name: issueName,
+      priority,
+      color,
+      mode: currentMode,
+      worktreeOriginFolder: currentWorktreeOriginFolder,
+      worktreeScriptDirectory: currentWorktreeScriptDirectory,
+      sourceIssueLinkedRepository: currentSourceIssueLinkedRepository,
+      githubLink: githubSelection.githubLink,
+      githubMetadata: githubSelection.githubMetadata
+    };
+  }
+
   function handleNameConfirm(name: string): void {
     issueName = name;
 
@@ -104,17 +118,7 @@
     issueColor = color;
 
     if (dashboard.prioritiesEnabled === false) {
-      oncreate({
-        name: issueName,
-        priority: 'low',
-        color,
-        mode: currentMode,
-        worktreeOriginFolder: currentWorktreeOriginFolder,
-        worktreeScriptDirectory: currentWorktreeScriptDirectory,
-        sourceIssueLinkedRepository: currentSourceIssueLinkedRepository,
-        githubLink: githubSelection.githubLink,
-        githubMetadata: githubSelection.githubMetadata
-      });
+      oncreate(buildCreateRequest('low', color));
       return;
     }
 
@@ -122,17 +126,7 @@
   }
 
   function handlePrioritySelect(priority: Priority): void {
-    oncreate({
-      name: issueName,
-      priority,
-      color: issueColor,
-      mode: currentMode,
-      worktreeOriginFolder: currentWorktreeOriginFolder,
-      worktreeScriptDirectory: currentWorktreeScriptDirectory,
-      sourceIssueLinkedRepository: currentSourceIssueLinkedRepository,
-      githubLink: githubSelection.githubLink,
-      githubMetadata: githubSelection.githubMetadata
-    });
+    oncreate(buildCreateRequest(priority, issueColor));
   }
 
   function goBackFromStep(): void {

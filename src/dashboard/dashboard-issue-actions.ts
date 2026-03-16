@@ -14,6 +14,7 @@ import type { DashboardConfig, IssueActionKey } from '../types';
 import { getGitHubLinkType, isGitHubWebUrl } from '../utils/github';
 import { formatGitHubLinkLabel } from '../utils/github-helpers';
 import { parseGitHubRepoFullName } from '../utils/github-url';
+import { getIssueFolderStorageKey } from '../issues/issue-manager-shared';
 import {
 	ISSUE_COLOR_PICKER_COLUMNS,
 	collectUsedIssueColors,
@@ -354,7 +355,7 @@ export const buildIssueActionDescriptors = (options: {
 }): Map<IssueActionKey, IssueActionDescriptor> => {
 	const { plugin, container, params, dashboard, platformService, applyIssueSurfaceStyles } =
 		options;
-	const issueFolderKey = `${dashboard.id}:${params.issue}`;
+	const issueFolderKey = getIssueFolderStorageKey(dashboard.id, params.issue);
 	const issueFolder = plugin.settings.issueFolders[issueFolderKey];
 	const hasIssueFolder = isNonEmptyString(issueFolder);
 	const hasIssueGitFolder = hasIssueFolder && platformService.isGitRepositoryFolder(issueFolder);

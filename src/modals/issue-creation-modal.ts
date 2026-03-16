@@ -331,7 +331,7 @@ async function openFileAndFocusEnd(app: App, filePath: string): Promise<void> {
 	if (file instanceof TFile) {
 		const leaf = app.workspace.getLeaf();
 		await leaf.openFile(file);
-		setTimeout(() => {
+		window.setTimeout(() => {
 			const view = app.workspace.getActiveViewOfType(MarkdownView);
 			if (view?.editor) {
 				const editor = view.editor;

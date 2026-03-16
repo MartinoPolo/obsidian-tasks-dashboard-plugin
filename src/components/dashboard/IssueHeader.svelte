@@ -1,7 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
-  import { setIssueCollapsed } from '../../dashboard/dashboard-issue-surface';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
   import type {
   	ControlParams,
@@ -20,6 +19,7 @@
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
   import { formatRelativeTimestamp } from '../../utils/github-helpers';
+  import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
   import { extractLastPathSegment } from '../../utils/path-utils';
   import { createPlatformService } from '../../utils/platform';
   import ActionButton from '../ActionButton.svelte';
@@ -38,6 +38,8 @@
     layout: RuntimeIssueActionLayout;
     containerElement: HTMLElement;
     getRow2VisibleActionKeys: () => Set<IssueActionKey>;
+    isCollapsed: boolean;
+    onCollapseToggle: (newCollapsed: boolean) => void;
   }
 
   let {
@@ -47,12 +49,12 @@
     actions,
     layout,
     containerElement,
-    getRow2VisibleActionKeys
+    getRow2VisibleActionKeys,
+    isCollapsed,
+    onCollapseToggle
   }: Props = $props();
 
   // State
-  const getInitialCollapsed = () => plugin.settings.collapsedIssues[params.issue] === true;
-  let isCollapsed = $state(getInitialCollapsed());
   let gitStatus = $state.raw<IssueGitStatus | undefined>(undefined);
   let gitStatusInfoLines: string[] = $state([]);
   let isInfoPanelOpen = $state(false);
@@ -93,7 +95,7 @@
   );
   let isWorktreeActive = $derived(isWorktreeIssue && worktreeStatusStateClass === 'active');
 
-  let issueFolderKey = $derived(`${dashboard.id}:${params.issue}`);
+  let issueFolderKey = $derived(getIssueFolderStorageKey(dashboard.id, params.issue));
   let hasAssignedIssueFolder = $derived(
     Object.prototype.hasOwnProperty.call(plugin.settings.issueFolders, issueFolderKey)
   );
@@ -242,8 +244,7 @@
         visible.add(key);
       }
     }
-    const isCardCollapsed = containerElement.classList.contains('tdc-collapsed');
-    if (!isCardCollapsed) {
+    if (!isCollapsed) {
       for (const row2Key of getRow2VisibleActionKeys()) {
         visible.add(row2Key);
       }
@@ -306,16 +307,7 @@
   function toggleCollapse(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    const currentlyCollapsed = plugin.settings.collapsedIssues[params.issue] === true;
-    const newCollapsed = !currentlyCollapsed;
-    if (newCollapsed) {
-      plugin.settings.collapsedIssues[params.issue] = true;
-    } else {
-      delete plugin.settings.collapsedIssues[params.issue];
-    }
-    void plugin.saveSettings();
-    isCollapsed = newCollapsed;
-    setIssueCollapsed(containerElement, newCollapsed);
+    onCollapseToggle(!isCollapsed);
   }
 
   // Toggle info panel
@@ -870,7 +862,7 @@
 }
 
 :global(.tdc-worktree-status-inactive) {
-  color: #9e9e9e !important;
+  color: var(--tdc-worktree-inactive) !important;
 }
 
 :global(.tdc-worktree-status):hover {
@@ -882,7 +874,7 @@
 }
 
 :global(button.tdc-worktree-action-retry):hover {
-  color: #ff5252;
+  color: var(--tdc-worktree-failed-hover);
 }
 
 :global(button.tdc-worktree-status.tdc-worktree-status-active) {
@@ -896,7 +888,7 @@
 }
 
 :global(button.tdc-worktree-status.tdc-worktree-status-active):hover {
-  color: #66bb6a !important;
+  color: var(--tdc-worktree-active-hover) !important;
   background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent) !important;
 }
 

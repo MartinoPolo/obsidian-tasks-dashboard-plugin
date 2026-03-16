@@ -224,7 +224,7 @@
           {/each}
         </div>
         <div class="tdc-color-picker-row">
-          <span class="tdc-color-picker-label">Color picker</span>
+          <span class="tdc-color-picker-label">Custom color</span>
           <input
             type="color"
             class="tdc-color-picker-circle"

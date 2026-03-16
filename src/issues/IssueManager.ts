@@ -977,9 +977,15 @@ ${originalBody}`;
 		branchOverride?: string
 	): Promise<void> => {
 		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
-		const worktreeBranch =
-			branchOverride !== undefined && branchOverride !== ''
+		const validatedBranchOverride =
+			branchOverride !== undefined &&
+			branchOverride !== '' &&
+			isValidGitBranchName(branchOverride)
 				? branchOverride
+				: undefined;
+		const worktreeBranch =
+			validatedBranchOverride !== undefined
+				? validatedBranchOverride
 				: metadata.worktreeBranch !== undefined && metadata.worktreeBranch !== ''
 					? metadata.worktreeBranch
 					: sanitizeGitBranchName(issueId, issueId);
@@ -1094,35 +1100,47 @@ ${originalBody}`;
 		options?: { skipScriptConfirmation?: boolean }
 	): void => {
 		void (async () => {
-			const issueColor = plugin.settings.issueColors[issueId];
-			const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
-			const hasFallbackIssueFolder = Boolean(
-				Object.prototype.hasOwnProperty.call(plugin.settings.issueFolders, issueFolderKey)
-			);
-			const fallbackIssueFolder = hasFallbackIssueFolder
-				? plugin.settings.issueFolders[issueFolderKey]
-				: undefined;
-			const worktreeOriginFolder = await getWorktreeOriginFolder(dashboard, issueId);
-			const removalWorkingDirectory =
-				worktreeOriginFolder ?? fallbackIssueFolder ?? dashboard.projectFolder;
-
-			const launchSucceeded = platformService.runWorktreeRemovalScript(
-				issueId,
-				removalWorkingDirectory,
-				plugin.settings.worktreeBashPath,
-				{
-					skipConfirmation: options?.skipScriptConfirmation === true,
-					tabColor: issueColor
-				}
-			);
-			if (!launchSucceeded) {
-				new Notice(
-					'Could not launch remove-worktree script. Worktree association was not cleared.'
+			try {
+				const issueColor = plugin.settings.issueColors[issueId];
+				const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
+				const hasFallbackIssueFolder = Boolean(
+					Object.prototype.hasOwnProperty.call(
+						plugin.settings.issueFolders,
+						issueFolderKey
+					)
 				);
-				return;
-			}
+				const fallbackIssueFolder = hasFallbackIssueFolder
+					? plugin.settings.issueFolders[issueFolderKey]
+					: undefined;
+				const worktreeOriginFolder = await getWorktreeOriginFolder(dashboard, issueId);
+				const removalWorkingDirectory =
+					worktreeOriginFolder ?? fallbackIssueFolder ?? dashboard.projectFolder;
 
-			void clearIssueWorktreeAssociation(dashboard, issueId);
+				const launchSucceeded = platformService.runWorktreeRemovalScript(
+					issueId,
+					removalWorkingDirectory,
+					plugin.settings.worktreeBashPath,
+					{
+						skipConfirmation: options?.skipScriptConfirmation === true,
+						tabColor: issueColor
+					}
+				);
+				if (!launchSucceeded) {
+					new Notice(
+						'Could not launch remove-worktree script. Worktree association was not cleared.'
+					);
+					return;
+				}
+
+				try {
+					await clearIssueWorktreeAssociation(dashboard, issueId);
+				} catch (clearError) {
+					console.error('Failed to clear worktree association:', clearError);
+				}
+			} catch (error) {
+				console.error('Worktree removal failed:', error);
+				new Notice('Tasks Dashboard: worktree removal failed');
+			}
 		})();
 	};
 

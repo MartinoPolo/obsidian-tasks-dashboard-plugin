@@ -8,6 +8,7 @@
     type GitHubLinkType
   } from '../../utils/github';
   import { formatGitHubLinkLabel } from '../../utils/github-helpers';
+  import { parseGitHubRepoFullName } from '../../utils/github-url';
   import ModalLayout from './ModalLayout.svelte';
 
   interface Props {

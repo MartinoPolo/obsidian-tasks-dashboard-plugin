@@ -363,6 +363,7 @@ export function createPlatformService(scriptPathResolver?: ScriptPathResolver): 
 			ensurePeacockColor(folderPath, issueColor);
 		}
 		const spawn = getSpawn();
+		// shell: true required on Windows — `code` is a .cmd batch wrapper, not an executable
 		const child = spawn('code', [folderPath], {
 			shell: Platform.isWin,
 			cwd: folderPath,

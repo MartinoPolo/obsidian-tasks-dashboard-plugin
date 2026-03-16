@@ -6,25 +6,12 @@
     GitHubRepository,
     GitHubSearchScope
   } from '../../types';
+  import type {
+    GitHubSearchMode,
+    GitHubSearchModalLinkedRepositories
+  } from '../../modals/GitHubSearchModal';
   import { getStateClass, getStateText, truncateText } from '../../utils/github-helpers';
   import Icon from '../Icon.svelte';
-
-  type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
-
-  export interface GitHubSearchModalLinkedRepositories {
-    issueRepository?: string;
-    onCancel?: () => void;
-    onBack?: () => void;
-    showBackButton?: boolean;
-    skipButtonLabel?: string;
-    confirmButtonLabel?: string;
-    selectionLockUntilCleared?: boolean;
-    searchMode?: GitHubSearchMode;
-    enterSkipsWithoutSelection?: boolean;
-    separateSkipAndCancelButtons?: boolean;
-    enterSkipLabel?: string;
-    showSkipButton?: boolean;
-  }
 
   export interface ScopeOption {
     value: string;

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { MarkdownPostProcessorContext } from 'obsidian';
   import type TasksDashboardPlugin from '../../../main';
   import type { IssueActionKey, IssueProgress } from '../../types';
   import { parseParams } from '../../dashboard/dashboard-renderer-params';
@@ -8,8 +7,9 @@
   import {
     applyIssueSurfaceStyles,
     observeContentBlockSiblings,
-    setIssueCollapsed
+    setIssueContentBlocksCollapsed
   } from '../../dashboard/dashboard-issue-surface';
+  import { onMount } from 'svelte';
   import { createPlatformService } from '../../utils/platform';
   import type { IssueActionDescriptor } from '../../dashboard/dashboard-renderer-types';
   import ActionButton from '../ActionButton.svelte';
@@ -19,11 +19,10 @@
   interface Props {
     plugin: TasksDashboardPlugin;
     source: string;
-    ctx: MarkdownPostProcessorContext;
     containerElement: HTMLElement;
   }
 
-  let { plugin, source, ctx, containerElement }: Props = $props();
+  let { plugin, source, containerElement }: Props = $props();
 
   let issueContainerElement: HTMLDivElement | undefined = $state(undefined);
 
@@ -33,7 +32,7 @@
       ? plugin.settings.dashboards.find((d) => d.id === params!.dashboard)
       : undefined
   );
-  let isCollapsed = $derived(
+  let isCollapsed = $state(
     params !== null ? plugin.settings.collapsedIssues[params.issue] === true : false
   );
   let prioritiesDisabled = $derived(dashboard !== undefined && dashboard.prioritiesEnabled === false);
@@ -111,22 +110,41 @@
     });
   });
 
-  // Handle collapsed state for sibling content blocks
-  $effect(() => {
-    if (params === null || !isCollapsed) {
-      return;
+  // Collapse: content block DOM management
+  let disconnectContentBlockObserver: (() => void) | undefined;
+
+  function applyContentBlockCollapse(collapsed: boolean): void {
+    if (params === null) { return; }
+    disconnectContentBlockObserver?.();
+    disconnectContentBlockObserver = undefined;
+    setIssueContentBlocksCollapsed(containerElement, collapsed);
+    if (collapsed) {
+      const currentIssue = params.issue;
+      disconnectContentBlockObserver = observeContentBlockSiblings(
+        containerElement,
+        () => isCollapsed,
+        (controlBlock) =>
+          applyIssueSurfaceStyles(controlBlock, plugin.settings.issueColors[currentIssue])
+      );
     }
-    setIssueCollapsed(containerElement, true);
+  }
 
-    const currentIssue = params.issue;
-    const disconnect = observeContentBlockSiblings(
-      containerElement,
-      () => plugin.settings.collapsedIssues[currentIssue] === true,
-      (controlBlock) =>
-        applyIssueSurfaceStyles(controlBlock, plugin.settings.issueColors[currentIssue])
-    );
+  function handleCollapseToggle(newCollapsed: boolean): void {
+    if (params === null) { return; }
+    isCollapsed = newCollapsed;
+    if (newCollapsed) {
+      plugin.settings.collapsedIssues[params.issue] = true;
+    } else {
+      delete plugin.settings.collapsedIssues[params.issue];
+    }
+    void plugin.saveSettings();
+    applyContentBlockCollapse(newCollapsed);
+  }
 
-    return disconnect;
+  onMount(() => {
+    if (!isCollapsed) { return; }
+    applyContentBlockCollapse(true);
+    return () => disconnectContentBlockObserver?.();
   });
 </script>
 
@@ -148,6 +166,8 @@
       layout={actionLayout}
       {containerElement}
       getRow2VisibleActionKeys={() => row2VisibleActionKeys}
+      {isCollapsed}
+      onCollapseToggle={handleCollapseToggle}
     />
 
     <div class="tdc-controls">

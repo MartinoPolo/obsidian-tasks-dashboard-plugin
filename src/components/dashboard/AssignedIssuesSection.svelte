@@ -70,15 +70,11 @@
 
   const platformService = createPlatformService();
   let dashboardProjectFolder = $derived(dashboard?.projectFolder);
-  let worktreeCreationAvailable = $state(false);
-
-  $effect(() => {
-    const folder = dashboardProjectFolder;
-    worktreeCreationAvailable =
-      folder !== undefined &&
-      folder !== '' &&
-      platformService.isGitRepositoryFolder(folder);
-  });
+  let worktreeCreationAvailable = $derived(
+    dashboardProjectFolder !== undefined &&
+    dashboardProjectFolder !== '' &&
+    platformService.isGitRepositoryFolder(dashboardProjectFolder)
+  );
 
   function getRepoLimit(repoName: string): number {
     if (dashboardId === undefined) {

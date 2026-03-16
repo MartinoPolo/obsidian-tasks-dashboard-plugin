@@ -30,7 +30,6 @@
 
 <button
   class={['tdc-btn', className, faded && 'tdc-btn-faded', variant !== 'default' && `tdc-btn-variant-${variant}`]}
-  aria-label={label}
   {onclick}
   {oncontextmenu}
   {@attach attachTooltip(label)}

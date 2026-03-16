@@ -5,9 +5,9 @@ import GitHubSearchContent from '../components/github/GitHubSearchContent.svelte
 import type { DashboardConfig, GitHubIssueMetadata } from '../types';
 
 type OnSelectCallback = (url: string | undefined, metadata?: GitHubIssueMetadata) => void;
-type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
+export type GitHubSearchMode = 'issues-and-prs' | 'issues-only' | 'prs-only';
 
-interface GitHubSearchModalLinkedRepositories {
+export interface GitHubSearchModalLinkedRepositories {
 	issueRepository?: string;
 	onCancel?: () => void;
 	onBack?: () => void;

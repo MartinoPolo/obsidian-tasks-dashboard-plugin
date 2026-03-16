@@ -10,7 +10,8 @@ import { initializeDashboardStructure, parseDashboard } from './src/dashboard/Da
 import {
 	createDashboardRenderer,
 	ReactiveRenderChild,
-	type DashboardRendererInstance
+	type DashboardRendererInstance,
+	type MountFunction
 } from './src/dashboard/DashboardRenderer';
 import {
 	createDashboardWriter,
@@ -215,27 +216,26 @@ export default class TasksDashboardPlugin extends Plugin {
 
 	private registerReactiveCodeBlockProcessor(
 		language: string,
-		render: (
-			source: string,
-			el: HTMLElement,
-			ctx: MarkdownPostProcessorContext
-		) => void | Promise<void>,
+		mountFunction: MountFunction,
 		errorMessage?: string,
 		errorLogPrefix?: string
 	): void {
 		this.registerMarkdownCodeBlockProcessor(language, (source, el, ctx) => {
-			void Promise.resolve(render(source, el, ctx)).catch((error: unknown) => {
-				if (errorLogPrefix !== undefined) {
-					console.error(errorLogPrefix, error);
+			const safeMountFunction: MountFunction = (s, e, c) => {
+				try {
+					return mountFunction(s, e, c);
+				} catch (error) {
+					if (errorLogPrefix !== undefined) {
+						console.error(errorLogPrefix, error);
+					}
+					if (errorMessage !== undefined) {
+						e.createEl('span', { text: errorMessage, cls: 'tdc-error' });
+					}
+					return undefined;
 				}
-				if (errorMessage !== undefined) {
-					el.createEl('span', { text: errorMessage, cls: 'tdc-error' });
-				}
-			});
+			};
 
-			ctx.addChild(
-				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) => render(s, e, c))
-			);
+			ctx.addChild(new ReactiveRenderChild(el, source, ctx, this, safeMountFunction));
 		});
 	}
 
