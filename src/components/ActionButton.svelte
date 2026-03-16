@@ -3,7 +3,7 @@
   import { attachTooltip } from '../lib/attach-tooltip';
   import Icon from './Icon.svelte';
 
-  type ButtonVariant = 'default' | 'accent' | 'delete' | 'vscode' | 'secondary';
+  type ButtonVariant = 'default' | 'accent' | 'delete' | 'vscode';
 
   interface Props {
     icon: IconName;
@@ -102,16 +102,7 @@
   color: var(--text-normal);
 }
 
-/* secondary: reduced opacity */
-.tdc-btn-variant-secondary {
-  opacity: 0.7;
-}
-
-.tdc-btn-variant-secondary:hover {
-  opacity: 1;
-}
-
-/* faded: must come after variants so opacity 0.4 wins over secondary's 0.7 */
+/* faded: reduced opacity for unset/unavailable actions */
 .tdc-btn-faded {
   opacity: 0.4;
 }

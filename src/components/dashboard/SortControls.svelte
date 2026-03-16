@@ -310,21 +310,18 @@
       <ActionButton
         icon="foldAll"
         label="Collapse All"
-        variant="secondary"
         onclick={() => toggleAllIssues(true)}
       />
 
       <ActionButton
         icon="unfoldAll"
         label="Expand All"
-        variant="secondary"
         onclick={() => toggleAllIssues(false)}
       />
 
       <ActionButton
         icon="refresh"
         label="Refresh Dashboard"
-        variant="secondary"
         onclick={() => {
           if (dashboard !== undefined) {
             void refreshDashboard(plugin, dashboard);
@@ -335,7 +332,6 @@
       <ActionButton
         icon="rebuild"
         label="Rebuild"
-        variant="secondary"
         onclick={() => {
           if (dashboard !== undefined) {
             void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
@@ -346,7 +342,6 @@
       <ActionButton
         icon="settings"
         label="Open Dashboard Settings"
-        variant="secondary"
         onclick={() => {
           if (hasSettingsTabApi(plugin.app)) {
             plugin.app.setting?.openTabById(plugin.manifest.id);
@@ -359,7 +354,6 @@
         <ActionButton
           icon="folder"
           label={hasFolder ? 'Open project folder' : 'Set project folder'}
-          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openInFileExplorer(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -370,7 +364,6 @@
         <ActionButton
           icon="terminal"
           label={hasFolder ? 'Open terminal' : 'Set project folder'}
-          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openTerminal(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -381,7 +374,6 @@
         <ActionButton
           icon="vscode"
           label={hasFolder ? 'Open in VS Code' : 'Set project folder'}
-          variant="secondary"
           faded={!hasFolder}
           onclick={() => handleFolderDependentClick((f) => platformService.openVSCode(f))}
           oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
@@ -396,7 +388,6 @@
               ? 'Open GitHub repo'
               : `Open GitHub repos (${linkedRepos.length})`
             : 'Link GitHub repository'}
-          variant="secondary"
           faded={!hasRepos}
           onclick={(event) => {
             if (linkedRepos.length === 0) {
