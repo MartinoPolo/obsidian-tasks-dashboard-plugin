@@ -830,7 +830,14 @@ ${originalBody}`;
 	): void => {
 		const parsedWorktreeName = issueName.trim() !== '' ? issueName : issueId;
 		const worktreeBranch = sanitizeGitBranchName(parsedWorktreeName, issueId);
-		runWorktreeSetup(dashboard, issueId, worktreeBranch, color, worktreeOriginFolder, scriptWorkingDirectory);
+		runWorktreeSetup(
+			dashboard,
+			issueId,
+			worktreeBranch,
+			color,
+			worktreeOriginFolder,
+			scriptWorkingDirectory
+		);
 	};
 
 	const runWorktreeSetup = (
