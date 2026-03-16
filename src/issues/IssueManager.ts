@@ -2,7 +2,7 @@ import { App, Notice, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
 import { DashboardConfig, GitHubIssueMetadata, Issue, IssueStatus, Priority } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
-import { createPlatformService } from '../utils/platform';
+import { createPlatformService, type ScriptPathResolver } from '../utils/platform';
 import { slugify } from '../utils/slugify';
 import {
 	generateIssueContent,
@@ -150,15 +150,12 @@ function sanitizeGitBranchName(preferredName: string, fallbackName: string): str
 
 export type { CreateIssueParams, ImportNoteParams, IssueManagerInstance };
 
-export function createIssueManager(app: App, plugin: TasksDashboardPlugin): IssueManagerInstance {
-	const platformService = createPlatformService({
-		get setupScriptPath() {
-			return plugin.settings.worktreeSetupScriptPath;
-		},
-		get removeScriptPath() {
-			return plugin.settings.worktreeRemoveScriptPath;
-		}
-	});
+export function createIssueManager(
+	app: App,
+	plugin: TasksDashboardPlugin,
+	scriptPathResolver?: ScriptPathResolver
+): IssueManagerInstance {
+	const platformService = createPlatformService(scriptPathResolver);
 	const activeOperationLocks = new Set<string>();
 	const activeWorktreeSetupLocks = new Set<string>();
 
@@ -828,11 +825,12 @@ ${originalBody}`;
 		issueId: string,
 		issueName: string,
 		color?: string,
-		worktreeOriginFolder?: string
+		worktreeOriginFolder?: string,
+		scriptWorkingDirectory?: string
 	): void => {
 		const parsedWorktreeName = issueName.trim() !== '' ? issueName : issueId;
 		const worktreeBranch = sanitizeGitBranchName(parsedWorktreeName, issueId);
-		runWorktreeSetup(dashboard, issueId, worktreeBranch, color, worktreeOriginFolder);
+		runWorktreeSetup(dashboard, issueId, worktreeBranch, color, worktreeOriginFolder, scriptWorkingDirectory);
 	};
 
 	const runWorktreeSetup = (
@@ -840,7 +838,8 @@ ${originalBody}`;
 		issueId: string,
 		worktreeBranch: string,
 		color?: string,
-		worktreeOriginFolder?: string
+		worktreeOriginFolder?: string,
+		scriptWorkingDirectory?: string
 	): void => {
 		const worktreeSetupLockKey = getIssueFolderStorageKey(dashboard.id, issueId);
 		if (activeWorktreeSetupLocks.has(worktreeSetupLockKey)) {
@@ -898,9 +897,10 @@ ${originalBody}`;
 		void (async () => {
 			try {
 				const initialDetectedFolder = resolveDetectedWorktreeFolder(expectedWorktreeFolder);
+				const scriptDirectory = scriptWorkingDirectory ?? resolvedWorktreeOriginFolder;
 				const capturedBaseBranch =
-					resolvedWorktreeOriginFolder !== undefined
-						? platformService.getCurrentBranch(resolvedWorktreeOriginFolder)
+					scriptDirectory !== undefined
+						? platformService.getCurrentBranch(scriptDirectory)
 						: undefined;
 				await updateIssueWorktreeMetadata(dashboard, issueId, {
 					worktree: true,
@@ -914,7 +914,7 @@ ${originalBody}`;
 				platformService.runWorktreeSetupScript(
 					worktreeBranch,
 					color,
-					resolvedWorktreeOriginFolder,
+					scriptDirectory ?? resolvedWorktreeOriginFolder,
 					plugin.settings.worktreeBashPath
 				);
 

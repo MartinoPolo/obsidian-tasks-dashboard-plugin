@@ -13,7 +13,12 @@ interface SpawnApi {
 	(command: string, args?: string[], options?: Record<string, unknown>): ChildProcessApi;
 }
 
-interface FolderDialogResult {
+interface FileDialogFilter {
+	name: string;
+	extensions: string[];
+}
+
+interface FileDialogResult {
 	canceled: boolean;
 	filePaths: string[];
 }
@@ -22,7 +27,8 @@ interface RemoteDialogApi {
 	showOpenDialog: (options: {
 		properties: string[];
 		defaultPath?: string;
-	}) => Promise<FolderDialogResult>;
+		filters?: FileDialogFilter[];
+	}) => Promise<FileDialogResult>;
 }
 
 export interface WorktreeEntry {
@@ -48,6 +54,7 @@ export interface PlatformService {
 	) => 'local' | 'remote' | 'none';
 	hasBranchUpstreamConfig: (repositoryFolder: string, branchName: string) => boolean;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
+	pickFile: (filters?: FileDialogFilter[], defaultPath?: string) => Promise<string | undefined>;
 	runWorktreeSetupScript: (
 		issueId: string,
 		color?: string,
@@ -65,18 +72,19 @@ export interface PlatformService {
 	) => boolean;
 }
 
-export interface WorktreeScriptPaths {
-	setupScriptPath?: string;
-	removeScriptPath?: string;
+export interface ScriptPathResolver {
+	resolvePluginScriptPath: (filename: string) => string;
 }
 
-export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths): PlatformService {
+export function createPlatformService(scriptPathResolver?: ScriptPathResolver): PlatformService {
 	const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 	const WINDOWS_GIT_BASH_CANDIDATES = [
 		'C:\\_MP_apps\\Git\\bin\\bash.exe',
 		'C:\\Program Files\\Git\\bin\\bash.exe',
+		'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
 		'C:\\_MP_apps\\Git\\git-bash.exe',
-		'C:\\Program Files\\Git\\git-bash.exe'
+		'C:\\Program Files\\Git\\git-bash.exe',
+		'C:\\Program Files (x86)\\Git\\git-bash.exe'
 	];
 	const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
 		return typeof value === 'object' && value !== null;
@@ -221,7 +229,7 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		return result.stdout;
 	};
 
-	const isFolderDialogResult = (value: unknown): value is FolderDialogResult => {
+	const isFileDialogResult = (value: unknown): value is FileDialogResult => {
 		if (!isObjectRecord(value)) {
 			return false;
 		}
@@ -257,10 +265,11 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 			showOpenDialog: async (options: {
 				properties: string[];
 				defaultPath?: string;
-			}): Promise<FolderDialogResult> => {
+				filters?: FileDialogFilter[];
+			}): Promise<FileDialogResult> => {
 				const dialogResult = await showOpenDialogFunction(options);
-				if (!isFolderDialogResult(dialogResult)) {
-					throw new Error('Invalid folder dialog result');
+				if (!isFileDialogResult(dialogResult)) {
+					throw new Error('Invalid file dialog result');
 				}
 
 				return dialogResult;
@@ -355,7 +364,7 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		}
 		const spawn = getSpawn();
 		const child = spawn('code', [folderPath], {
-			shell: false,
+			shell: Platform.isWin,
 			cwd: folderPath,
 			detached: true,
 			stdio: 'ignore'
@@ -582,6 +591,27 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		}
 	};
 
+	const pickFile = async (
+		filters?: FileDialogFilter[],
+		defaultPath?: string
+	): Promise<string | undefined> => {
+		try {
+			const remoteDialog = getRemoteDialog();
+			const result = await remoteDialog.showOpenDialog({
+				properties: ['openFile'],
+				defaultPath,
+				filters
+			});
+			if (result.canceled || result.filePaths.length === 0) {
+				return undefined;
+			}
+			return result.filePaths[0];
+		} catch {
+			new Notice('Could not open file picker');
+			return undefined;
+		}
+	};
+
 	const toWindowsBashPath = (pathValue: string): string => {
 		const normalizedPath = pathValue.replace(/\\/g, '/');
 		const windowsPathMatch = normalizedPath.match(/^([A-Za-z]):\/(.*)$/);
@@ -714,11 +744,12 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 			return;
 		}
 
-		const setupScriptPath = worktreeScriptPaths?.setupScriptPath;
-		if (setupScriptPath === undefined || setupScriptPath.trim() === '') {
-			new Notice('Worktree setup script path is not configured. Set it in plugin settings.');
+		if (scriptPathResolver === undefined) {
+			new Notice('Worktree scripts not available — plugin path could not be resolved.');
 			return;
 		}
+
+		const setupScriptPath = scriptPathResolver.resolvePluginScriptPath('setup-worktree.sh');
 
 		const scriptArgs = [issueId];
 		if (color !== undefined && color !== '' && isValidHexColor(color)) {
@@ -748,11 +779,12 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 			return false;
 		}
 
-		const removeScriptPath = worktreeScriptPaths?.removeScriptPath;
-		if (removeScriptPath === undefined || removeScriptPath.trim() === '') {
-			new Notice('Worktree remove script path is not configured. Set it in plugin settings.');
+		if (scriptPathResolver === undefined) {
+			new Notice('Worktree scripts not available — plugin path could not be resolved.');
 			return false;
 		}
+
+		const removeScriptPath = scriptPathResolver.resolvePluginScriptPath('remove-worktree.sh');
 
 		const scriptArgs = [issueId];
 		if (options?.skipConfirmation === true) {
@@ -860,6 +892,7 @@ export function createPlatformService(worktreeScriptPaths?: WorktreeScriptPaths)
 		checkBranchExists,
 		hasBranchUpstreamConfig,
 		pickFolder,
+		pickFile,
 		runWorktreeSetupScript,
 		runWorktreeRemovalScript
 	};

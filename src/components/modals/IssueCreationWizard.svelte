@@ -57,6 +57,7 @@
   let currentWorktreeOriginFolder: string | undefined = $state(worktreeOriginFolder);
   // svelte-ignore state_referenced_locally
   let currentSourceIssueLinkedRepository: string | undefined = $state(sourceIssueLinkedRepository);
+  let currentWorktreeScriptDirectory: string | undefined = $state(undefined);
 
   function handleNameConfirm(name: string): void {
     issueName = name;
@@ -68,6 +69,7 @@
         color: quickCreateDefaults.color,
         mode: quickCreateDefaults.worktree ? 'worktree' : 'standard',
         worktreeOriginFolder: quickCreateDefaults.worktreeOriginFolder,
+        worktreeScriptDirectory: undefined,
         sourceIssueLinkedRepository: undefined,
         githubLink: githubSelection.githubLink,
         githubMetadata: githubSelection.githubMetadata
@@ -87,10 +89,12 @@
     if (createWorktree) {
       currentMode = 'worktree';
       currentWorktreeOriginFolder = worktreeContext?.worktreeOriginFolder;
+      currentWorktreeScriptDirectory = worktreeContext?.worktreeScriptDirectory;
       currentSourceIssueLinkedRepository = worktreeContext?.sourceIssueLinkedRepository;
     } else {
       currentMode = 'standard';
       currentWorktreeOriginFolder = undefined;
+      currentWorktreeScriptDirectory = undefined;
       currentSourceIssueLinkedRepository = undefined;
     }
     step = 'color';
@@ -106,6 +110,7 @@
         color,
         mode: currentMode,
         worktreeOriginFolder: currentWorktreeOriginFolder,
+        worktreeScriptDirectory: currentWorktreeScriptDirectory,
         sourceIssueLinkedRepository: currentSourceIssueLinkedRepository,
         githubLink: githubSelection.githubLink,
         githubMetadata: githubSelection.githubMetadata
@@ -123,6 +128,7 @@
       color: issueColor,
       mode: currentMode,
       worktreeOriginFolder: currentWorktreeOriginFolder,
+      worktreeScriptDirectory: currentWorktreeScriptDirectory,
       sourceIssueLinkedRepository: currentSourceIssueLinkedRepository,
       githubLink: githubSelection.githubLink,
       githubMetadata: githubSelection.githubMetadata

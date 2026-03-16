@@ -5,6 +5,7 @@ export type IssueCreationMode = 'standard' | 'worktree';
 export interface WorktreeCreationContext {
 	eligible: boolean;
 	worktreeOriginFolder?: string;
+	worktreeScriptDirectory?: string;
 	sourceIssueLinkedRepository?: string;
 }
 
@@ -19,6 +20,7 @@ export interface IssueCreateRequest {
 	color: string;
 	mode: IssueCreationMode;
 	worktreeOriginFolder?: string;
+	worktreeScriptDirectory?: string;
 	sourceIssueLinkedRepository?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;

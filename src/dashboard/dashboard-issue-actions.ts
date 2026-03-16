@@ -490,6 +490,7 @@ export const buildIssueActionDescriptors = (options: {
 				worktreeContext: {
 					eligible: hasIssueWorktreeScope,
 					worktreeOriginFolder: worktreeOriginFolder ?? issueFolder,
+					worktreeScriptDirectory: issueHasWorktreeMetadata ? issueFolder : undefined,
 					sourceIssueLinkedRepository
 				}
 			});

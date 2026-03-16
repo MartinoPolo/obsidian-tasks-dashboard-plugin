@@ -25,6 +25,7 @@ interface CreateIssueRequest {
 	color?: string;
 	worktree?: boolean;
 	worktreeOriginFolder?: string;
+	worktreeScriptDirectory?: string;
 	worktreeBaseRepository?: string;
 	githubLink?: string;
 	githubMetadata?: GitHubIssueMetadata;
@@ -80,7 +81,8 @@ async function createIssueWithNotice(
 				issue.id,
 				request.name,
 				request.color,
-				request.worktreeOriginFolder
+				request.worktreeOriginFolder,
+				request.worktreeScriptDirectory
 			);
 		}
 		new Notice(`Created issue: ${request.name}`);
@@ -163,7 +165,8 @@ class IssueCreationModal extends Modal {
 						request.color,
 						request.mode,
 						request.worktreeOriginFolder,
-						request.sourceIssueLinkedRepository
+						request.sourceIssueLinkedRepository,
+						request.worktreeScriptDirectory
 					);
 				},
 				onsearchopen: (currentName: string) => {
@@ -472,7 +475,8 @@ export async function createIssueWithGitHub(
 	color?: string,
 	mode: IssueCreationMode = 'standard',
 	worktreeOriginFolder?: string,
-	worktreeBaseRepository?: string
+	worktreeBaseRepository?: string,
+	worktreeScriptDirectory?: string
 ): Promise<void> {
 	await createIssueWithNotice(app, plugin, {
 		name: issueName,
@@ -482,6 +486,7 @@ export async function createIssueWithGitHub(
 		color,
 		worktree: mode === 'worktree',
 		worktreeOriginFolder,
+		worktreeScriptDirectory,
 		worktreeBaseRepository,
 		dashboard
 	});
