@@ -134,8 +134,6 @@ export interface TasksDashboardSettings {
 	githubDisplayMode: GitHubDisplayMode;
 	deleteIssueRemoveWorktreeByDefault: boolean;
 	worktreeBashPath?: string;
-	worktreeSetupScriptPath?: string;
-	worktreeRemoveScriptPath?: string;
 	collapsedIssues: Record<string, boolean>;
 	collapsedDashboardSettings: Record<string, boolean>;
 	issueColors: Record<string, string>;

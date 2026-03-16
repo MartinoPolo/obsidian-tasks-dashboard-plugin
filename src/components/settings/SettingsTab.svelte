@@ -12,9 +12,12 @@
     saveSettings as pluginSaveSettings,
     saveSettingsAndRefreshDashboard as pluginSaveSettingsAndRefreshDashboard
   } from '../../utils/settings-helpers';
+  import { createPlatformService } from '../../utils/platform';
   import { generateId } from '../../utils/slugify';
   import DashboardSettings from './DashboardSettings.svelte';
   import GitHubSettings from './GitHubSettings.svelte';
+
+  const platformService = createPlatformService();
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -68,14 +71,14 @@
         });
       });
 
-    new Setting(globalSettingsEl)
+    const bashPathSetting = new Setting(globalSettingsEl)
       .setName('Worktree bash path (Windows)')
       .setDesc(
         'Optional full path to bash.exe used for setup/remove worktree scripts on Windows. Leave empty to use default Git Bash locations.'
       )
       .addText((text) =>
         text
-          .setPlaceholder('C:\\_MP_apps\\Git\\bin\\bash.exe')
+          .setPlaceholder('C:\\Program Files\\Git\\bin\\bash.exe')
           .setValue(plugin.settings.worktreeBashPath ?? '')
           .onChange((value) => {
             plugin.settings.worktreeBashPath =
@@ -83,6 +86,24 @@
             saveSettings();
           })
       );
+
+    bashPathSetting.addButton((btn) =>
+      btn.setButtonText('Browse').onClick(() => {
+        void platformService
+          .pickFile(
+            [{ name: 'Executable', extensions: ['exe'] }],
+            plugin.settings.worktreeBashPath
+          )
+          .then((filePath) => {
+            if (filePath !== undefined) {
+              plugin.settings.worktreeBashPath = filePath;
+              saveSettings();
+              refresh();
+            }
+          });
+      })
+    );
+
   });
 
   $effect(() => {

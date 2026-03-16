@@ -32,7 +32,7 @@ import {
 	TasksDashboardSettings
 } from './src/types';
 import { getDashboardPath } from './src/utils/dashboard-path';
-import { createPlatformService } from './src/utils/platform';
+import { createPlatformService, type ScriptPathResolver } from './src/utils/platform';
 
 const REFRESH_DEBOUNCE_MS = 500;
 
@@ -142,7 +142,8 @@ export default class TasksDashboardPlugin extends Plugin {
 				this.githubService,
 				createPlatformService()
 			);
-			this.issueManager = createIssueManager(this.app, this);
+			const scriptPathResolver = this.buildScriptPathResolver();
+			this.issueManager = createIssueManager(this.app, this, scriptPathResolver);
 			this.progressTracker = createProgressTracker(this.app);
 			this.dashboardWriter = createDashboardWriter(this.app, this);
 			this.dashboardRenderer = createDashboardRenderer(this);
@@ -246,6 +247,30 @@ export default class TasksDashboardPlugin extends Plugin {
 
 	onunload() {
 		removeRegisteredCommands(this.app, this.registeredCommands);
+	}
+
+	private buildScriptPathResolver(): ScriptPathResolver | undefined {
+		try {
+			const adapter = this.app.vault.adapter;
+			const basePath: unknown = Reflect.get(adapter, 'basePath');
+			if (typeof basePath !== 'string' || basePath === '') {
+				return undefined;
+			}
+
+			const pluginDir = this.manifest.dir;
+			if (pluginDir === undefined || pluginDir === '') {
+				return undefined;
+			}
+
+			const absolutePluginPath = `${basePath}/${pluginDir}`;
+			return {
+				resolvePluginScriptPath: (filename: string): string => {
+					return `${absolutePluginPath}/scripts/${filename}`;
+				}
+			};
+		} catch {
+			return undefined;
+		}
 	}
 
 	registerDashboardCommands() {
@@ -376,6 +401,21 @@ export default class TasksDashboardPlugin extends Plugin {
 				.map(withDefaultGitHubEnabled)
 				.map(migrateGithubRepoToRepos)
 		};
+
+		// Migrate: remove obsolete worktree script path settings
+		const settingsRecord = this.settings as unknown as Record<string, unknown>;
+		let migrated = false;
+		if ('worktreeSetupScriptPath' in settingsRecord) {
+			delete settingsRecord.worktreeSetupScriptPath;
+			migrated = true;
+		}
+		if ('worktreeRemoveScriptPath' in settingsRecord) {
+			delete settingsRecord.worktreeRemoveScriptPath;
+			migrated = true;
+		}
+		if (migrated) {
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings() {
