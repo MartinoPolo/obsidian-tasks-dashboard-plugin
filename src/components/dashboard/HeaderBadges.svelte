@@ -1,0 +1,117 @@
+<script lang="ts">
+  import type { IssueGitStatus } from '../../git-status/git-status-types';
+  import {
+    ISSUE_STATE_ICON,
+    ISSUE_STATE_CSS_CLASS,
+    ISSUE_STATE_LABEL,
+    PR_STATE_ICON,
+    PR_STATE_CSS_CLASS,
+    PR_STATE_LABEL
+  } from '../../git-status/git-badge-maps';
+  import type { IconName } from '../icons/index';
+  import GitBadge from '../GitBadge.svelte';
+
+  interface BranchBadgeData {
+    icon: IconName;
+    text: string;
+    tooltip: string;
+    class: string;
+  }
+
+  interface Props {
+    gitStatus: IssueGitStatus | undefined;
+    branchBadge: BranchBadgeData | undefined;
+    isBadgesLoading: boolean;
+    shouldCompact: boolean;
+    badgesElement: HTMLDivElement | undefined;
+    oncontextmenu: (event: MouseEvent) => void;
+  }
+
+  let {
+    gitStatus,
+    branchBadge,
+    isBadgesLoading,
+    shouldCompact,
+    badgesElement = $bindable(),
+    oncontextmenu
+  }: Props = $props();
+</script>
+
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+  class={[
+    'tdc-header-badges',
+    isBadgesLoading && 'tdc-header-badges-loading',
+    shouldCompact && 'tdc-badges-compact'
+  ]}
+  bind:this={badgesElement}
+  {oncontextmenu}
+>
+  {#if gitStatus !== undefined}
+    {#each gitStatus.linkedIssues as linkedIssue (linkedIssue.url)}
+      {@const stateLabel = ISSUE_STATE_LABEL[linkedIssue.state]}
+      <GitBadge
+        type="issue"
+        icon={ISSUE_STATE_ICON[linkedIssue.state]}
+        text={stateLabel !== '' ? `#${linkedIssue.number} ${stateLabel}` : `#${linkedIssue.number}`}
+        tooltip={`${linkedIssue.title} — ${linkedIssue.state}`}
+        class={ISSUE_STATE_CSS_CLASS[linkedIssue.state]}
+        href={linkedIssue.url}
+      />
+    {/each}
+
+    {#if branchBadge !== undefined}
+      <GitBadge
+        type="branch"
+        icon={branchBadge.icon}
+        text={branchBadge.text}
+        tooltip={branchBadge.tooltip}
+        class={branchBadge.class}
+      />
+    {/if}
+
+    {#each gitStatus.linkedPullRequests as pr (pr.url)}
+      <GitBadge
+        type="pr"
+        icon={PR_STATE_ICON[pr.state]}
+        text={`#${pr.number} ${PR_STATE_LABEL[pr.state]}`}
+        tooltip={`${pr.title} — ${pr.state}`}
+        class={PR_STATE_CSS_CLASS[pr.state]}
+        href={pr.url}
+      />
+    {/each}
+  {/if}
+</div>
+
+<style>
+.tdc-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tdc-header-badges-loading {
+  min-width: 60px;
+}
+
+.tdc-header-badges-loading::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tdc-spin 0.6s linear infinite;
+}
+
+.tdc-badges-compact :global(.tdc-git-badge) {
+  padding: 2px 4px;
+}
+
+.tdc-badges-compact :global(.tdc-git-badge > span) {
+  display: none;
+}
+</style>

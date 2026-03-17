@@ -8,27 +8,27 @@
   	RuntimeIssueActionLayout
   } from '../../dashboard/dashboard-renderer-types';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
-  import type {
-  	BranchStatus,
-  	IssueGitStatus,
-  	IssueState,
-  	PrState
-  } from '../../git-status/git-status-types';
+  import {
+    BRANCH_NAME_MAX_DISPLAY_LENGTH,
+    BRANCH_STATUS_CSS_CLASS,
+    BRANCH_STATUS_TOOLTIP_PREFIX
+  } from '../../git-status/git-badge-maps';
+  import { buildGitStatusDisplayInfo } from '../../git-status/git-status-helpers';
+  import type { IssueGitStatus } from '../../git-status/git-status-types';
   import { attachResizeObserver } from '../../lib/attach-resize-observer';
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
-  import { formatRelativeTimestamp } from '../../utils/github-helpers';
   import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
-  import { extractLastPathSegment } from '../../utils/path-utils';
-  import { createPlatformService } from '../../utils/platform';
+  import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
-  import GitBadge from '../GitBadge.svelte';
   import Icon from '../Icon.svelte';
   import type { IconName } from '../icons/index';
   import ContextMenu from './ContextMenu.svelte';
+  import HeaderBadges from './HeaderBadges.svelte';
   import IssueInfoPanel from './IssueInfoPanel.svelte';
   import OverflowPanel from './OverflowPanel.svelte';
+  import WorktreeIndicator from './WorktreeIndicator.svelte';
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -72,28 +72,15 @@
   let overflowButtonElement: HTMLElement | undefined = $state(undefined);
   let row1Buttons = $state(new Map<IssueActionKey, HTMLElement>());
 
-  // Derived
+  // Derived — worktree display state
   let isWorktreeIssue = $derived(params.worktree === true);
-  let worktreeStatus = $derived(params.worktree_setup_state);
-  let isPendingWorktreeSetup = $derived(worktreeStatus === 'pending');
-  let isFailedWorktreeSetup = $derived(worktreeStatus === 'failed');
-  let isSafeToDeleteWorktree = $derived(params.worktree_safe_delete === true);
-  let worktreeStatusStateClass = $derived(
-    isPendingWorktreeSetup ? 'pending'
-    : isFailedWorktreeSetup ? 'failed'
-    : isSafeToDeleteWorktree ? 'inactive'
-    : 'active'
+  let worktreeDisplay = $derived(
+    deriveWorktreeDisplayState(
+      isWorktreeIssue,
+      params.worktree_setup_state,
+      params.worktree_safe_delete === true
+    )
   );
-  let worktreeStatusText = $derived(
-    isPendingWorktreeSetup ? 'Pending worktree setup verification'
-    : isFailedWorktreeSetup ? 'Worktree setup failed — retry available'
-    : isSafeToDeleteWorktree ? 'Worktree safe to delete (merged/closed PR or deleted branch)'
-    : 'Worktree active'
-  );
-  let isWorktreeClickable = $derived(
-    isWorktreeIssue && (isFailedWorktreeSetup || worktreeStatus === undefined)
-  );
-  let isWorktreeActive = $derived(isWorktreeIssue && worktreeStatusStateClass === 'active');
 
   let issueFolderKey = $derived(getIssueFolderStorageKey(dashboard.id, params.issue));
   let hasAssignedIssueFolder = $derived(
@@ -106,102 +93,6 @@
     const candidate: unknown = plugin.settings.issueFolders[issueFolderKey];
     return typeof candidate === 'string' ? candidate : undefined;
   });
-
-  // Git badge data maps
-  const PR_STATE_ICON: Record<PrState, IconName> = {
-    none: 'gitPrOpen',
-    open: 'gitPrOpen',
-    draft: 'gitPrDraft',
-    merged: 'gitPrMerged',
-    closed: 'gitPrClosed',
-    'review-requested': 'gitPrOpen'
-  };
-
-  const PR_STATE_CSS_CLASS: Record<PrState, string> = {
-    none: '',
-    open: 'tdc-git-badge-open',
-    draft: 'tdc-git-badge-draft',
-    merged: 'tdc-git-badge-merged',
-    closed: 'tdc-git-badge-closed',
-    'review-requested': 'tdc-git-badge-review'
-  };
-
-  const PR_STATE_LABEL: Record<PrState, string> = {
-    none: '',
-    open: 'Open',
-    draft: 'Draft',
-    merged: 'Merged',
-    closed: 'Closed',
-    'review-requested': 'Review'
-  };
-
-  const ISSUE_STATE_ICON: Record<IssueState, IconName> = {
-    open: 'gitIssueOpen',
-    closed: 'gitIssueClosed',
-    not_planned: 'gitIssueNotPlanned',
-    unknown: 'gitIssueOpen'
-  };
-
-  const ISSUE_STATE_CSS_CLASS: Record<IssueState, string> = {
-    open: 'tdc-git-badge-issue-open',
-    closed: 'tdc-git-badge-issue-closed',
-    not_planned: 'tdc-git-badge-issue-not-planned',
-    unknown: ''
-  };
-
-  const ISSUE_STATE_LABEL: Record<IssueState, string> = {
-    open: 'Open',
-    closed: 'Closed',
-    not_planned: 'Not Planned',
-    unknown: ''
-  };
-
-  const BRANCH_STATUS_CSS_CLASS: Record<BranchStatus, string> = {
-    active: 'tdc-git-badge-branch-active',
-    local: 'tdc-git-badge-branch-local',
-    'remote-gone': 'tdc-git-badge-branch-remote-gone',
-    deleted: 'tdc-git-badge-branch-deleted',
-    unknown: 'tdc-git-badge-branch-unknown'
-  };
-
-  const BRANCH_STATUS_TOOLTIP_PREFIX: Record<BranchStatus, string> = {
-    active: 'Branch exists',
-    local: 'Branch local only (not pushed)',
-    'remote-gone': 'Remote branch deleted',
-    deleted: 'Branch deleted',
-    unknown: 'Branch status unknown'
-  };
-
-  const BRANCH_NAME_MAX_DISPLAY_LENGTH = 16;
-
-  const platformService = createPlatformService();
-  const defaultBranchCache = new Map<string, string | undefined>();
-
-  function getCachedDefaultBranch(originFolder: string): string | undefined {
-    if (defaultBranchCache.has(originFolder)) {
-      return defaultBranchCache.get(originFolder);
-    }
-    const result = platformService.getDefaultBranch(originFolder);
-    defaultBranchCache.set(originFolder, result);
-    return result;
-  }
-
-  function buildWorktreeLocationTooltip(
-    originFolder: string | undefined,
-    checkedOutBranch: string | undefined,
-    storedBaseBranch?: string
-  ): string {
-    if (originFolder === undefined || originFolder.trim() === '') {
-      return 'Worktree active';
-    }
-    const baseFolderName = extractLastPathSegment(originFolder);
-    const baseBranch = storedBaseBranch ?? getCachedDefaultBranch(originFolder);
-    const branchDisplay = checkedOutBranch ?? 'unknown';
-    if (baseBranch !== undefined) {
-      return `${baseFolderName}/${baseBranch} \u2192 ${branchDisplay}`;
-    }
-    return `${baseFolderName} \u2192 ${branchDisplay}`;
-  }
 
   // Build info panel content
   let infoContent = $derived.by(() => {
@@ -231,7 +122,7 @@
     return sections.join('\n\n');
   });
 
-  // Row1 visible action keys — filter hidden
+  // Row1 visible action keys -- filter hidden
   let row1ActionKeys = $derived(
     layout.row1.filter((key) => !layout.hidden.includes(key) && actions.has(key))
   );
@@ -252,7 +143,7 @@
     return visible;
   }
 
-  // Row1 priority layout — hide buttons when title is truncated
+  // Row1 priority layout -- hide buttons when title is truncated
   function applyRow1PriorityLayout(): void {
     for (const button of row1Buttons.values()) {
       button.classList.remove('tdc-row1-hidden-width');
@@ -275,7 +166,7 @@
     }
   }
 
-  // Badge compaction — measure at non-compact size to decide if compaction is needed.
+  // Badge compaction -- measure at non-compact size to decide if compaction is needed.
   // Uses tick() so Svelte applies shouldCompact=false to the DOM before measuring.
   let badgeCompactionPending = false;
   async function applyBadgeCompaction(): Promise<void> {
@@ -365,27 +256,9 @@
           gitStatus = result;
           isBadgesLoading = false;
 
-          // Build info lines
-          const lines: string[] = [];
-          if (result.branchName !== undefined) {
-            lines.push(`Branch: ${result.branchName} (${result.branchStatus})`);
-            if (result.baseBranch !== undefined) {
-              lines.push(`Base branch: ${result.baseBranch}`);
-            }
-          }
-          if (result.linkedPullRequests.length > 0) {
-            const prLines = result.linkedPullRequests.map(
-              (pr) => `  #${pr.number} ${pr.state} — ${pr.title}`
-            );
-            lines.push(`PRs:\n${prLines.join('\n')}`);
-          }
-          lines.push(`Last refreshed: ${formatRelativeTimestamp(result.fetchedAt)}`);
-          gitStatusInfoLines = lines;
-
-          // PR accent class
-          if (result.aggregatePrState !== 'none') {
-            prAccentClass = `tdc-pr-accent-${result.aggregatePrState}`;
-          }
+          const displayInfo = buildGitStatusDisplayInfo(result);
+          gitStatusInfoLines = displayInfo.infoLines;
+          prAccentClass = displayInfo.prAccentClass;
 
           // Apply badge compaction after render
           rafId = requestAnimationFrame(() => {
@@ -441,6 +314,15 @@
     void plugin.issueManager.refreshWorktreeState(dashboard, params.issue);
   }
 
+  // Worktree location tooltip
+  let worktreeLocationTooltip = $derived(
+    buildWorktreeLocationTooltip(
+      params.worktree_origin_folder,
+      params.worktree_branch,
+      params.worktree_base_branch
+    )
+  );
+
   // Branch badge data
   let branchBadge = $derived.by(() => {
     if (gitStatus === undefined || gitStatus.branchName === undefined) {
@@ -491,82 +373,25 @@
     {params.name}
   </a>
 
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class={[
-      'tdc-header-badges',
-      isBadgesLoading && 'tdc-header-badges-loading',
-      shouldCompact && 'tdc-badges-compact'
-    ]}
-    bind:this={badgesElement}
+  <HeaderBadges
+    {gitStatus}
+    {branchBadge}
+    {isBadgesLoading}
+    {shouldCompact}
+    bind:badgesElement
     oncontextmenu={handleBadgesContextMenu}
-  >
-    {#if gitStatus !== undefined}
-      {#each gitStatus.linkedIssues as linkedIssue (linkedIssue.url)}
-        {@const stateLabel = ISSUE_STATE_LABEL[linkedIssue.state]}
-        <GitBadge
-          type="issue"
-          icon={ISSUE_STATE_ICON[linkedIssue.state]}
-          text={stateLabel !== '' ? `#${linkedIssue.number} ${stateLabel}` : `#${linkedIssue.number}`}
-          tooltip={`${linkedIssue.title} — ${linkedIssue.state}`}
-          class={ISSUE_STATE_CSS_CLASS[linkedIssue.state]}
-          href={linkedIssue.url}
-        />
-      {/each}
-
-      {#if branchBadge !== undefined}
-        <GitBadge
-          type="branch"
-          icon={branchBadge.icon}
-          text={branchBadge.text}
-          tooltip={branchBadge.tooltip}
-          class={branchBadge.class}
-        />
-      {/if}
-
-      {#each gitStatus.linkedPullRequests as pr (pr.url)}
-        <GitBadge
-          type="pr"
-          icon={PR_STATE_ICON[pr.state]}
-          text={`#${pr.number} ${PR_STATE_LABEL[pr.state]}`}
-          tooltip={`${pr.title} — ${pr.state}`}
-          class={PR_STATE_CSS_CLASS[pr.state]}
-          href={pr.url}
-        />
-      {/each}
-    {/if}
-  </div>
+  />
 
   {#if isWorktreeIssue}
-    {#if isWorktreeClickable}
-      <ActionButton
-        icon="worktree"
-        label="Retry worktree setup"
-        class="tdc-worktree-action tdc-worktree-action-retry tdc-worktree-status-failed"
-        onclick={handleWorktreeRetry}
-      />
-    {:else if isWorktreeActive}
-      <button
-        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
-        type="button"
-        onclick={handleWorktreeRefresh}
-        {@attach attachTooltip(buildWorktreeLocationTooltip(
-          params.worktree_origin_folder,
-          params.worktree_branch,
-          params.worktree_base_branch
-        ))}
-      >
-        <Icon name="worktree" size={16} />
-      </button>
-    {:else}
-      <span
-        class={`tdc-worktree-action tdc-worktree-status tdc-worktree-status-${worktreeStatusStateClass}`}
-        role="img"
-        {@attach attachTooltip(worktreeStatusText)}
-      >
-        <Icon name="worktree" size={16} />
-      </span>
-    {/if}
+    <WorktreeIndicator
+      isWorktreeClickable={worktreeDisplay.isClickable}
+      isWorktreeActive={worktreeDisplay.isActive}
+      worktreeStatusStateClass={worktreeDisplay.stateClass}
+      worktreeStatusText={worktreeDisplay.statusText}
+      {worktreeLocationTooltip}
+      onRetry={handleWorktreeRetry}
+      onRefresh={handleWorktreeRefresh}
+    />
   {/if}
 
   <button
@@ -771,37 +596,6 @@
   box-shadow: none !important;
 }
 
-.tdc-header-badges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 1;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tdc-header-badges-loading {
-  min-width: 60px;
-}
-
-.tdc-header-badges-loading::after {
-  content: '';
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--text-muted);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: tdc-spin 0.6s linear infinite;
-}
-
-.tdc-badges-compact :global(.tdc-git-badge) {
-  padding: 2px 4px;
-}
-
-.tdc-badges-compact :global(.tdc-git-badge > span) {
-  display: none;
-}
-
 .tdc-header-actions {
   display: flex;
   gap: 4px;
@@ -824,73 +618,7 @@
   display: contents;
 }
 
-/* Worktree status styles */
-:global(.tdc-worktree-action) {
-  flex-shrink: 0;
-}
-
-:global(.tdc-worktree-status) {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--tdc-border-radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-:global(.tdc-worktree-status) :global(svg) {
-  width: 16px;
-  height: 16px;
-}
-
-:global(.tdc-worktree-status-active) {
-  color: var(--tdc-priority-low) !important;
-}
-
-:global(.tdc-worktree-status-pending) {
-  color: var(--tdc-priority-medium) !important;
-}
-
-:global(.tdc-worktree-status-failed) {
-  color: var(--tdc-priority-high) !important;
-}
-
-:global(.tdc-worktree-status-inactive) {
-  color: var(--tdc-worktree-inactive) !important;
-}
-
-:global(.tdc-worktree-status):hover {
-  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent);
-}
-
-:global(button.tdc-worktree-action-retry) {
-  color: var(--tdc-priority-high);
-}
-
-:global(button.tdc-worktree-action-retry):hover {
-  color: var(--tdc-worktree-failed-hover);
-}
-
-:global(button.tdc-worktree-status.tdc-worktree-status-active) {
-  cursor: pointer;
-  border: 0 !important;
-  box-shadow: none !important;
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent !important;
-  padding: 0;
-}
-
-:global(button.tdc-worktree-status.tdc-worktree-status-active):hover {
-  color: var(--tdc-worktree-active-hover) !important;
-  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent) !important;
-}
-
-/* PR accent — bottom border + gradient */
+/* PR accent -- bottom border + gradient */
 .tdc-issue-header[class*='tdc-pr-accent-'] {
   position: relative;
 }
@@ -947,7 +675,7 @@
   border-bottom: 3px solid var(--tdc-git-pr-closed);
 }
 
-/* Issue 3 — Header button icon colors respect issue color */
+/* Issue 3 -- Header button icon colors respect issue color */
 .tdc-issue-header :global(.tdc-btn) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
 }
@@ -961,28 +689,28 @@
   background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
 }
 
-/* Issue 7 — Badge text color overrides */
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-branch-']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-open']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-merged']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-closed']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-draft']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-review']),
-.tdc-header-badges :global(.tdc-git-badge[class*='tdc-git-badge-issue-']) {
+/* Issue 7 -- Badge text color overrides */
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-branch-']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-open']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-merged']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-closed']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-draft']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-review']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-issue-']) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
 }
 
 /* Per-state SVG color overrides */
-.tdc-header-badges :global(.tdc-git-badge-branch-active svg) { color: var(--tdc-git-branch-active); }
-.tdc-header-badges :global(.tdc-git-badge-branch-local svg) { color: var(--tdc-git-branch-local); }
-.tdc-header-badges :global(.tdc-git-badge-branch-remote-gone svg) { color: var(--tdc-git-branch-remote-gone); }
-.tdc-header-badges :global(.tdc-git-badge-branch-deleted svg) { color: var(--tdc-git-branch-deleted); }
-.tdc-header-badges :global(.tdc-git-badge-open svg) { color: var(--tdc-git-pr-open); }
-.tdc-header-badges :global(.tdc-git-badge-merged svg) { color: var(--tdc-git-pr-merged); }
-.tdc-header-badges :global(.tdc-git-badge-closed svg) { color: var(--tdc-git-pr-closed); }
-.tdc-header-badges :global(.tdc-git-badge-draft svg) { color: var(--tdc-git-pr-draft); }
-.tdc-header-badges :global(.tdc-git-badge-review svg) { color: var(--tdc-git-pr-review); }
-.tdc-header-badges :global(.tdc-git-badge-issue-open svg) { color: var(--tdc-gh-open); }
-.tdc-header-badges :global(.tdc-git-badge-issue-closed svg) { color: var(--tdc-gh-closed); }
-.tdc-header-badges :global(.tdc-git-badge-issue-not-planned svg) { color: var(--text-muted); }
+.tdc-issue-header :global(.tdc-git-badge-branch-active svg) { color: var(--tdc-git-branch-active); }
+.tdc-issue-header :global(.tdc-git-badge-branch-local svg) { color: var(--tdc-git-branch-local); }
+.tdc-issue-header :global(.tdc-git-badge-branch-remote-gone svg) { color: var(--tdc-git-branch-remote-gone); }
+.tdc-issue-header :global(.tdc-git-badge-branch-deleted svg) { color: var(--tdc-git-branch-deleted); }
+.tdc-issue-header :global(.tdc-git-badge-open svg) { color: var(--tdc-git-pr-open); }
+.tdc-issue-header :global(.tdc-git-badge-merged svg) { color: var(--tdc-git-pr-merged); }
+.tdc-issue-header :global(.tdc-git-badge-closed svg) { color: var(--tdc-git-pr-closed); }
+.tdc-issue-header :global(.tdc-git-badge-draft svg) { color: var(--tdc-git-pr-draft); }
+.tdc-issue-header :global(.tdc-git-badge-review svg) { color: var(--tdc-git-pr-review); }
+.tdc-issue-header :global(.tdc-git-badge-issue-open svg) { color: var(--tdc-gh-open); }
+.tdc-issue-header :global(.tdc-git-badge-issue-closed svg) { color: var(--tdc-gh-closed); }
+.tdc-issue-header :global(.tdc-git-badge-issue-not-planned svg) { color: var(--text-muted); }
 </style>

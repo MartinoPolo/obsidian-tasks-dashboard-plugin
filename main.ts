@@ -1,10 +1,4 @@
-import {
-	FuzzySuggestModal,
-	Notice,
-	Plugin,
-	TFile,
-	type App
-} from 'obsidian';
+import { FuzzySuggestModal, Notice, Plugin, TFile, type App } from 'obsidian';
 import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
 import {
 	createDashboardRenderer,

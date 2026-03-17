@@ -4,6 +4,7 @@ import { DashboardConfig, GitHubIssueMetadata, Issue, IssueStatus, Priority } fr
 import { getDashboardPath } from '../utils/dashboard-path';
 import { createPlatformService, type ScriptPathResolver } from '../utils/platform';
 import { slugify } from '../utils/slugify';
+import { quoteYamlString } from './issue-manager-frontmatter';
 import {
 	generateIssueContent,
 	removeGitHubLinkFromDashboardIssueBlock,
@@ -23,130 +24,17 @@ import {
 	getIssueFolderStorageKey
 } from './issue-manager-shared';
 import { CreateIssueParams, ImportNoteParams, IssueManagerInstance } from './issue-manager-types';
-
-const EMPTY_BRANCH_NAME = '';
-const CURRENT_DIRECTORY_BRANCH = '.';
-const PARENT_DIRECTORY_BRANCH = '..';
-const LEADING_DASH_PATTERN = /^-+/;
-const TRAILING_DASH_PATTERN = /-+$/;
-const WORKTREE_FIELD = 'worktree';
-const WORKTREE_BRANCH_FIELD = 'worktree_branch';
-const WORKTREE_ORIGIN_FOLDER_FIELD = 'worktree_origin_folder';
-const WORKTREE_EXPECTED_FOLDER_FIELD = 'worktree_expected_folder';
-const WORKTREE_SETUP_STATE_FIELD = 'worktree_setup_state';
-const WORKTREE_BASE_REPOSITORY_FIELD = 'worktree_base_repository';
-const WORKTREE_BASE_BRANCH_FIELD = 'worktree_base_branch';
-const WORKTREE_SETUP_POLL_INTERVAL_MS = 1000;
-const WORKTREE_SETUP_TIMEOUT_MS = 10_000;
-
-function quoteYamlString(value: string): string {
-	return `'${value.replace(/'/g, "''")}'`;
-}
-
-function getFrontmatter(content: string): string | undefined {
-	const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-	if (frontmatterMatch === null) {
-		return undefined;
-	}
-
-	return frontmatterMatch[1];
-}
-
-function getFrontmatterStringField(content: string, fieldName: string): string | undefined {
-	const frontmatter = getFrontmatter(content);
-	if (frontmatter === undefined) {
-		return undefined;
-	}
-
-	const escapedFieldName = escapeForRegExp(fieldName);
-	const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*(.+)\\s*$`, 'm');
-	const fieldMatch = frontmatter.match(fieldRegex);
-	if (fieldMatch === null) {
-		return undefined;
-	}
-
-	const rawValue = fieldMatch[1].trim();
-	const singleQuotedMatch = rawValue.match(/^'(.*)'$/);
-	if (singleQuotedMatch !== null) {
-		return singleQuotedMatch[1].replace(/''/g, "'");
-	}
-
-	const doubleQuotedMatch = rawValue.match(/^"(.*)"$/);
-	if (doubleQuotedMatch !== null) {
-		return doubleQuotedMatch[1].replace(/\\"/g, '"');
-	}
-
-	return rawValue;
-}
-
-function upsertFrontmatterField(content: string, fieldName: string, rawValue: string): string {
-	const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-	if (frontmatterMatch === null) {
-		return content;
-	}
-
-	const frontmatterBody = frontmatterMatch[1];
-	const escapedFieldName = escapeForRegExp(fieldName);
-	const fieldPattern = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
-	const updatedFrontmatterBody = fieldPattern.test(frontmatterBody)
-		? frontmatterBody.replace(fieldPattern, `${fieldName}: ${rawValue}`)
-		: `${frontmatterBody}\n${fieldName}: ${rawValue}`;
-	const updatedFrontmatter = `---\n${updatedFrontmatterBody}\n---`;
-
-	return updatedFrontmatter + content.slice(frontmatterMatch[0].length);
-}
-
-function getExpectedWorktreeFolder(
-	worktreeOriginFolder: string | undefined,
-	worktreeBranch: string
-): string | undefined {
-	if (worktreeOriginFolder === undefined || worktreeOriginFolder.trim() === '') {
-		return undefined;
-	}
-
-	const normalizedOrigin = worktreeOriginFolder.replace(/[\\/]+$/, '');
-	const parentFolder = normalizedOrigin.replace(/[\\/][^\\/]+$/, '');
-	if (parentFolder === '') {
-		return undefined;
-	}
-
-	const separator = parentFolder.includes('\\') ? '\\' : '/';
-	return `${parentFolder}${separator}worktrees${separator}${worktreeBranch}`;
-}
-
-function isValidGitBranchName(branchName: string): boolean {
-	if (branchName === EMPTY_BRANCH_NAME) {
-		return false;
-	}
-
-	if (branchName === CURRENT_DIRECTORY_BRANCH || branchName === PARENT_DIRECTORY_BRANCH) {
-		return false;
-	}
-
-	if (branchName.startsWith('-')) {
-		return false;
-	}
-
-	return /^[a-z0-9_][a-z0-9_-]*$/.test(branchName);
-}
-
-function sanitizeGitBranchName(preferredName: string, fallbackName: string): string {
-	const preferredCandidate = slugify(preferredName)
-		.replace(LEADING_DASH_PATTERN, '')
-		.replace(TRAILING_DASH_PATTERN, '');
-	if (isValidGitBranchName(preferredCandidate)) {
-		return preferredCandidate;
-	}
-
-	const fallbackCandidate = slugify(fallbackName)
-		.replace(LEADING_DASH_PATTERN, '')
-		.replace(TRAILING_DASH_PATTERN, '');
-	if (isValidGitBranchName(fallbackCandidate)) {
-		return fallbackCandidate;
-	}
-
-	return 'worktree';
-}
+import {
+	getExpectedWorktreeFolder,
+	sanitizeGitBranchName,
+	WORKTREE_BASE_REPOSITORY_FIELD,
+	WORKTREE_BRANCH_FIELD,
+	WORKTREE_EXPECTED_FOLDER_FIELD,
+	WORKTREE_FIELD,
+	WORKTREE_ORIGIN_FOLDER_FIELD,
+	WORKTREE_SETUP_STATE_FIELD
+} from './issue-manager-worktree-constants';
+import { createWorktreeOperations } from './issue-manager-worktree';
 
 export type { CreateIssueParams, ImportNoteParams, IssueManagerInstance };
 
@@ -350,6 +238,35 @@ export function createIssueManager(
 		new Notice(`${noticeMessage}: ${issueId}`);
 	};
 
+	const findIssueFile = (
+		dashboard: DashboardConfig,
+		issueId: string
+	): { file: TFile; status: IssueStatus } | undefined => {
+		const activeFile = findIssueFileInStatus(dashboard, issueId, 'active');
+		if (activeFile !== undefined) {
+			return { file: activeFile, status: 'active' };
+		}
+
+		const archivedFile = findIssueFileInStatus(dashboard, issueId, 'archived');
+		if (archivedFile !== undefined) {
+			return { file: archivedFile, status: 'archived' };
+		}
+
+		return undefined;
+	};
+
+	const getIssueFileOrThrow = (
+		dashboard: DashboardConfig,
+		issueId: string
+	): { file: TFile; status: IssueStatus } => {
+		const issueResult = findIssueFile(dashboard, issueId);
+		if (issueResult === undefined) {
+			throw new Error(`Issue not found: ${issueId}`);
+		}
+
+		return issueResult;
+	};
+
 	const createIssue = async (params: CreateIssueParams): Promise<Issue> => {
 		const {
 			name,
@@ -526,227 +443,6 @@ ${originalBody}`;
 		return issue;
 	};
 
-	const findIssueFile = (
-		dashboard: DashboardConfig,
-		issueId: string
-	): { file: TFile; status: IssueStatus } | undefined => {
-		const activeFile = findIssueFileInStatus(dashboard, issueId, 'active');
-		if (activeFile !== undefined) {
-			return { file: activeFile, status: 'active' };
-		}
-
-		const archivedFile = findIssueFileInStatus(dashboard, issueId, 'archived');
-		if (archivedFile !== undefined) {
-			return { file: archivedFile, status: 'archived' };
-		}
-
-		return undefined;
-	};
-
-	const getIssueFileOrThrow = (
-		dashboard: DashboardConfig,
-		issueId: string
-	): { file: TFile; status: IssueStatus } => {
-		const issueResult = findIssueFile(dashboard, issueId);
-		if (issueResult === undefined) {
-			throw new Error(`Issue not found: ${issueId}`);
-		}
-
-		return issueResult;
-	};
-
-	const hasAssociatedWorktree = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<boolean> => {
-		const { file } = getIssueFileOrThrow(dashboard, issueId);
-		const content = await app.vault.read(file);
-		const frontmatter = getFrontmatter(content);
-		if (frontmatter === undefined) {
-			return false;
-		}
-
-		return new RegExp(`^${WORKTREE_FIELD}:\\s*true\\s*$`, 'm').test(frontmatter);
-	};
-
-	interface IssueWorktreeMetadata {
-		worktree: boolean;
-		worktreeBranch?: string;
-		worktreeOriginFolder?: string;
-		worktreeExpectedFolder?: string;
-		worktreeSetupState?: 'pending' | 'active' | 'failed';
-		worktreeBaseRepository?: string;
-		worktreeBaseBranch?: string;
-	}
-
-	const getIssueWorktreeMetadata = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<IssueWorktreeMetadata> => {
-		const { file } = getIssueFileOrThrow(dashboard, issueId);
-		const content = await app.vault.read(file);
-		const worktree = getFrontmatterStringField(content, WORKTREE_FIELD) === 'true';
-		const setupStateValue = getFrontmatterStringField(content, WORKTREE_SETUP_STATE_FIELD);
-
-		return {
-			worktree,
-			worktreeBranch: getFrontmatterStringField(content, WORKTREE_BRANCH_FIELD),
-			worktreeOriginFolder: getFrontmatterStringField(content, WORKTREE_ORIGIN_FOLDER_FIELD),
-			worktreeExpectedFolder: getFrontmatterStringField(
-				content,
-				WORKTREE_EXPECTED_FOLDER_FIELD
-			),
-			worktreeSetupState:
-				setupStateValue === 'pending' ||
-				setupStateValue === 'active' ||
-				setupStateValue === 'failed'
-					? setupStateValue
-					: undefined,
-			worktreeBaseRepository: getFrontmatterStringField(
-				content,
-				WORKTREE_BASE_REPOSITORY_FIELD
-			),
-			worktreeBaseBranch: getFrontmatterStringField(content, WORKTREE_BASE_BRANCH_FIELD)
-		};
-	};
-
-	const WORKTREE_STRING_FIELD_MAPPINGS: Array<{
-		key: keyof IssueWorktreeMetadata;
-		field: string;
-		quoted: boolean;
-		requireNonEmpty: boolean;
-	}> = [
-		{
-			key: 'worktreeBranch',
-			field: WORKTREE_BRANCH_FIELD,
-			quoted: true,
-			requireNonEmpty: true
-		},
-		{
-			key: 'worktreeOriginFolder',
-			field: WORKTREE_ORIGIN_FOLDER_FIELD,
-			quoted: true,
-			requireNonEmpty: true
-		},
-		{
-			key: 'worktreeExpectedFolder',
-			field: WORKTREE_EXPECTED_FOLDER_FIELD,
-			quoted: true,
-			requireNonEmpty: true
-		},
-		{
-			key: 'worktreeSetupState',
-			field: WORKTREE_SETUP_STATE_FIELD,
-			quoted: false,
-			requireNonEmpty: false
-		},
-		{
-			key: 'worktreeBaseRepository',
-			field: WORKTREE_BASE_REPOSITORY_FIELD,
-			quoted: true,
-			requireNonEmpty: true
-		},
-		{
-			key: 'worktreeBaseBranch',
-			field: WORKTREE_BASE_BRANCH_FIELD,
-			quoted: true,
-			requireNonEmpty: true
-		}
-	];
-
-	const applyWorktreeFieldUpdates = (
-		text: string,
-		metadata: Partial<IssueWorktreeMetadata>,
-		upsertField: (content: string, field: string, value: string) => string,
-		formatQuotedValue: (value: string) => string
-	): string => {
-		let result = text;
-		if (metadata.worktree === true) {
-			result = upsertField(result, WORKTREE_FIELD, 'true');
-		}
-		for (const { key, field, quoted, requireNonEmpty } of WORKTREE_STRING_FIELD_MAPPINGS) {
-			const value = metadata[key];
-			if (value === undefined) {
-				continue;
-			}
-			if (requireNonEmpty && value === '') {
-				continue;
-			}
-			result = upsertField(
-				result,
-				field,
-				quoted ? formatQuotedValue(String(value)) : String(value)
-			);
-		}
-		return result;
-	};
-
-	const updateIssueWorktreeMetadata = async (
-		dashboard: DashboardConfig,
-		issueId: string,
-		metadata: Partial<IssueWorktreeMetadata>
-	): Promise<void> => {
-		const { file } = getIssueFileOrThrow(dashboard, issueId);
-		let content = await app.vault.read(file);
-
-		content = applyWorktreeFieldUpdates(
-			content,
-			metadata,
-			upsertFrontmatterField,
-			quoteYamlString
-		);
-
-		await app.vault.modify(file, content);
-
-		await editDashboardIssueBlock(dashboard, issueId, (block) => {
-			return applyWorktreeFieldUpdates(
-				block,
-				metadata,
-				upsertDashboardIssueBlockField,
-				(v) => v
-			);
-		});
-	};
-
-	const removeWorktreeFrontmatterFields = (content: string): string => {
-		const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-		if (frontmatterMatch === null) {
-			return content;
-		}
-
-		const frontmatterFields = frontmatterMatch[1]
-			.split('\n')
-			.filter(
-				(line) =>
-					!/^worktree(_color|_origin_folder|_branch|_expected_folder|_setup_state|_base_repository|_base_branch)?:/.test(
-						line.trim()
-					)
-			);
-		const updatedFrontmatter = `---\n${frontmatterFields.join('\n')}\n---`;
-		return updatedFrontmatter + content.slice(frontmatterMatch[0].length);
-	};
-
-	const getWorktreeOriginFolder = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<string | undefined> => {
-		const { file } = getIssueFileOrThrow(dashboard, issueId);
-		const content = await app.vault.read(file);
-		return getFrontmatterStringField(content, WORKTREE_ORIGIN_FOLDER_FIELD);
-	};
-
-	const clearIssueWorktreeAssociation = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<void> => {
-		const { file } = getIssueFileOrThrow(dashboard, issueId);
-		const content = await app.vault.read(file);
-		const updatedContent = removeWorktreeFrontmatterFields(content);
-		if (updatedContent !== content) {
-			await app.vault.modify(file, updatedContent);
-		}
-	};
-
 	const archiveIssue = async (dashboard: DashboardConfig, issueId: string): Promise<void> => {
 		await withIssueOperationLock(dashboard.id, issueId, async () => {
 			await ensureFolderExists(getIssuePathByStatus(dashboard, 'archived'));
@@ -818,330 +514,6 @@ ${originalBody}`;
 		});
 
 		new Notice(`Updated priority for ${issueId}`);
-	};
-
-	const setupWorktree = (
-		dashboard: DashboardConfig,
-		issueId: string,
-		issueName: string,
-		color?: string,
-		worktreeOriginFolder?: string,
-		scriptWorkingDirectory?: string
-	): void => {
-		const parsedWorktreeName = issueName.trim() !== '' ? issueName : issueId;
-		const worktreeBranch = sanitizeGitBranchName(parsedWorktreeName, issueId);
-		runWorktreeSetup(
-			dashboard,
-			issueId,
-			worktreeBranch,
-			color,
-			worktreeOriginFolder,
-			scriptWorkingDirectory
-		);
-	};
-
-	const runWorktreeSetup = (
-		dashboard: DashboardConfig,
-		issueId: string,
-		worktreeBranch: string,
-		color?: string,
-		worktreeOriginFolder?: string,
-		scriptWorkingDirectory?: string
-	): void => {
-		const worktreeSetupLockKey = getIssueFolderStorageKey(dashboard.id, issueId);
-		if (activeWorktreeSetupLocks.has(worktreeSetupLockKey)) {
-			new Notice(`Worktree setup already in progress for ${issueId}`);
-			return;
-		}
-		activeWorktreeSetupLocks.add(worktreeSetupLockKey);
-
-		const resolvedWorktreeOriginFolder = worktreeOriginFolder ?? dashboard.projectFolder;
-		const expectedWorktreeFolder = getExpectedWorktreeFolder(
-			resolvedWorktreeOriginFolder,
-			worktreeBranch
-		);
-		const resolveDetectedWorktreeFolder = (
-			fallbackExpectedFolder: string | undefined
-		): string | undefined => {
-			if (
-				resolvedWorktreeOriginFolder !== undefined &&
-				resolvedWorktreeOriginFolder.trim() !== ''
-			) {
-				const detectedByGit = platformService.findWorktreePathForBranch(
-					resolvedWorktreeOriginFolder,
-					worktreeBranch
-				);
-				if (detectedByGit !== undefined && detectedByGit !== '') {
-					return detectedByGit;
-				}
-			}
-
-			return fallbackExpectedFolder;
-		};
-		const markSetupFailedIfIssueExists = async (): Promise<void> => {
-			try {
-				await updateIssueWorktreeMetadata(dashboard, issueId, {
-					worktree: true,
-					worktreeSetupState: 'failed'
-				});
-			} catch (error) {
-				if (isMissingIssueOrFileError(error)) {
-					return;
-				}
-
-				throw error;
-			}
-		};
-
-		const handlePollingTerminalError = async (error: unknown): Promise<void> => {
-			if (isMissingIssueOrFileError(error)) {
-				return;
-			}
-
-			await markSetupFailedIfIssueExists();
-		};
-
-		void (async () => {
-			try {
-				const initialDetectedFolder = resolveDetectedWorktreeFolder(expectedWorktreeFolder);
-				const scriptDirectory = scriptWorkingDirectory ?? resolvedWorktreeOriginFolder;
-				const capturedBaseBranch =
-					scriptDirectory !== undefined
-						? platformService.getCurrentBranch(scriptDirectory)
-						: undefined;
-				await updateIssueWorktreeMetadata(dashboard, issueId, {
-					worktree: true,
-					worktreeBranch,
-					worktreeOriginFolder: resolvedWorktreeOriginFolder,
-					worktreeExpectedFolder: initialDetectedFolder,
-					worktreeSetupState: 'pending',
-					worktreeBaseBranch: capturedBaseBranch
-				});
-
-				platformService.runWorktreeSetupScript(
-					worktreeBranch,
-					color,
-					scriptDirectory ?? resolvedWorktreeOriginFolder,
-					plugin.settings.worktreeBashPath
-				);
-
-				const pollIterations = Math.floor(
-					WORKTREE_SETUP_TIMEOUT_MS / WORKTREE_SETUP_POLL_INTERVAL_MS
-				);
-				for (let iteration = 0; iteration < pollIterations; iteration += 1) {
-					await new Promise((resolve) => {
-						setTimeout(resolve, WORKTREE_SETUP_POLL_INTERVAL_MS);
-					});
-
-					const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
-					const expectedFolder = metadata.worktreeExpectedFolder;
-					const detectedFolder = resolveDetectedWorktreeFolder(expectedFolder);
-					if (detectedFolder === undefined || detectedFolder === '') {
-						continue;
-					}
-
-					const detectedFolderExists = await doesPathExist(detectedFolder);
-					if (!detectedFolderExists) {
-						continue;
-					}
-
-					assignIssueFolderLikeManual(dashboard.id, issueId, detectedFolder);
-					const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
-					const isFolderAssigned =
-						plugin.settings.issueFolders[issueFolderKey] === detectedFolder;
-					if (!isFolderAssigned) {
-						continue;
-					}
-
-					await updateIssueWorktreeMetadata(dashboard, issueId, {
-						worktree: true,
-						worktreeExpectedFolder: detectedFolder,
-						worktreeSetupState: 'active'
-					});
-					platformService.openTerminal(detectedFolder, color);
-					return;
-				}
-
-				await markSetupFailedIfIssueExists();
-			} catch (error) {
-				await handlePollingTerminalError(error);
-			} finally {
-				activeWorktreeSetupLocks.delete(worktreeSetupLockKey);
-			}
-		})();
-	};
-
-	const retryWorktreeSetup = async (
-		dashboard: DashboardConfig,
-		issueId: string,
-		branchOverride?: string
-	): Promise<void> => {
-		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
-		const validatedBranchOverride =
-			branchOverride !== undefined &&
-			branchOverride !== '' &&
-			isValidGitBranchName(branchOverride)
-				? branchOverride
-				: undefined;
-		const worktreeBranch =
-			validatedBranchOverride !== undefined
-				? validatedBranchOverride
-				: metadata.worktreeBranch !== undefined && metadata.worktreeBranch !== ''
-					? metadata.worktreeBranch
-					: sanitizeGitBranchName(issueId, issueId);
-		const issueColor = plugin.settings.issueColors[issueId];
-		runWorktreeSetup(
-			dashboard,
-			issueId,
-			worktreeBranch,
-			issueColor,
-			metadata.worktreeOriginFolder
-		);
-	};
-
-	const assignExistingWorktree = async (
-		dashboard: DashboardConfig,
-		issueId: string,
-		worktreePath: string,
-		worktreeBranch: string | undefined,
-		worktreeOriginFolder: string
-	): Promise<void> => {
-		const capturedBaseBranch = platformService.getCurrentBranch(worktreeOriginFolder);
-		await updateIssueWorktreeMetadata(dashboard, issueId, {
-			worktree: true,
-			worktreeBranch,
-			worktreeOriginFolder,
-			worktreeExpectedFolder: worktreePath,
-			worktreeSetupState: 'active',
-			worktreeBaseRepository: worktreeOriginFolder,
-			worktreeBaseBranch: capturedBaseBranch
-		});
-		assignIssueFolderLikeManual(dashboard.id, issueId, worktreePath);
-		new Notice(`Worktree assigned: ${issueId}`);
-	};
-
-	const refreshWorktreeState = async (
-		dashboard: DashboardConfig,
-		issueId: string
-	): Promise<void> => {
-		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
-		if (!metadata.worktree) {
-			return;
-		}
-
-		const expectedFolder = metadata.worktreeExpectedFolder;
-		const originFolder = metadata.worktreeOriginFolder;
-		const branch = metadata.worktreeBranch;
-
-		if (expectedFolder !== undefined && expectedFolder !== '') {
-			const folderExists = platformService.pathExists(expectedFolder);
-			if (folderExists) {
-				if (metadata.worktreeSetupState !== 'active') {
-					await updateIssueWorktreeMetadata(dashboard, issueId, {
-						worktree: true,
-						worktreeSetupState: 'active'
-					});
-				}
-				new Notice(`Worktree is active: ${issueId}`);
-				plugin.triggerDashboardRefresh();
-				return;
-			}
-		}
-
-		if (
-			branch !== undefined &&
-			branch !== '' &&
-			originFolder !== undefined &&
-			originFolder !== ''
-		) {
-			const branchMissing = platformService.isGitBranchMissing(originFolder, branch);
-			if (branchMissing) {
-				await updateIssueWorktreeMetadata(dashboard, issueId, {
-					worktree: true,
-					worktreeSetupState: 'failed'
-				});
-				new Notice(`Worktree branch missing: ${branch}`);
-				plugin.triggerDashboardRefresh();
-				return;
-			}
-
-			const detectedFolder = platformService.findWorktreePathForBranch(originFolder, branch);
-			if (detectedFolder !== undefined && detectedFolder !== '') {
-				const detectedFolderExists = platformService.pathExists(detectedFolder);
-				if (detectedFolderExists) {
-					await updateIssueWorktreeMetadata(dashboard, issueId, {
-						worktree: true,
-						worktreeExpectedFolder: detectedFolder,
-						worktreeSetupState: 'active'
-					});
-					assignIssueFolderLikeManual(dashboard.id, issueId, detectedFolder);
-					new Notice(`Worktree is active: ${issueId}`);
-					plugin.triggerDashboardRefresh();
-					return;
-				}
-			}
-		}
-
-		if (metadata.worktreeSetupState !== 'failed') {
-			await updateIssueWorktreeMetadata(dashboard, issueId, {
-				worktree: true,
-				worktreeSetupState: 'failed'
-			});
-			new Notice(`Worktree folder not found: ${issueId}`);
-		} else {
-			new Notice(`Worktree state unchanged: ${issueId}`);
-		}
-		plugin.triggerDashboardRefresh();
-	};
-
-	const removeWorktree = (
-		dashboard: DashboardConfig,
-		issueId: string,
-		options?: { skipScriptConfirmation?: boolean }
-	): void => {
-		void (async () => {
-			try {
-				const issueColor = plugin.settings.issueColors[issueId];
-				const issueFolderKey = getIssueFolderStorageKey(dashboard.id, issueId);
-				const hasFallbackIssueFolder = Boolean(
-					Object.prototype.hasOwnProperty.call(
-						plugin.settings.issueFolders,
-						issueFolderKey
-					)
-				);
-				const fallbackIssueFolder = hasFallbackIssueFolder
-					? plugin.settings.issueFolders[issueFolderKey]
-					: undefined;
-				const worktreeOriginFolder = await getWorktreeOriginFolder(dashboard, issueId);
-				const removalWorkingDirectory =
-					worktreeOriginFolder ?? fallbackIssueFolder ?? dashboard.projectFolder;
-
-				const launchSucceeded = platformService.runWorktreeRemovalScript(
-					issueId,
-					removalWorkingDirectory,
-					plugin.settings.worktreeBashPath,
-					{
-						skipConfirmation: options?.skipScriptConfirmation === true,
-						tabColor: issueColor
-					}
-				);
-				if (!launchSucceeded) {
-					new Notice(
-						'Could not launch remove-worktree script. Worktree association was not cleared.'
-					);
-					return;
-				}
-
-				try {
-					await clearIssueWorktreeAssociation(dashboard, issueId);
-				} catch (clearError) {
-					console.error('Failed to clear worktree association:', clearError);
-				}
-			} catch (error) {
-				console.error('Worktree removal failed:', error);
-				new Notice('Worktree removal failed');
-			}
-		})();
 	};
 
 	const renameIssue = async (
@@ -1259,21 +631,29 @@ ${originalBody}`;
 		new Notice(`GitHub link removed from ${issueId}`);
 	};
 
+	const worktreeOps = createWorktreeOperations({
+		app,
+		plugin,
+		platformService,
+		activeWorktreeSetupLocks,
+		getIssueFileOrThrow,
+		editDashboardIssueBlock,
+		upsertDashboardIssueBlockField,
+		assignIssueFolderLikeManual,
+		doesPathExist,
+		isMissingIssueOrFileError
+	});
+
 	return {
 		createIssue,
 		importNoteAsIssue,
-		hasAssociatedWorktree,
 		archiveIssue,
 		unarchiveIssue,
 		deleteIssue,
 		updateIssuePriority,
 		renameIssue,
-		setupWorktree,
-		retryWorktreeSetup,
-		assignExistingWorktree,
-		removeWorktree,
 		addGitHubLink,
 		removeGitHubLink,
-		refreshWorktreeState
+		...worktreeOps
 	};
 }
