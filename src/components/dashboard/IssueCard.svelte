@@ -32,6 +32,7 @@
       ? plugin.settings.dashboards.find((d) => d.id === params!.dashboard)
       : undefined
   );
+  // svelte-ignore state_referenced_locally
   let isCollapsed = $state(
     params !== null ? plugin.settings.collapsedIssues[params.issue] === true : false
   );

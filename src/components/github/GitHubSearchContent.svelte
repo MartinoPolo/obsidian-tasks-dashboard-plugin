@@ -6,20 +6,21 @@
     GitHubRepository,
     GitHubSearchScope
   } from '../../types';
-  import type {
-    GitHubSearchMode,
-    GitHubSearchModalLinkedRepositories
-  } from '../../modals/GitHubSearchModal';
+  import type { GitHubSearchModalLinkedRepositories } from '../../modals/GitHubSearchModal';
   import { attachAutofocus } from '../../lib/attach-autofocus';
-  import { getStateClass, getStateText, truncateText } from '../../utils/github-helpers';
-  import Icon from '../Icon.svelte';
-
-  export interface ScopeOption {
-    value: string;
-    scope: GitHubSearchScope;
-    label: string;
-    repository?: string;
-  }
+  import GitHubSearchResultItem from './GitHubSearchResultItem.svelte';
+  import GitHubSearchButtonBar from './GitHubSearchButtonBar.svelte';
+  import {
+    type ScopeOption,
+    SEARCH_DEBOUNCE_MS,
+    TITLE_TRUNCATION_LENGTH,
+    OTHER_REPOSITORY_SCOPE,
+    SEARCH_MODE_LABELS,
+    resolveConfig,
+    buildScopeOptions
+  } from './github-search-config';
+  import { isGitHubUrl, createSearchEngine } from './github-search-engine';
+  import { createSearchDataLoaders } from './github-search-data-loaders';
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -30,36 +31,11 @@
     onback?: () => void;
   }
 
-  const SEARCH_DEBOUNCE_MS = 300;
-  const MAX_COMBINED_RESULTS = 20;
-  const RECENT_ISSUES_LIMIT = 20;
-  const RECENT_ISSUES_FETCH_LIMIT = RECENT_ISSUES_LIMIT * 3;
-  const TITLE_TRUNCATION_LENGTH = 50;
-  const OTHER_REPOSITORY_SCOPE: GitHubSearchScope = 'other-repo';
-
   let { plugin, dashboard, onselect, linkedRepositories, oncancel, onback }: Props = $props();
 
   // Resolve config once from linkedRepositories (stable for component lifetime)
-  function resolveConfig() {
-    const linked = linkedRepositories;
-    const skip = linked?.skipButtonLabel ?? 'Cancel';
-    return {
-      issueLinkedRepository: linked?.issueRepository,
-      dashboardLinkedRepositories: (dashboard.githubRepos ?? []).filter((repo: string) => repo !== ''),
-      showBackButton: linked?.showBackButton ?? false,
-      skipButtonLabel: skip,
-      confirmButtonLabel: linked?.confirmButtonLabel ?? 'Select',
-      selectionLockUntilCleared: linked?.selectionLockUntilCleared ?? false,
-      searchMode: (linked?.searchMode ?? 'issues-and-prs') as GitHubSearchMode,
-      enterSkipsWithoutSelection: linked?.enterSkipsWithoutSelection ?? false,
-      separateSkipAndCancelButtons: linked?.separateSkipAndCancelButtons ?? false,
-      enterSkipLabel: linked?.enterSkipLabel ?? skip,
-      showSkipButton: linked?.showSkipButton ?? true,
-      resolvedOnCancel: linked?.onCancel ?? oncancel,
-      resolvedOnBack: linked?.onBack ?? onback
-    };
-  }
-  const config = resolveConfig();
+  // svelte-ignore state_referenced_locally
+  const config = resolveConfig(dashboard, linkedRepositories, oncancel, onback);
   const {
     issueLinkedRepository,
     dashboardLinkedRepositories,
@@ -76,9 +52,12 @@
     resolvedOnBack
   } = config;
 
-  // Build scope options
-  const scopeOptions: ScopeOption[] = buildScopeOptions();
+  const scopeOptions = buildScopeOptions(issueLinkedRepository, dashboardLinkedRepositories);
   const initialOption = scopeOptions[0];
+  const searchModeLabels = SEARCH_MODE_LABELS[searchMode];
+
+  // svelte-ignore state_referenced_locally
+  const dataLoaders = createSearchDataLoaders(plugin.githubService);
 
   // Reactive state
   let searchQuery: string = $state('');
@@ -90,9 +69,8 @@
   let isLoading: boolean = $state(false);
   let loadingMessage: string = $state('');
   let lockedSelection: GitHubIssueMetadata | undefined = $state.raw(undefined);
-  let authenticatedUsername: string | undefined = $state(undefined);
-  let userRepositories: GitHubRepository[] | undefined = $state.raw(undefined);
   let selectedOtherRepository: string | undefined = $state(undefined);
+  let userRepositories: GitHubRepository[] | undefined = $state.raw(undefined);
   let hasResolved: boolean = $state(false);
   let urlPreview: string | undefined = $state(undefined);
   let resultsTitle: string = $state('');
@@ -100,8 +78,6 @@
 
   let searchTimeout: ReturnType<typeof setTimeout> | undefined;
   let activeRequestId = 0;
-  let authenticatedUsernamePromise: Promise<void> | undefined;
-  let userRepositoriesPromise: Promise<void> | undefined;
 
   let showOtherRepositorySelector: boolean = $derived(searchScope === OTHER_REPOSITORY_SCOPE);
 
@@ -122,85 +98,6 @@
     return confirmButtonLabel;
   });
 
-  function hasEnterSelectableTarget(): boolean {
-    if (urlPreview !== undefined) {
-      return true;
-    }
-    if (selectionLockUntilCleared && lockedSelection !== undefined) {
-      return true;
-    }
-    return selectedIndex >= 0 && selectedIndex < currentResults.length;
-  }
-
-  function buildScopeOptions(): ScopeOption[] {
-    const options: ScopeOption[] = [];
-    const issueRepo = issueLinkedRepository;
-
-    if (issueRepo !== undefined && issueRepo !== '') {
-      options.push({
-        value: 'linked-issue',
-        scope: 'linked-issue',
-        label: `Issue linked repository (${issueRepo})`,
-        repository: issueRepo
-      });
-    }
-
-    for (const dashboardRepo of dashboardLinkedRepositories) {
-      if (dashboardRepo === issueRepo) {
-        continue;
-      }
-      const optionValue =
-        dashboardLinkedRepositories.length > 1
-          ? `linked-dashboard:${dashboardRepo}`
-          : 'linked-dashboard';
-      options.push({
-        value: optionValue,
-        scope: 'linked-dashboard',
-        label: `Dashboard repository (${dashboardRepo})`,
-        repository: dashboardRepo
-      });
-    }
-
-    options.push({
-      value: 'my-repos',
-      scope: 'my-repos',
-      label: 'My repositories'
-    });
-    options.push({
-      value: OTHER_REPOSITORY_SCOPE,
-      scope: OTHER_REPOSITORY_SCOPE,
-      label: 'Other repository'
-    });
-
-    return options;
-  }
-
-  interface SearchModeLabels {
-    modalTitle: string;
-    searchPlaceholder: string;
-    selectedResultsTitle: string;
-  }
-
-  const SEARCH_MODE_LABELS: Record<GitHubSearchMode, SearchModeLabels> = {
-    'issues-only': {
-      modalTitle: 'GitHub Issue (optional)',
-      searchPlaceholder: 'Search issues or paste URL...',
-      selectedResultsTitle: 'Selected GitHub Issue'
-    },
-    'prs-only': {
-      modalTitle: 'GitHub PR (optional)',
-      searchPlaceholder: 'Search pull requests or paste URL...',
-      selectedResultsTitle: 'Selected GitHub PR'
-    },
-    'issues-and-prs': {
-      modalTitle: 'GitHub Issue/PR (optional)',
-      searchPlaceholder: 'Search issues or paste URL...',
-      selectedResultsTitle: 'Selected GitHub Issue/PR'
-    }
-  };
-
-  const searchModeLabels = SEARCH_MODE_LABELS[searchMode];
-
   function getRepoForCurrentScope(): string | undefined {
     if (searchScope === 'linked-issue') {
       return selectedScopeRepository ?? issueLinkedRepository;
@@ -214,8 +111,23 @@
     return undefined;
   }
 
-  function isGitHubUrl(text: string): boolean {
-    return /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|pull)\/\d+$/.test(text.trim());
+  // Create search engine with reactive scope callbacks
+  // svelte-ignore state_referenced_locally
+  const searchEngine = createSearchEngine({
+    githubService: plugin.githubService,
+    searchMode,
+    getRepoForCurrentScope,
+    isMyReposScope: () => searchScope === 'my-repos'
+  });
+
+  function hasEnterSelectableTarget(): boolean {
+    if (urlPreview !== undefined) {
+      return true;
+    }
+    if (selectionLockUntilCleared && lockedSelection !== undefined) {
+      return true;
+    }
+    return selectedIndex >= 0 && selectedIndex < currentResults.length;
   }
 
   function nextRequestId(): number {
@@ -229,139 +141,6 @@
 
   function parseScopeOptionBySelectValue(value: string): ScopeOption | undefined {
     return scopeOptions.find((option) => option.value === value);
-  }
-
-  function isResultAllowedByMode(item: GitHubIssueMetadata): boolean {
-    if (searchMode === 'issues-only') {
-      return item.isPR === false;
-    }
-    if (searchMode === 'prs-only') {
-      return item.isPR === true;
-    }
-    return true;
-  }
-
-  function rankResults(results: GitHubIssueMetadata[]): GitHubIssueMetadata[] {
-    const currentUsername = authenticatedUsername?.toLowerCase();
-    return [...results].sort((left, right) => {
-      const leftAssigned =
-        currentUsername !== undefined &&
-        left.assignees.some((assignee) => assignee.toLowerCase() === currentUsername)
-          ? 1
-          : 0;
-      const rightAssigned =
-        currentUsername !== undefined &&
-        right.assignees.some((assignee) => assignee.toLowerCase() === currentUsername)
-          ? 1
-          : 0;
-      if (leftAssigned !== rightAssigned) {
-        return rightAssigned - leftAssigned;
-      }
-      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-    });
-  }
-
-  async function loadAuthenticatedUsername(): Promise<void> {
-    try {
-      authenticatedUsername = await plugin.githubService.getAuthenticatedUser();
-    } catch {
-      // Proceed without username — ranking will skip assignee boosting
-      authenticatedUsername = undefined;
-    }
-  }
-
-  async function ensureAuthenticatedUsernameLoaded(): Promise<void> {
-    if (plugin.githubService.isAuthenticated() === false) {
-      return;
-    }
-    if (authenticatedUsername !== undefined) {
-      return;
-    }
-    if (authenticatedUsernamePromise === undefined) {
-      authenticatedUsernamePromise = loadAuthenticatedUsername().finally(() => {
-        authenticatedUsernamePromise = undefined;
-      });
-    }
-    await authenticatedUsernamePromise;
-  }
-
-  async function loadUserRepositories(): Promise<void> {
-    try {
-      userRepositories = await plugin.githubService.getUserRepositories();
-      if (userRepositories.length > 0) {
-        const nextRepository = userRepositories[0].fullName;
-        if (nextRepository !== '') {
-          selectedOtherRepository = nextRepository;
-        }
-      }
-    } catch {
-      // Fallback to empty list so the dropdown renders "No repositories available"
-      userRepositories = [];
-    }
-  }
-
-  async function ensureUserRepositoriesLoaded(): Promise<void> {
-    if (userRepositories !== undefined) {
-      return;
-    }
-    if (userRepositoriesPromise === undefined) {
-      userRepositoriesPromise = loadUserRepositories().finally(() => {
-        userRepositoriesPromise = undefined;
-      });
-    }
-    await userRepositoriesPromise;
-  }
-
-  async function searchByMode(query: string): Promise<GitHubIssueMetadata[]> {
-    if (searchScope === 'my-repos') {
-      if (searchMode === 'issues-only') {
-        const issueResults = await plugin.githubService.searchIssuesInMyRepos(query);
-        return issueResults.items;
-      }
-      if (searchMode === 'prs-only') {
-        const prResults = await plugin.githubService.searchPullRequestsInMyRepos(query);
-        return prResults.items;
-      }
-      const [issueResults, prResults] = await Promise.all([
-        plugin.githubService.searchIssuesInMyRepos(query),
-        plugin.githubService.searchPullRequestsInMyRepos(query)
-      ]);
-      return [...issueResults.items, ...prResults.items];
-    }
-
-    const repo = getRepoForCurrentScope();
-    if (repo === undefined || repo === '') {
-      return [];
-    }
-
-    if (searchMode === 'issues-only') {
-      const issueResults = await plugin.githubService.searchIssues(query, repo);
-      return issueResults.items;
-    }
-    if (searchMode === 'prs-only') {
-      const prResults = await plugin.githubService.searchPullRequests(query, repo);
-      return prResults.items;
-    }
-
-    const [issueResults, prResults] = await Promise.all([
-      plugin.githubService.searchIssues(query, repo),
-      plugin.githubService.searchPullRequests(query, repo)
-    ]);
-    return [...issueResults.items, ...prResults.items];
-  }
-
-  async function getNumericRepositoryMatches(query: string): Promise<GitHubIssueMetadata[]> {
-    if (!/^\d+$/.test(query)) {
-      return [];
-    }
-    const scopedRepository = getRepoForCurrentScope();
-    if (scopedRepository === undefined || scopedRepository === '') {
-      return [];
-    }
-    const recent = await plugin.githubService.getRecentIssues(scopedRepository, RECENT_ISSUES_FETCH_LIMIT);
-    return recent.filter((item) => {
-      return String(item.number).includes(query) && isResultAllowedByMode(item);
-    });
   }
 
   function showLoadingState(message: string): void {
@@ -402,34 +181,16 @@
     selectedIndex = -1;
 
     try {
-      await ensureAuthenticatedUsernameLoaded();
-
-      let results: GitHubIssueMetadata[] = [];
-      if (searchScope === 'my-repos') {
-        results = rankResults(await searchByMode('')).slice(0, RECENT_ISSUES_LIMIT);
-      } else {
-        const repo = getRepoForCurrentScope();
-        if (repo === undefined || repo === '') {
-          if (!isLatestRequest(requestId)) {
-            return;
-          }
-          setResultsWithSelection([], 'Recent Issues', false);
-          return;
-        }
-        const recentResults = await plugin.githubService.getRecentIssues(
-          repo,
-          RECENT_ISSUES_FETCH_LIMIT
-        );
-        results = rankResults(
-          recentResults.filter((item) => isResultAllowedByMode(item))
-        ).slice(0, RECENT_ISSUES_LIMIT);
-      }
+      await dataLoaders.ensureAuthenticatedUsernameLoaded();
+      const searchResults = await searchEngine.loadRecentIssues(
+        dataLoaders.getAuthenticatedUsername()
+      );
 
       if (!isLatestRequest(requestId)) {
         return;
       }
 
-      setResultsWithSelection(results, 'Recent Issues', false);
+      setResultsWithSelection(searchResults.results, searchResults.title, false);
     } catch {
       if (!isLatestRequest(requestId)) {
         return;
@@ -448,25 +209,21 @@
     selectedIndex = -1;
 
     try {
-      await ensureAuthenticatedUsernameLoaded();
-
-      const searchResults = await searchByMode(query);
-      const numericMatches = await getNumericRepositoryMatches(query);
+      await dataLoaders.ensureAuthenticatedUsernameLoaded();
+      const searchResults = await searchEngine.performSearch(
+        query,
+        dataLoaders.getAuthenticatedUsername()
+      );
 
       if (!isLatestRequest(requestId)) {
         return;
       }
 
-      const unique = new Map<string, GitHubIssueMetadata>();
-      for (const match of numericMatches) {
-        unique.set(match.url, match);
-      }
-      for (const result of rankResults(searchResults)) {
-        unique.set(result.url, result);
-      }
-
-      const combined = Array.from(unique.values()).slice(0, MAX_COMBINED_RESULTS);
-      setResultsWithSelection(combined, `Search Results (${combined.length})`, preselectFirstResult);
+      setResultsWithSelection(
+        searchResults.results,
+        searchResults.title,
+        preselectFirstResult
+      );
     } catch {
       if (!isLatestRequest(requestId)) {
         return;
@@ -606,7 +363,11 @@
     selectedScopeRepository = selectedOption?.repository;
 
     if (searchScope === OTHER_REPOSITORY_SCOPE) {
-      void ensureUserRepositoriesLoaded().then(() => {
+      void dataLoaders.ensureUserRepositoriesLoaded().then((repos) => {
+        userRepositories = repos;
+        if (repos.length > 0 && repos[0].fullName !== '') {
+          selectedOtherRepository = repos[0].fullName;
+        }
         handleSearchInput('scope');
       });
       return;
@@ -688,9 +449,11 @@
     goBack();
   }
 
+  const hasBackNavigation = showBackButton && resolvedOnBack !== undefined;
+
   // Initialize on mount
   $effect(() => {
-    void ensureAuthenticatedUsernameLoaded();
+    void dataLoaders.ensureAuthenticatedUsernameLoaded();
     void loadRecentIssues(nextRequestId());
   });
 
@@ -708,9 +471,9 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="tdc-gh-search-content"
-  onmousedown={showBackButton && resolvedOnBack !== undefined ? handleMouseBack : undefined}
-  onmouseup={showBackButton && resolvedOnBack !== undefined ? handleMouseBack : undefined}
-  onauxclick={showBackButton && resolvedOnBack !== undefined ? handleMouseBack : undefined}
+  onmousedown={hasBackNavigation ? handleMouseBack : undefined}
+  onmouseup={hasBackNavigation ? handleMouseBack : undefined}
+  onauxclick={hasBackNavigation ? handleMouseBack : undefined}
 >
   <div class="tdc-prompt-title">{searchModeLabels.modalTitle}</div>
 
@@ -772,55 +535,28 @@
       <div class="tdc-gh-results-title">{resultsTitle}</div>
       <div class="tdc-gh-results-list">
         {#each currentResults as item, index (item.url)}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            class={['tdc-gh-result-item', index === selectedIndex && 'tdc-gh-selected']}
+          <GitHubSearchResultItem
+            {item}
+            isSelected={index === selectedIndex}
+            titleTruncationLength={TITLE_TRUNCATION_LENGTH}
             onclick={() => handleResultItemClick(index, item)}
-          >
-            <span class="tdc-gh-result-icon">
-              <Icon name={item.isPR ? 'pr' : 'issue'} size={16} />
-            </span>
-            <span class="tdc-gh-result-number">#{item.number}</span>
-            <span class="tdc-gh-result-title">{truncateText(item.title, TITLE_TRUNCATION_LENGTH)}</span>
-            <span class={`tdc-gh-result-state tdc-gh-state-${getStateClass(item)}`}>{getStateText(item)}</span>
-            {#if item.repository !== ''}
-              <span class="tdc-gh-result-repo">{item.repository}</span>
-            {/if}
-          </div>
+          />
         {/each}
       </div>
     {/if}
   </div>
 
-  <div class="tdc-prompt-buttons">
-    {#if showBackButton && resolvedOnBack !== undefined}
-      <button class="tdc-prompt-btn tdc-prompt-btn-secondary" onclick={() => goBack()}>
-        Back <kbd>&#x27F5;</kbd>
-      </button>
-    {/if}
-
-    {#if separateSkipAndCancelButtons}
-      {#if showSkipButton}
-        <button class="tdc-prompt-btn tdc-prompt-btn-secondary" onclick={() => skipSelection()}>
-          {skipButtonLabel}
-        </button>
-      {/if}
-      <button class="tdc-prompt-btn tdc-prompt-btn-cancel" onclick={() => cancelSelection()}>
-        Cancel <kbd>Esc</kbd>
-      </button>
-    {:else}
-      {#if showSkipButton}
-        <button class="tdc-prompt-btn tdc-prompt-btn-secondary" onclick={() => skipSelection()}>
-          {skipButtonLabel} <kbd>Esc</kbd>
-        </button>
-      {/if}
-    {/if}
-
-    <button class="tdc-prompt-btn tdc-prompt-btn-confirm" onclick={() => selectCurrent()}>
-      {enterButtonLabel} <kbd>&#x21B5;</kbd>
-    </button>
-  </div>
+  <GitHubSearchButtonBar
+    showBackButton={hasBackNavigation}
+    {showSkipButton}
+    {separateSkipAndCancelButtons}
+    {skipButtonLabel}
+    {enterButtonLabel}
+    onback={() => goBack()}
+    onskip={() => skipSelection()}
+    oncancel={() => cancelSelection()}
+    onconfirm={() => selectCurrent()}
+  />
 </div>
 
 <style>
@@ -890,56 +626,6 @@
   padding: 4px 0;
 }
 
-.tdc-gh-result-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: var(--tdc-transition-fast);
-}
-
-.tdc-gh-result-item:hover,
-.tdc-gh-selected {
-  background: var(--background-modifier-hover);
-}
-
-.tdc-gh-result-icon {
-  flex-shrink: 0;
-  color: var(--text-muted);
-}
-
-.tdc-gh-result-icon :global(svg) {
-  width: 16px;
-  height: 16px;
-}
-
-.tdc-gh-result-number {
-  font-weight: 600;
-  color: var(--text-accent);
-  flex-shrink: 0;
-}
-
-.tdc-gh-result-title {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tdc-gh-result-state {
-  font-size: 0.75em;
-  padding: 2px 6px;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-.tdc-gh-result-repo {
-  font-size: 0.75em;
-  color: var(--text-faint);
-  font-family: monospace;
-}
-
 .tdc-gh-loading {
   padding: 12px;
   color: var(--text-muted);
@@ -968,5 +654,4 @@
   color: var(--text-muted);
   font-size: 0.85em;
 }
-
 </style>
