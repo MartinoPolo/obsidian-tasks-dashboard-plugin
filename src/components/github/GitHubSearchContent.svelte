@@ -7,6 +7,7 @@
     GitHubSearchScope
   } from '../../types';
   import type { GitHubSearchModalLinkedRepositories } from '../../modals/GitHubSearchModal';
+  import { onMount, onDestroy } from 'svelte';
   import { attachAutofocus } from '../../lib/attach-autofocus';
   import GitHubSearchResultItem from './GitHubSearchResultItem.svelte';
   import GitHubSearchButtonBar from './GitHubSearchButtonBar.svelte';
@@ -452,19 +453,17 @@
   const hasBackNavigation = showBackButton && resolvedOnBack !== undefined;
 
   // Initialize on mount
-  $effect(() => {
+  onMount(() => {
     void dataLoaders.ensureAuthenticatedUsernameLoaded();
     void loadRecentIssues(nextRequestId());
   });
 
   // Cleanup debounce on destroy
-  $effect(() => {
-    return () => {
-      if (searchTimeout !== undefined) {
-        clearTimeout(searchTimeout);
-        searchTimeout = undefined;
-      }
-    };
+  onDestroy(() => {
+    if (searchTimeout !== undefined) {
+      clearTimeout(searchTimeout);
+      searchTimeout = undefined;
+    }
   });
 </script>
 

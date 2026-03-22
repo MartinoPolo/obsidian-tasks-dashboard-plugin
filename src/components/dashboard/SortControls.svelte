@@ -31,6 +31,7 @@
   let isSortOpen = $state(false);
 
   const platformService = createPlatformService();
+  const DOM_SETTLE_DELAY_MS = 120;
 
   let dashboardId = $derived(source.match(/dashboard:\s*([\w-]+)/)?.[1]);
   let dashboard = $derived(
@@ -43,12 +44,11 @@
   let hasFolder = $derived(projectFolder !== undefined && projectFolder !== '');
   let hasRepos = $derived(linkedRepos.length > 0);
   let visibility = $derived(dashboard !== undefined ? getButtonVisibility(dashboard) : undefined);
-  let isGitRepository = $state(false);
-  $effect(() => {
-    isGitRepository = hasFolder && projectFolder !== undefined
+  let isGitRepository = $derived(
+    hasFolder && projectFolder !== undefined
       ? platformService.isGitRepositoryFolder(projectFolder)
-      : false;
-  });
+      : false
+  );
 
   let sortOptions = $derived.by(() => {
     if (dashboard === undefined) {
@@ -83,8 +83,10 @@
     if (dashboard === undefined) {
       return;
     }
-    new RepositoryLinkerModal(plugin, dashboard, (repos) => {
-      dashboard!.githubRepos = repos;
+    const currentDashboard = dashboard;
+    new RepositoryLinkerModal(plugin, currentDashboard, (repos) => {
+      if (currentDashboard === undefined) { return; }
+      currentDashboard.githubRepos = repos;
       void plugin.saveSettings();
       plugin.triggerDashboardRefresh();
       const count = repos.length;
@@ -184,6 +186,7 @@
     if (dashboard === undefined) {
       return;
     }
+    const currentDashboard = dashboard;
     const settingApi: unknown = Reflect.get(plugin.app, 'setting');
     if (typeof settingApi !== 'object' || settingApi === null) {
       return;
@@ -200,13 +203,13 @@
     }
 
     window.setTimeout(() => {
-      const selector = `.tdc-dashboard-config[data-dashboard-id="${dashboard!.id}"]`;
+      const selector = `.tdc-dashboard-config[data-dashboard-id="${currentDashboard.id}"]`;
       const dashboardSettings = document.querySelector(selector);
       if (dashboardSettings instanceof HTMLElement) {
         dashboardSettings.scrollIntoView({ behavior: 'smooth', block: 'start' });
         dashboardSettings.focus({ preventScroll: true });
       }
-    }, 120);
+    }, DOM_SETTLE_DELAY_MS);
   }
 </script>
 
@@ -225,7 +228,7 @@
             {linkedRepos.length === 1 ? 'Repository' : 'Repositories'}
           </span>
           <span class="tdc-dashboard-info-value">
-            {#each linkedRepos as repo, index}
+            {#each linkedRepos as repo, index (repo)}
               {#if index > 0}, {/if}
               <a
                 class="tdc-dashboard-info-link"

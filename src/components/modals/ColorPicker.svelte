@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { IssueColorEntry } from '../../utils/color';
   import {
     ISSUE_COLOR_PICKER_COLUMNS,
@@ -37,7 +37,7 @@
   let isLoaded: boolean = $state(false);
   const presetButtonRefs = new Map<string, HTMLButtonElement>();
 
-  $effect(() => {
+  onMount(() => {
     void loadAndRender();
   });
 

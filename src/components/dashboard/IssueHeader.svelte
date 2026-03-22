@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
   import type {
@@ -37,7 +37,7 @@
     actions: Map<IssueActionKey, IssueActionDescriptor>;
     layout: RuntimeIssueActionLayout;
     containerElement: HTMLElement;
-    getRow2VisibleActionKeys: () => Set<IssueActionKey>;
+    row2VisibleActionKeys: Set<IssueActionKey>;
     isCollapsed: boolean;
     onCollapseToggle: (newCollapsed: boolean) => void;
   }
@@ -49,10 +49,15 @@
     actions,
     layout,
     containerElement,
-    getRow2VisibleActionKeys,
+    row2VisibleActionKeys,
     isCollapsed,
     onCollapseToggle
   }: Props = $props();
+
+  // Layout override — updated by OverflowPanel's onlayoutchange until next full refresh
+  // svelte-ignore state_referenced_locally
+  let actionLayout = $state(layout);
+  $effect(() => { actionLayout = layout; });
 
   // State
   let gitStatus = $state.raw<IssueGitStatus | undefined>(undefined);
@@ -124,7 +129,7 @@
 
   // Row1 visible action keys -- filter hidden
   let row1ActionKeys = $derived(
-    layout.row1.filter((key) => !layout.hidden.includes(key) && actions.has(key))
+    actionLayout.row1.filter((key) => !actionLayout.hidden.includes(key) && actions.has(key))
   );
 
   // getVisibleActionKeys for overflow panel
@@ -136,7 +141,7 @@
       }
     }
     if (!isCollapsed) {
-      for (const row2Key of getRow2VisibleActionKeys()) {
+      for (const row2Key of row2VisibleActionKeys) {
         visible.add(row2Key);
       }
     }
@@ -149,7 +154,7 @@
       button.classList.remove('tdc-row1-hidden-width');
     }
 
-    const orderedVisibleKeys = layout.row1.filter((key) => row1Buttons.has(key));
+    const orderedVisibleKeys = actionLayout.row1.filter((key) => row1Buttons.has(key));
     for (const key of [...orderedVisibleKeys].reverse()) {
       if (linkElement === undefined) {
         break;
@@ -284,9 +289,9 @@
   });
 
   // Initial layout after mount
-  $effect(() => {
+  onMount(() => {
     if (headerElement !== undefined) {
-      window.setTimeout(() => {
+      setTimeout(() => {
         applyRow1PriorityLayout();
         void applyBadgeCompaction();
       }, 0);
@@ -455,8 +460,9 @@
       anchorElement={overflowButtonElement}
       {dashboard}
       {actions}
-      {layout}
+      layout={actionLayout}
       {getVisibleActionKeys}
+      onlayoutchange={(newLayout) => { actionLayout = newLayout; }}
       onclose={() => { isOverflowOpen = false; }}
     />
   {/if}

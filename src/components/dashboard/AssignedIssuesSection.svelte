@@ -70,12 +70,11 @@
 
   const platformService = createPlatformService();
   let dashboardProjectFolder = $derived(dashboard?.projectFolder);
-  let worktreeCreationAvailable = $state(false);
-  $effect(() => {
-    worktreeCreationAvailable = dashboardProjectFolder !== undefined && dashboardProjectFolder !== ''
+  let worktreeCreationAvailable = $derived(
+    dashboardProjectFolder !== undefined && dashboardProjectFolder !== ''
       ? platformService.isGitRepositoryFolder(dashboardProjectFolder)
-      : false;
-  });
+      : false
+  );
 
   async function readDashboardUrls(dashboardConfig: DashboardConfig): Promise<Set<string>> {
     const urls = new Set<string>();
@@ -116,6 +115,7 @@
     return assignedIssuesLimitByRepo.get(repoKey) ?? DEFAULT_ASSIGNED_ISSUES_PER_REPO;
   }
 
+  // Intentionally non-reactive: only used as a script-level mutex guard, not referenced in template
   let isFetching = false;
   let activeCancelSignal: { cancelled: boolean } = { cancelled: false };
 

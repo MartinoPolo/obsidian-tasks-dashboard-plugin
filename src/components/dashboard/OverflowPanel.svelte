@@ -16,6 +16,7 @@
     actions: Map<IssueActionKey, IssueActionDescriptor>;
     layout: RuntimeIssueActionLayout;
     getVisibleActionKeys: () => Set<IssueActionKey>;
+    onlayoutchange: (layout: RuntimeIssueActionLayout) => void;
     onclose: () => void;
   }
 
@@ -26,24 +27,24 @@
     actions,
     layout,
     getVisibleActionKeys,
+    onlayoutchange,
     onclose
   }: Props = $props();
 
   let inSettingsMode = $state(false);
   let hasAutoSavedLayoutChanges = $state(false);
 
-  // Draft layout for settings mode — wrap in function to avoid state_referenced_locally warning
-  const getInitialDraftRow1 = () => [...layout.row1];
-  const getInitialDraftRow2 = () => [...layout.row2];
-  const getInitialDraftHidden = () => [...layout.hidden];
-  let draftRow1: IssueActionKey[] = $state(getInitialDraftRow1());
-  let draftRow2: IssueActionKey[] = $state(getInitialDraftRow2());
-  let draftHidden: IssueActionKey[] = $state(getInitialDraftHidden());
+  // svelte-ignore state_referenced_locally
+  let draftRow1: IssueActionKey[] = $state([...layout.row1]);
+  // svelte-ignore state_referenced_locally
+  let draftRow2: IssueActionKey[] = $state([...layout.row2]);
+  // svelte-ignore state_referenced_locally
+  let draftHidden: IssueActionKey[] = $state([...layout.hidden]);
 
   const resetDraftLayout = () => {
-    draftRow1 = getInitialDraftRow1();
-    draftRow2 = getInitialDraftRow2();
-    draftHidden = getInitialDraftHidden();
+    draftRow1 = [...layout.row1];
+    draftRow2 = [...layout.row2];
+    draftHidden = [...layout.hidden];
   };
 
   const resetDraftLayoutToDefaults = () => {
@@ -73,9 +74,7 @@
       hidden: draftHidden
     };
     saveIssueActionLayout(plugin, dashboard, draftLayout, { triggerRefresh: false });
-    layout.row1 = [...draftRow1];
-    layout.row2 = [...draftRow2];
-    layout.hidden = [...draftHidden];
+    onlayoutchange({ row1: [...draftRow1], row2: [...draftRow2], hidden: [...draftHidden] });
     hasAutoSavedLayoutChanges = true;
     new Notice('Dashboard action layout saved', 1200);
   };
@@ -119,14 +118,18 @@
     }
     if (direction === 'up') {
       if (pos.row === 'row1') {
+        // Row1 first item cannot move up — already at top
         return pos.index > 0;
       }
-      return pos.index >= 0;
+      // Row2 items can always move up: either swap within row2 or promote to row1
+      return true;
     }
     if (pos.row === 'row2') {
+      // Row2 last item cannot move down — already at bottom
       return pos.index < draftRow2.length - 1;
     }
-    return pos.index <= draftRow1.length - 1;
+    // Row1 items can always move down: either swap within row1 or demote to row2
+    return true;
   };
 
   const moveActionByOne = (actionKey: IssueActionKey, direction: 'up' | 'down') => {

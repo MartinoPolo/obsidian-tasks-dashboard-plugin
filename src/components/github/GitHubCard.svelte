@@ -24,7 +24,7 @@
   let iconName = $derived(metadata.isPR ? 'pr' as const : 'issue' as const);
 
   let hasBody = $derived(metadata.body !== undefined && metadata.body !== '');
-  let bodyText = $derived(hasBody ? metadata.body!.replace(/\r?\n/g, ' ') : '');
+  let bodyText = $derived(hasBody ? (metadata.body ?? '').replace(/\r?\n/g, ' ') : '');
 </script>
 
 {#snippet labels(labelList: GitHubLabel[], maxCount?: number)}

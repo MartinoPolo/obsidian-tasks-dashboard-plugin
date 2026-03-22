@@ -48,10 +48,14 @@
 
   const platformService = createPlatformService();
 
+  const DOM_SETTLE_DELAY_MS = 60;
+
   // Tracks whether the initial surface style application has fired
-  let hasMountedSurfaceStyles = $state(false);
+  let hasMountedSurfaceStyles = false;
 
   // Build action descriptors
+  // Intentionally runs twice on mount: returns empty map before issueContainerElement binds,
+  // then rebuilds with the element. The first empty-map pass is harmless.
   let issueActions = $derived.by(() => {
     if (params === null || dashboard === undefined || issueContainerElement === undefined) {
       return new Map<IssueActionKey, IssueActionDescriptor>();
@@ -96,7 +100,7 @@
       const currentIssue = params.issue;
       window.setTimeout(() => {
         applyIssueSurfaceStyles(containerElement, plugin.settings.issueColors[currentIssue]);
-      }, 60);
+      }, DOM_SETTLE_DELAY_MS);
     }
   });
 
@@ -166,7 +170,7 @@
       actions={issueActions}
       layout={actionLayout}
       {containerElement}
-      getRow2VisibleActionKeys={() => row2VisibleActionKeys}
+      {row2VisibleActionKeys}
       {isCollapsed}
       onCollapseToggle={handleCollapseToggle}
     />

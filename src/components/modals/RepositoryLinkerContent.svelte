@@ -1,17 +1,9 @@
 <script lang="ts">
-  import { setTooltip } from 'obsidian';
+  import { onMount } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import type { DashboardConfig, GitHubRepository } from '../../types';
+  import { attachTooltip } from '../../lib/attach-tooltip';
   import { truncateDescription } from '../../utils/string-utils';
-
-  function attachTooltip(node: HTMLElement, text: string): { update: (newText: string) => void } {
-    setTooltip(node, text, { delay: 500 });
-    return {
-      update(newText: string) {
-        setTooltip(node, newText, { delay: 500 });
-      }
-    };
-  }
 
   interface Props {
     plugin: TasksDashboardPlugin;
@@ -29,7 +21,7 @@
   let isLoading: boolean = $state(true);
   let loadError: string | undefined = $state(undefined);
 
-  $effect(() => {
+  onMount(() => {
     void loadRepositories();
   });
 
@@ -150,7 +142,7 @@
           <span>{repoName}</span>
           <button
             class="tdc-repo-linker-unlink-btn"
-            use:attachTooltip={`Unlink ${repoName}`}
+            {@attach attachTooltip(`Unlink ${repoName}`)}
             onclick={() => unlinkRepo(repoName)}
           >
             &times;

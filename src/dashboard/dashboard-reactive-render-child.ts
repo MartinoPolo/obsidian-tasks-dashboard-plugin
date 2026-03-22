@@ -26,7 +26,15 @@ export class ReactiveRenderChild extends MarkdownRenderChild {
 	) {
 		super(containerEl);
 
-		this.currentComponent = this.mountFunction(this.source, this.containerEl, this.ctx);
+		try {
+			this.currentComponent = this.mountFunction(this.source, this.containerEl, this.ctx);
+		} catch (error) {
+			console.error('Tasks Dashboard: initial render failed', error);
+			this.containerEl.createEl('span', {
+				text: 'Failed to render',
+				cls: 'tdc-error'
+			});
+		}
 
 		const workspaceEvents = plugin.app.workspace as unknown as WorkspaceCustomEventEmitter;
 		this.registerEvent(

@@ -73,32 +73,36 @@
   }
 
   async function updateAuthStatus(): Promise<void> {
-    if (authStatusEl === undefined) {
-      return;
-    }
-
-    authStatusEl.empty();
-    if (settings.githubAuth.method === 'pat' && isNonEmptyString(settings.githubAuth.token)) {
-      authStatusEl.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
-      const result = await plugin.githubService.validateToken();
-      authStatusEl.empty();
-      if (result.valid) {
-        authStatusEl.createSpan({
-          cls: 'tdc-auth-connected',
-          text: `Connected as @${result.username}`
-        });
-        updateRateLimitDisplay();
-      } else {
-        authStatusEl.createSpan({
-          cls: 'tdc-auth-error',
-          text:
-            result.error !== undefined && result.error !== ''
-              ? result.error
-              : 'Authentication failed'
-        });
+    try {
+      if (authStatusEl === undefined) {
+        return;
       }
-    } else {
-      authStatusEl.createSpan({ cls: 'tdc-auth-none', text: 'Not connected' });
+
+      authStatusEl.empty();
+      if (settings.githubAuth.method === 'pat' && isNonEmptyString(settings.githubAuth.token)) {
+        authStatusEl.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
+        const result = await plugin.githubService.validateToken();
+        authStatusEl.empty();
+        if (result.valid) {
+          authStatusEl.createSpan({
+            cls: 'tdc-auth-connected',
+            text: `Connected as @${result.username}`
+          });
+          updateRateLimitDisplay();
+        } else {
+          authStatusEl.createSpan({
+            cls: 'tdc-auth-error',
+            text:
+              result.error !== undefined && result.error !== ''
+                ? result.error
+                : 'Authentication failed'
+          });
+        }
+      } else {
+        authStatusEl.createSpan({ cls: 'tdc-auth-none', text: 'Not connected' });
+      }
+    } catch (error) {
+      console.error('Failed to update auth status:', error);
     }
   }
 
