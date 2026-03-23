@@ -1,11 +1,6 @@
 import { App, Modal } from 'obsidian';
-import {
-	createPromptButtonsContainer,
-	createPromptCancelButton,
-	createPromptConfirmButton,
-	registerEnterShortcut,
-	setupPromptModal
-} from './modal-helpers';
+import { mount, unmount } from 'svelte';
+import ConfirmationDialog from '../components/modals/ConfirmationDialog.svelte';
 
 export interface ArchiveConfirmationResult {
 	confirmed: boolean;
@@ -19,6 +14,7 @@ export class ArchiveConfirmationModal extends Modal {
 	private readonly onResult: (result: ArchiveConfirmationResult) => void;
 	private removeWorktree = true;
 	private hasResolved = false;
+	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -35,29 +31,33 @@ export class ArchiveConfirmationModal extends Modal {
 	}
 
 	onOpen() {
-		setupPromptModal(this, 'Confirm Archive');
+		const { modalEl, containerEl } = this;
+		containerEl.addClass('tdc-top-modal');
+		modalEl.addClass('tdc-prompt-modal');
 
-		this.renderMessage();
-		if (this.unfinishedTaskCount > 0) {
-			this.renderUnfinishedTasksWarning();
-		}
-		if (this.hasAssociatedWorktree) {
-			this.renderRemoveWorktreeCheckbox();
-		}
+		const warningText =
+			this.unfinishedTaskCount > 0
+				? `⚠ ${this.unfinishedTaskCount} unfinished ${this.unfinishedTaskCount === 1 ? 'task' : 'tasks'} remaining.`
+				: undefined;
 
-		const buttonContainer = createPromptButtonsContainer(this.contentEl);
-		void createPromptCancelButton(buttonContainer, () => {
-			this.cancel();
+		this.svelteComponent = mount(ConfirmationDialog, {
+			target: this.contentEl,
+			props: {
+				title: 'Confirm Archive',
+				message: `Are you sure you want to archive '${this.issueName}'?`,
+				confirmLabel: 'Archive',
+				warningText,
+				checkboxLabel: this.hasAssociatedWorktree
+					? 'Also remove associated worktree'
+					: undefined,
+				checkboxChecked: this.removeWorktree,
+				oncheckboxchange: (checked: boolean) => {
+					this.removeWorktree = checked;
+				},
+				onconfirm: () => this.confirm(),
+				oncancel: () => this.cancel()
+			}
 		});
-		void createPromptConfirmButton(
-			buttonContainer,
-			() => {
-				this.confirm();
-			},
-			'Archive'
-		);
-
-		this.registerEnterKeyConfirmation();
 	}
 
 	onClose() {
@@ -65,46 +65,17 @@ export class ArchiveConfirmationModal extends Modal {
 			this.hasResolved = true;
 			this.onResult({ confirmed: false, removeWorktree: this.removeWorktree });
 		}
+		if (this.svelteComponent !== undefined) {
+			void unmount(this.svelteComponent);
+			this.svelteComponent = undefined;
+		}
 		this.contentEl.empty();
-	}
-
-	private renderMessage() {
-		this.contentEl.createEl('p', {
-			text: `Are you sure you want to archive '${this.issueName}'?`,
-			cls: 'tdc-delete-message'
-		});
-	}
-
-	private renderUnfinishedTasksWarning() {
-		const label = this.unfinishedTaskCount === 1 ? 'task' : 'tasks';
-		this.contentEl.createEl('p', {
-			text: `⚠ ${this.unfinishedTaskCount} unfinished ${label} remaining.`,
-			cls: 'tdc-unfinished-tasks-warning'
-		});
-	}
-
-	private renderRemoveWorktreeCheckbox() {
-		const checkboxContainer = this.contentEl.createDiv({ cls: 'tdc-delete-checkbox-row' });
-		const checkboxId = 'tdc-archive-remove-worktree-checkbox';
-		const checkbox = checkboxContainer.createEl('input', {
-			type: 'checkbox',
-			attr: { id: checkboxId }
-		});
-		checkbox.checked = this.removeWorktree;
-		checkboxContainer.createEl('label', {
-			text: 'Also remove associated worktree',
-			attr: { for: checkboxId }
-		});
-		checkbox.addEventListener('change', () => {
-			this.removeWorktree = checkbox.checked;
-		});
 	}
 
 	private cancel() {
 		if (this.hasResolved) {
 			return;
 		}
-
 		this.hasResolved = true;
 		this.onResult({ confirmed: false, removeWorktree: this.removeWorktree });
 		this.close();
@@ -114,15 +85,8 @@ export class ArchiveConfirmationModal extends Modal {
 		if (this.hasResolved) {
 			return;
 		}
-
 		this.hasResolved = true;
 		this.close();
 		this.onResult({ confirmed: true, removeWorktree: this.removeWorktree });
-	}
-
-	private registerEnterKeyConfirmation() {
-		registerEnterShortcut(this.contentEl, () => {
-			this.confirm();
-		});
 	}
 }

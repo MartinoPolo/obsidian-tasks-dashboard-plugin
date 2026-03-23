@@ -1,11 +1,6 @@
 import { App, Modal } from 'obsidian';
-import {
-	createPromptButtonsContainer,
-	createPromptCancelButton,
-	createPromptConfirmButton,
-	registerEnterShortcut,
-	setupPromptModal
-} from './modal-helpers';
+import { mount, unmount } from 'svelte';
+import ConfirmationDialog from '../components/modals/ConfirmationDialog.svelte';
 
 export interface DashboardDeleteResult {
 	confirmed: boolean;
@@ -17,6 +12,7 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	private readonly onResult: (result: DashboardDeleteResult) => void;
 	private deleteFiles = false;
 	private hasResolved = false;
+	private svelteComponent: ReturnType<typeof mount> | undefined;
 
 	constructor(
 		app: App,
@@ -29,11 +25,27 @@ export class DashboardDeleteConfirmationModal extends Modal {
 	}
 
 	onOpen() {
-		setupPromptModal(this, 'Delete Dashboard');
-		this.renderDeleteMessage();
-		this.renderDeleteFilesCheckbox();
-		this.renderActionButtons();
-		this.registerKeyboardShortcuts();
+		const { modalEl, containerEl } = this;
+		containerEl.addClass('tdc-top-modal');
+		modalEl.addClass('tdc-prompt-modal');
+
+		this.svelteComponent = mount(ConfirmationDialog, {
+			target: this.contentEl,
+			props: {
+				title: 'Delete Dashboard',
+				message: `Are you sure you want to remove the dashboard "${this.dashboardName}" from settings?`,
+				confirmLabel: 'Delete',
+				confirmClass: 'tdc-prompt-btn-delete',
+				checkboxLabel:
+					'Also delete dashboard file and issues folder (moved to system trash)',
+				checkboxChecked: this.deleteFiles,
+				oncheckboxchange: (checked: boolean) => {
+					this.deleteFiles = checked;
+				},
+				onconfirm: () => this.handleConfirm(),
+				oncancel: () => this.handleCancel()
+			}
+		});
 	}
 
 	onClose() {
@@ -41,60 +53,17 @@ export class DashboardDeleteConfirmationModal extends Modal {
 			this.hasResolved = true;
 			this.onResult({ confirmed: false, deleteFiles: this.deleteFiles });
 		}
+		if (this.svelteComponent !== undefined) {
+			void unmount(this.svelteComponent);
+			this.svelteComponent = undefined;
+		}
 		this.contentEl.empty();
-	}
-
-	private renderDeleteMessage() {
-		this.contentEl.createEl('p', {
-			text: `Are you sure you want to remove the dashboard "${this.dashboardName}" from settings?`,
-			cls: 'tdc-delete-message'
-		});
-	}
-
-	private renderDeleteFilesCheckbox() {
-		const checkboxContainer = this.contentEl.createDiv({ cls: 'tdc-delete-checkbox-row' });
-		const checkboxId = 'tdc-delete-files-checkbox';
-		const checkbox = checkboxContainer.createEl('input', {
-			type: 'checkbox',
-			attr: { id: checkboxId }
-		});
-		checkboxContainer.createEl('label', {
-			text: 'Also delete dashboard file and issues folder (moved to system trash)',
-			attr: { for: checkboxId }
-		});
-		checkbox.addEventListener('change', () => {
-			this.deleteFiles = checkbox.checked;
-		});
-	}
-
-	private renderActionButtons() {
-		const btnContainer = createPromptButtonsContainer(this.contentEl);
-
-		void createPromptCancelButton(btnContainer, () => {
-			this.handleCancel();
-		});
-
-		void createPromptConfirmButton(
-			btnContainer,
-			() => {
-				this.handleConfirm();
-			},
-			'Delete',
-			'tdc-prompt-btn-delete'
-		);
-	}
-
-	private registerKeyboardShortcuts() {
-		registerEnterShortcut(this.contentEl, () => {
-			this.handleConfirm();
-		});
 	}
 
 	private handleCancel() {
 		if (this.hasResolved) {
 			return;
 		}
-
 		this.hasResolved = true;
 		this.onResult({ confirmed: false, deleteFiles: this.deleteFiles });
 		this.close();
@@ -104,7 +73,6 @@ export class DashboardDeleteConfirmationModal extends Modal {
 		if (this.hasResolved) {
 			return;
 		}
-
 		this.hasResolved = true;
 		this.close();
 		this.onResult({ confirmed: true, deleteFiles: this.deleteFiles });

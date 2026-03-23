@@ -1,5 +1,7 @@
 import { GitHubIssueMetadata } from '../types';
-import { BLACK_HEX, WHITE_HEX } from './color';
+import { getContrastingForegroundColor } from './color';
+import { parseGitHubUrlInfo } from './github';
+import { parseGitHubRepoFullName } from './github-url';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const WEEK_IN_DAYS = 7;
@@ -38,19 +40,6 @@ function getIssueStatePresentation(metadata: GitHubIssueMetadata): StatePresenta
 
 function pluralize(value: number, unit: string): string {
 	return `${value} ${unit}${value > 1 ? 's' : ''} ago`;
-}
-
-function parseHexColorComponent(hex: string, startIndex: number): number {
-	const component = Number.parseInt(hex.substring(startIndex, startIndex + 2), 16);
-	if (Number.isNaN(component)) {
-		return 0;
-	}
-
-	return component;
-}
-
-function normalizeHexColor(hexColor: string): string {
-	return hexColor.startsWith('#') ? hexColor.substring(1) : hexColor;
 }
 
 /**
@@ -102,11 +91,45 @@ export function formatRelativeDate(dateString: string): string {
 	return pluralize(years, 'year');
 }
 
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+
+export function formatRelativeTimestamp(timestamp: number): string {
+	const seconds = Math.floor((Date.now() - timestamp) / 1000);
+	if (seconds < SECONDS_PER_MINUTE) {
+		return 'just now';
+	}
+	const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+	if (minutes < MINUTES_PER_HOUR) {
+		return `${minutes} min ago`;
+	}
+	const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+	return `${hours}h ago`;
+}
+
+export function formatStarCount(count: number): string {
+	if (count >= 1000) {
+		return `${(count / 1000).toFixed(1)}k`;
+	}
+	return count.toString();
+}
+
+export function formatGitHubLinkLabel(url: string): string {
+	const parsed = parseGitHubUrlInfo(url);
+	if (parsed !== undefined) {
+		const labelType = parsed.type === 'pr' ? 'PR' : 'Issue';
+		return `${labelType} #${parsed.number}`;
+	}
+
+	const repoName = parseGitHubRepoFullName(url);
+	if (repoName !== undefined) {
+		return repoName;
+	}
+
+	return url;
+}
+
 export function getContrastColor(hexColor: string): string {
-	const normalizedHexColor = normalizeHexColor(hexColor);
-	const r = parseHexColorComponent(normalizedHexColor, 0);
-	const g = parseHexColorComponent(normalizedHexColor, 2);
-	const b = parseHexColorComponent(normalizedHexColor, 4);
-	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-	return luminance > 0.5 ? BLACK_HEX : WHITE_HEX;
+	const normalized = hexColor.startsWith('#') ? hexColor : `#${hexColor}`;
+	return getContrastingForegroundColor(normalized);
 }

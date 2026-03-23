@@ -2,6 +2,9 @@ import { Priority } from '../types';
 import { buildHowToSection } from './dashboard-howto-section';
 import { DASHBOARD_MARKERS } from './dashboard-markers';
 import { parsePriority } from './priority-utils';
+import { buildDashboardDisplayName } from './dashboard-writer-helpers';
+
+export { DASHBOARD_MARKERS as MARKERS } from './dashboard-markers';
 
 interface SectionRange {
 	start: number;
@@ -25,13 +28,6 @@ export interface ParsedDashboard {
 	archiveStartIndex: number;
 	archiveEndIndex: number;
 }
-
-export const MARKERS = {
-	ACTIVE_START: DASHBOARD_MARKERS.ACTIVE_START,
-	ACTIVE_END: DASHBOARD_MARKERS.ACTIVE_END,
-	ARCHIVE_START: DASHBOARD_MARKERS.ARCHIVE_START,
-	ARCHIVE_END: DASHBOARD_MARKERS.ARCHIVE_END
-} as const;
 
 const ISSUE_BLOCK_REGEX = /%% ISSUE:([\w-]+):START %%([\s\S]*?)%% ISSUE:\1:END %%/g;
 const PRIORITY_REGEX = /priority:\s*(low|medium|high|top)/;
@@ -65,10 +61,10 @@ const parseIssuePriority = (issueContent: string): Priority => {
 };
 
 export function parseDashboard(content: string): ParsedDashboard {
-	const activeStartIndex = content.indexOf(MARKERS.ACTIVE_START);
-	const activeEndIndex = content.indexOf(MARKERS.ACTIVE_END);
-	const archiveStartIndex = content.indexOf(MARKERS.ARCHIVE_START);
-	const archiveEndIndex = content.indexOf(MARKERS.ARCHIVE_END);
+	const activeStartIndex = content.indexOf(DASHBOARD_MARKERS.ACTIVE_START);
+	const activeEndIndex = content.indexOf(DASHBOARD_MARKERS.ACTIVE_END);
+	const archiveStartIndex = content.indexOf(DASHBOARD_MARKERS.ARCHIVE_START);
+	const archiveEndIndex = content.indexOf(DASHBOARD_MARKERS.ARCHIVE_END);
 	const contentLength = content.length;
 
 	const activeRange = resolveSectionRange(activeStartIndex, activeEndIndex, 0, contentLength);
@@ -122,7 +118,7 @@ export function parseIssuesInRange(content: string, start: number, end: number):
 }
 
 export function hasMarkers(content: string): boolean {
-	return Object.values(MARKERS).every((marker) => content.includes(marker));
+	return Object.values(DASHBOARD_MARKERS).every((marker) => content.includes(marker));
 }
 
 export function initializeDashboardStructure(
@@ -130,11 +126,7 @@ export function initializeDashboardStructure(
 	includeAssignedIssuesSection = false,
 	dashboardFilename?: string
 ): string {
-	const displayName = (
-		dashboardFilename !== undefined && dashboardFilename !== ''
-			? dashboardFilename
-			: 'Dashboard'
-	).replace(/\.md$/i, '');
+	const displayName = buildDashboardDisplayName(dashboardFilename);
 	const assignedIssuesSection = includeAssignedIssuesSection
 		? `# Assigned Issues
 \`\`\`tasks-dashboard-assigned
@@ -148,12 +140,12 @@ dashboard: ${dashboardId}
 dashboard: ${dashboardId}
 \`\`\`
 # Active Issues
-${MARKERS.ACTIVE_START}
-${MARKERS.ACTIVE_END}
+${DASHBOARD_MARKERS.ACTIVE_START}
+${DASHBOARD_MARKERS.ACTIVE_END}
 ${assignedIssuesSection}# Notes
 %% TASKS-DASHBOARD:NOTES %%
 # Archive
-${MARKERS.ARCHIVE_START}
-${MARKERS.ARCHIVE_END}
+${DASHBOARD_MARKERS.ARCHIVE_START}
+${DASHBOARD_MARKERS.ARCHIVE_END}
 ${buildHowToSection()}`;
 }

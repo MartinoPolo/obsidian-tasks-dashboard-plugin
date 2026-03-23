@@ -1,13 +1,9 @@
 import { App, Notice, TAbstractFile, TFile } from 'obsidian';
 import TasksDashboardPlugin from '../../main';
-import { DashboardConfig, PRIORITY_ORDER } from '../types';
+import { DashboardConfig } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
 import {
-	extractBranchFromBlock,
-	extractGithubLinksFromBlock,
-	extractWorktreeOriginFolderFromBlock,
 	getActiveIssueBlocksFromDashboard,
-	sortByDateField as getSortedBlocksByDateField,
 	rebuildActiveSectionWithSortedBlocks
 } from './dashboard-writer-active-section';
 import {
@@ -21,10 +17,8 @@ import {
 	escapeRegExp,
 	extractAndRemoveIssueBlock,
 	extractNotesSection,
-	getLinkedRepositories,
 	hasDashboardLinkedRepository,
 	insertBeforeMarker,
-	parseYamlFrontmatter,
 	removeLegacyIssueSeparator,
 	toIssueBlockParams
 } from './dashboard-writer-helpers';
@@ -32,6 +26,7 @@ import {
 	buildRebuiltDashboardContent,
 	scanIssueFilesForRebuilding
 } from './dashboard-writer-rebuild';
+import { createSortOperations } from './dashboard-writer-sort';
 import type { DashboardWriterInstance } from './dashboard-writer-types';
 import { hasMarkers, initializeDashboardStructure, MARKERS } from './DashboardParser';
 
@@ -53,6 +48,8 @@ export function createDashboardWriter(
 	const getDashboardFile = (dashboard: DashboardConfig): TFile | undefined => {
 		return resolveFileByPath(getDashboardPath(dashboard));
 	};
+
+	const sortOps = createSortOperations({ app, plugin, getDashboardFile });
 
 	const moveIssueBetweenSections = async (
 		dashboard: DashboardConfig,
@@ -88,79 +85,6 @@ export function createDashboardWriter(
 		}
 
 		await app.vault.modify(file, inserted);
-	};
-
-	const readCreatedDateForIssue = async (filePath: string): Promise<number> => {
-		const file = app.vault.getAbstractFileByPath(filePath);
-		if (!(file instanceof TFile)) {
-			return 0;
-		}
-
-		const content = await app.vault.read(file);
-		const frontmatter = parseYamlFrontmatter(content);
-		const createdValue = frontmatter['created'];
-
-		if (!createdValue) {
-			return 0;
-		}
-
-		const timestamp = new Date(createdValue).getTime();
-		return Number.isNaN(timestamp) ? 0 : timestamp;
-	};
-
-	const sortByCreatedDate: DashboardWriterInstance['sortByCreatedDate'] = async (
-		dashboard,
-		direction
-	) => {
-		const label = direction === 'newest' ? 'newest first' : 'oldest first';
-		const dashboardData = await getActiveIssueBlocksFromDashboard(
-			app,
-			dashboard,
-			getDashboardFile
-		);
-		if (dashboardData === undefined || dashboardData.issues.length < 2) {
-			return;
-		}
-
-		const sortedBlocks = await getSortedBlocksByDateField(dashboardData, direction, (issue) =>
-			readCreatedDateForIssue(issue.filePath)
-		);
-
-		await rebuildActiveSectionWithSortedBlocks(
-			app,
-			dashboard,
-			getDashboardFile,
-			sortedBlocks,
-			`Issues sorted by created date (${label})`
-		);
-	};
-
-	const sortByEditedDate: DashboardWriterInstance['sortByEditedDate'] = async (
-		dashboard,
-		direction
-	) => {
-		const label = direction === 'newest' ? 'recently edited' : 'least recently edited';
-		const dashboardData = await getActiveIssueBlocksFromDashboard(
-			app,
-			dashboard,
-			getDashboardFile
-		);
-		if (dashboardData === undefined || dashboardData.issues.length < 2) {
-			return;
-		}
-
-		const sortedBlocks = await getSortedBlocksByDateField(dashboardData, direction, (issue) => {
-			const issueFile = app.vault.getAbstractFileByPath(issue.filePath);
-			return issueFile instanceof TFile ? issueFile.stat.mtime : 0;
-		});
-
-		await rebuildActiveSectionWithSortedBlocks(
-			app,
-			dashboard,
-			getDashboardFile,
-			sortedBlocks,
-			`Issues sorted by ${label}`
-		);
 	};
 
 	const addIssueToDashboard: DashboardWriterInstance['addIssueToDashboard'] = async (
@@ -360,165 +284,6 @@ export function createDashboardWriter(
 		);
 	};
 
-	const sortByPriority: DashboardWriterInstance['sortByPriority'] = async (dashboard) => {
-		const dashboardData = await getActiveIssueBlocksFromDashboard(
-			app,
-			dashboard,
-			getDashboardFile
-		);
-		if (dashboardData === undefined) {
-			return;
-		}
-
-		const { content, issues } = dashboardData;
-		if (issues.length < 2) {
-			return;
-		}
-
-		const sortedIssues = [...issues].sort(
-			(a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
-		);
-
-		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
-		const sortedBlocks = sortedIssues
-			.map((issue) => issueIdToBlock.get(issue.id))
-			.filter((block): block is string => block !== undefined);
-
-		await rebuildActiveSectionWithSortedBlocks(
-			app,
-			dashboard,
-			getDashboardFile,
-			sortedBlocks,
-			'Issues sorted by priority'
-		);
-	};
-
-	const sortByWorktreeFolder: DashboardWriterInstance['sortByWorktreeFolder'] = async (
-		dashboard
-	) => {
-		const dashboardData = await getActiveIssueBlocksFromDashboard(
-			app,
-			dashboard,
-			getDashboardFile
-		);
-		if (dashboardData === undefined) {
-			return;
-		}
-
-		const { content, issues } = dashboardData;
-		if (issues.length < 2) {
-			return;
-		}
-
-		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
-
-		const issueOriginFolders = new Map<string, string>();
-		for (const issue of issues) {
-			const block = issueIdToBlock.get(issue.id);
-			if (block !== undefined) {
-				issueOriginFolders.set(issue.id, extractWorktreeOriginFolderFromBlock(block));
-			}
-		}
-
-		const sortedIssues = [...issues].sort((a, b) => {
-			const folderA = issueOriginFolders.get(a.id) ?? '';
-			const folderB = issueOriginFolders.get(b.id) ?? '';
-			const folderComparison = folderA.localeCompare(folderB);
-			if (folderComparison !== 0) {
-				return folderComparison;
-			}
-			return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-		});
-
-		const sortedBlocks = sortedIssues
-			.map((issue) => issueIdToBlock.get(issue.id))
-			.filter((block): block is string => block !== undefined);
-
-		await rebuildActiveSectionWithSortedBlocks(
-			app,
-			dashboard,
-			getDashboardFile,
-			sortedBlocks,
-			'Issues sorted by worktree folder'
-		);
-	};
-
-	const sortByPrState: DashboardWriterInstance['sortByPrState'] = async (dashboard) => {
-		const dashboardData = await getActiveIssueBlocksFromDashboard(
-			app,
-			dashboard,
-			getDashboardFile
-		);
-		if (dashboardData === undefined) {
-			return;
-		}
-
-		const { content, issues } = dashboardData;
-		if (issues.length < 2) {
-			return;
-		}
-
-		const issueIdToBlock = createIssueIdToBlockMap(content, issues);
-
-		// Extract PR state from git status cache for each issue
-		const prStateSortOrder: Record<string, number> = {
-			none: 0,
-			open: 0,
-			draft: 1,
-			'review-requested': 2,
-			merged: 3,
-			closed: 4
-		};
-
-		// Extract PR state from issue blocks via GitHub link patterns
-		const issuePrStateOrder = new Map<string, number>();
-		for (const issue of issues) {
-			const block = issueIdToBlock.get(issue.id);
-			if (block === undefined) {
-				issuePrStateOrder.set(issue.id, 0);
-				continue;
-			}
-
-			// Try to get cached git status from plugin
-			try {
-				const gitStatus = await plugin.gitStatusService.getIssueGitStatus({
-					branchName: extractBranchFromBlock(block),
-					originFolder: extractWorktreeOriginFolderFromBlock(block),
-					baseBranch: undefined,
-					githubLinks: extractGithubLinksFromBlock(block),
-					dashboardId: dashboard.id,
-					issueId: issue.id,
-					linkedRepos: getLinkedRepositories(dashboard)
-				});
-				issuePrStateOrder.set(issue.id, prStateSortOrder[gitStatus.aggregatePrState] ?? 0);
-			} catch {
-				issuePrStateOrder.set(issue.id, 0);
-			}
-		}
-
-		const sortedIssues = [...issues].sort((a, b) => {
-			const stateA = issuePrStateOrder.get(a.id) ?? 0;
-			const stateB = issuePrStateOrder.get(b.id) ?? 0;
-			const stateComparison = stateA - stateB;
-			if (stateComparison !== 0) {
-				return stateComparison;
-			}
-			return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-		});
-
-		const sortedBlocks = sortedIssues
-			.map((issue) => issueIdToBlock.get(issue.id))
-			.filter((block): block is string => block !== undefined);
-
-		await rebuildActiveSectionWithSortedBlocks(
-			app,
-			dashboard,
-			getDashboardFile,
-			sortedBlocks,
-			'Issues sorted by PR state'
-		);
-	};
-
 	const rebuildDashboardFromFiles: DashboardWriterInstance['rebuildDashboardFromFiles'] = async (
 		dashboard
 	) => {
@@ -560,11 +325,7 @@ export function createDashboardWriter(
 		removeIssueFromDashboard,
 		moveIssue,
 		moveIssueToPosition,
-		sortByPriority,
-		sortByCreatedDate,
-		sortByEditedDate,
-		sortByWorktreeFolder,
-		sortByPrState,
+		...sortOps,
 		rebuildDashboardFromFiles
 	};
 }

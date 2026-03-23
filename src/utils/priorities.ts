@@ -9,14 +9,6 @@ export const PRIORITY_ORDER: Readonly<Record<Priority, number>> = {
 	low: 3
 };
 
-const getPriorityRank = (priority: Priority): number => {
-	return PRIORITY_ORDER[priority];
-};
-
-export function comparePriorities(a: Priority, b: Priority): number {
-	return getPriorityRank(a) - getPriorityRank(b);
-}
-
 export function getPriorityClass(priority: Priority): string {
 	return `${PRIORITY_CLASS_PREFIX}${priority}`;
 }

@@ -118,7 +118,9 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 			return response.json as T;
 		} catch (error) {
 			const apiError = classifyApiError(error);
-			console.error('GitHub API error:', apiError.kind, apiError.message);
+			console.error(
+				`GitHub API error: ${apiError.kind} (status: ${apiError.statusCode ?? 'unknown'})`
+			);
 
 			if (apiError.kind === 'auth') {
 				new Notice('GitHub: authentication failed — check your token in settings');

@@ -26,11 +26,7 @@ import {
 	getIssueCacheKey,
 	uniqueByUrl
 } from './github-service-search-helpers';
-import {
-	AssignedIssuesResult,
-	GitHubSearchResult,
-	GitHubServiceInstance
-} from './github-service-types';
+import { GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
 
 export { GitHubApiError } from './github-service-types';
 export type { GitHubApiErrorKind, GitHubServiceInstance } from './github-service-types';
@@ -80,7 +76,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		const cacheKey = getIssueCacheKey('issue', owner, repo, number);
 		return cacheStore.getOrLoadOptional(cacheKey, async () => {
 			const data = await requestClient.apiRequest<GitHubIssueApiResponse>(
-				`/repos/${owner}/${repo}/issues/${number}`
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${number}`
 			);
 			if (data === undefined) {
 				return undefined;
@@ -98,7 +94,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		const cacheKey = getIssueCacheKey('pr', owner, repo, number);
 		return cacheStore.getOrLoadOptional(cacheKey, async () => {
 			const data = await requestClient.apiRequest<GitHubPullRequestApiResponse>(
-				`/repos/${owner}/${repo}/pulls/${number}`
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${number}`
 			);
 			if (data === undefined) {
 				return undefined;
@@ -124,7 +120,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const data = await requestClient.apiRequest<GitHubPullRequestApiResponse[]>(
-			`/repos/${owner}/${repo}/pulls?head=${encodeURIComponent(owner)}:${encodeURIComponent(branch)}&state=all&per_page=10`
+			`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls?head=${encodeURIComponent(owner)}:${encodeURIComponent(branch)}&state=all&per_page=10`
 		);
 		if (data === undefined) {
 			return [];
@@ -221,7 +217,7 @@ export function createGitHubService(): GitHubServiceInstance {
 
 			const [owner, repoName] = repo.split('/');
 			const data = await requestClient.apiRequest<GitHubIssueApiResponse[]>(
-				`/repos/${owner}/${repoName}/issues?state=all&per_page=${limit}&sort=updated`
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/issues?state=all&per_page=${limit}&sort=updated`
 			);
 
 			if (data === undefined) {
@@ -266,7 +262,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		const cacheKey = `repo:${owner}/${repo}`;
 		return cacheStore.getOrLoadOptional(cacheKey, async () => {
 			const data = await requestClient.apiRequest<GitHubRepoDetailApiResponse>(
-				`/repos/${owner}/${repo}`
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
 			);
 			if (data === undefined) {
 				return undefined;
@@ -387,8 +383,8 @@ export function createGitHubService(): GitHubServiceInstance {
 	const getAssignedIssues = async (
 		repo: string,
 		limit = SEARCH_RESULTS_PER_PAGE
-	): Promise<AssignedIssuesResult> => {
-		const emptyResult: AssignedIssuesResult = { items: [], totalCount: 0 };
+	): Promise<GitHubSearchResult> => {
+		const emptyResult: GitHubSearchResult = { items: [], totalCount: 0 };
 		if (!isAuthenticated() || repo.trim() === '') {
 			return emptyResult;
 		}
@@ -399,7 +395,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		}
 
 		const cacheKey = `assigned:${repo}:${username}:${limit}`;
-		const cached = cacheStore.get<AssignedIssuesResult>(cacheKey);
+		const cached = cacheStore.get<GitHubSearchResult>(cacheKey);
 		if (cached !== undefined) {
 			return cached;
 		}
@@ -415,7 +411,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		const items = mapSearchItems(data.items)
 			.filter((item) => item.isPR === false)
 			.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-		const result: AssignedIssuesResult = { items, totalCount: data.total_count };
+		const result: GitHubSearchResult = { items, totalCount: data.total_count };
 		cacheStore.set(cacheKey, result);
 		return result;
 	};

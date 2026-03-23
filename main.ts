@@ -1,16 +1,10 @@
-import {
-	FuzzySuggestModal,
-	Notice,
-	Plugin,
-	TFile,
-	type App,
-	type MarkdownPostProcessorContext
-} from 'obsidian';
+import { FuzzySuggestModal, Notice, Plugin, TFile, type App } from 'obsidian';
 import { initializeDashboardStructure, parseDashboard } from './src/dashboard/DashboardParser';
 import {
 	createDashboardRenderer,
 	ReactiveRenderChild,
-	type DashboardRendererInstance
+	type DashboardRendererInstance,
+	type MountFunction
 } from './src/dashboard/DashboardRenderer';
 import {
 	createDashboardWriter,
@@ -23,7 +17,7 @@ import {
 import { createGitHubService, type GitHubServiceInstance } from './src/github/GitHubService';
 import { createIssueManager, type IssueManagerInstance } from './src/issues/IssueManager';
 import { createProgressTracker, type ProgressTrackerInstance } from './src/issues/ProgressTracker';
-import { NamePromptModal } from './src/modals/issue-creation-modal';
+import { openIssueCreationModal } from './src/modals/issue-creation-modal';
 import { TasksDashboardSettingTab } from './src/settings';
 import {
 	DashboardConfig,
@@ -32,7 +26,7 @@ import {
 	TasksDashboardSettings
 } from './src/types';
 import { getDashboardPath } from './src/utils/dashboard-path';
-import { createPlatformService } from './src/utils/platform';
+import { createPlatformService, type ScriptPathResolver } from './src/utils/platform';
 
 const REFRESH_DEBOUNCE_MS = 500;
 
@@ -142,7 +136,8 @@ export default class TasksDashboardPlugin extends Plugin {
 				this.githubService,
 				createPlatformService()
 			);
-			this.issueManager = createIssueManager(this.app, this);
+			const scriptPathResolver = this.buildScriptPathResolver();
+			this.issueManager = createIssueManager(this.app, this, scriptPathResolver);
 			this.progressTracker = createProgressTracker(this.app);
 			this.dashboardWriter = createDashboardWriter(this.app, this);
 			this.dashboardRenderer = createDashboardRenderer(this);
@@ -214,27 +209,26 @@ export default class TasksDashboardPlugin extends Plugin {
 
 	private registerReactiveCodeBlockProcessor(
 		language: string,
-		render: (
-			source: string,
-			el: HTMLElement,
-			ctx: MarkdownPostProcessorContext
-		) => void | Promise<void>,
+		mountFunction: MountFunction,
 		errorMessage?: string,
 		errorLogPrefix?: string
 	): void {
 		this.registerMarkdownCodeBlockProcessor(language, (source, el, ctx) => {
-			void Promise.resolve(render(source, el, ctx)).catch((error: unknown) => {
-				if (errorLogPrefix !== undefined) {
-					console.error(errorLogPrefix, error);
+			const safeMountFunction: MountFunction = (s, e, c) => {
+				try {
+					return mountFunction(s, e, c);
+				} catch (error) {
+					if (errorLogPrefix !== undefined) {
+						console.error(errorLogPrefix, error);
+					}
+					if (errorMessage !== undefined) {
+						e.createEl('span', { text: errorMessage, cls: 'tdc-error' });
+					}
+					return undefined;
 				}
-				if (errorMessage !== undefined) {
-					el.createEl('span', { text: errorMessage, cls: 'tdc-error' });
-				}
-			});
+			};
 
-			ctx.addChild(
-				new ReactiveRenderChild(el, source, ctx, this, (s, e, c) => render(s, e, c))
-			);
+			ctx.addChild(new ReactiveRenderChild(el, source, ctx, this, safeMountFunction));
 		});
 	}
 
@@ -248,6 +242,30 @@ export default class TasksDashboardPlugin extends Plugin {
 		removeRegisteredCommands(this.app, this.registeredCommands);
 	}
 
+	private buildScriptPathResolver(): ScriptPathResolver | undefined {
+		try {
+			const adapter = this.app.vault.adapter;
+			const basePath: unknown = Reflect.get(adapter, 'basePath');
+			if (typeof basePath !== 'string' || basePath === '') {
+				return undefined;
+			}
+
+			const pluginDir = this.manifest.dir;
+			if (pluginDir === undefined || pluginDir === '') {
+				return undefined;
+			}
+
+			const absolutePluginPath = `${basePath}/${pluginDir}`;
+			return {
+				resolvePluginScriptPath: (filename: string): string => {
+					return `${absolutePluginPath}/scripts/${filename}`;
+				}
+			};
+		} catch {
+			return undefined;
+		}
+	}
+
 	registerDashboardCommands() {
 		removeRegisteredCommands(this.app, this.registeredCommands);
 		this.registeredCommands = [];
@@ -258,7 +276,7 @@ export default class TasksDashboardPlugin extends Plugin {
 				id: `create-issue-${dashboard.id}`,
 				name: `Create issue: ${displayName}`,
 				callback: () => {
-					new NamePromptModal(this.app, this, dashboard).open();
+					openIssueCreationModal(this.app, this, dashboard);
 				}
 			});
 			this.registeredCommands.push(commandId);
@@ -345,7 +363,7 @@ export default class TasksDashboardPlugin extends Plugin {
 			return;
 		}
 		if (this.settings.dashboards.length === 1) {
-			new NamePromptModal(this.app, this, this.settings.dashboards[0]).open();
+			openIssueCreationModal(this.app, this, this.settings.dashboards[0]);
 			return;
 		}
 		const dashboards = this.settings.dashboards;
@@ -360,7 +378,7 @@ export default class TasksDashboardPlugin extends Plugin {
 				return getDashboardDisplayName(item);
 			}
 			onChooseItem(item: DashboardConfig): void {
-				new NamePromptModal(app, pluginRef, item).open();
+				openIssueCreationModal(app, pluginRef, item);
 			}
 		}
 		new DashboardSelectorModal(this.app).open();
@@ -376,6 +394,21 @@ export default class TasksDashboardPlugin extends Plugin {
 				.map(withDefaultGitHubEnabled)
 				.map(migrateGithubRepoToRepos)
 		};
+
+		// Migrate: remove obsolete worktree script path settings
+		const settingsRecord = this.settings as unknown as Record<string, unknown>;
+		let migrated = false;
+		if ('worktreeSetupScriptPath' in settingsRecord) {
+			delete settingsRecord.worktreeSetupScriptPath;
+			migrated = true;
+		}
+		if ('worktreeRemoveScriptPath' in settingsRecord) {
+			delete settingsRecord.worktreeRemoveScriptPath;
+			migrated = true;
+		}
+		if (migrated) {
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings() {

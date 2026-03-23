@@ -1,5 +1,3 @@
-export type GitHubIssueState = 'open' | 'closed';
-
 export interface GitHubLabelObjectApiResponse {
 	name: string;
 	color?: string;
@@ -14,7 +12,7 @@ export interface GitHubAssigneeApiResponse {
 interface GitHubIssueLikeApiResponse {
 	number: number;
 	title: string;
-	state: GitHubIssueState;
+	state: 'open' | 'closed';
 	labels: GitHubLabelApiResponse[];
 	assignees?: GitHubAssigneeApiResponse[];
 	body: string | null;

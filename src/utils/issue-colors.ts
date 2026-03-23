@@ -90,12 +90,10 @@ const ISSUE_COLOR_PALETTE_FOR_LIGHT_THEME: readonly IssueColorEntry[] = [
 	{ background: '#000000', foreground: '#ffffff' }
 ] as const;
 
-const ISSUE_COLOR_FALLBACK = DEFAULT_ISSUE_COLOR;
-
 export const ISSUE_COLOR_PICKER_COLUMNS = 6;
 
 const normalizeIssueColor = (color: string): string => {
-	return sanitizeHexColor(color, ISSUE_COLOR_FALLBACK);
+	return sanitizeHexColor(color, DEFAULT_ISSUE_COLOR);
 };
 
 export const getThemeAwareIssueColorPalette = (): readonly IssueColorEntry[] => {

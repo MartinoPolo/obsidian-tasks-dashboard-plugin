@@ -50,7 +50,8 @@ export interface IssueManagerInstance {
 		issueId: string,
 		issueName: string,
 		color?: string,
-		worktreeOriginFolder?: string
+		worktreeOriginFolder?: string,
+		scriptWorkingDirectory?: string
 	) => void;
 	retryWorktreeSetup: (
 		dashboard: DashboardConfig,

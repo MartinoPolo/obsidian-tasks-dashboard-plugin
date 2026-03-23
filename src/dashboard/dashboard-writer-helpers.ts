@@ -22,6 +22,14 @@ import {
 	ParsedIssueFile
 } from './dashboard-writer-types';
 
+export function buildDashboardDisplayName(dashboardFilename: string | undefined): string {
+	return (
+		dashboardFilename !== undefined && dashboardFilename !== ''
+			? dashboardFilename
+			: 'Dashboard'
+	).replace(/\.md$/i, '');
+}
+
 export const hasDashboardLinkedRepository = (dashboard: DashboardConfig): boolean => {
 	return dashboard.githubEnabled && (dashboard.githubRepos?.length ?? 0) > 0;
 };
@@ -44,11 +52,7 @@ export const buildIssueRelativePath = (issueId: string, isArchived: boolean): st
 };
 
 export const buildSortBlock = (dashboardId: string, dashboardFilename?: string): string => {
-	const displayName = (
-		dashboardFilename !== undefined && dashboardFilename !== ''
-			? dashboardFilename
-			: 'Dashboard'
-	).replace(/\.md$/i, '');
+	const displayName = buildDashboardDisplayName(dashboardFilename);
 	return `# ${displayName}\n\`\`\`tasks-dashboard-sort\ndashboard: ${dashboardId}\n\`\`\`\n`;
 };
 

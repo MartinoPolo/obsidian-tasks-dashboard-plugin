@@ -1,20 +1,11 @@
-import { App, FuzzySuggestModal, Modal, Notice, TFile } from 'obsidian';
+import { App, FuzzySuggestModal, Notice, TFile } from 'obsidian';
+import type { Component } from 'svelte';
 import type TasksDashboardPlugin from '../../main';
 import { getErrorMessage } from '../settings/settings-helpers';
 import type { DashboardConfig, Priority } from '../types';
 import { getDashboardPath } from '../utils/dashboard-path';
-import {
-	createPromptButtonsContainer,
-	createPromptCancelButton,
-	setupPromptModal
-} from './modal-helpers';
-import {
-	applySingleSelectionPressedState,
-	getWrappedIndex,
-	handleListNavigationKeydown
-} from './modal-keyboard-helpers';
-
-const PRIORITY_OPTIONS: Priority[] = ['low', 'medium', 'high', 'top'];
+import PrioritySelector from '../components/modals/PrioritySelector.svelte';
+import { SvelteModal } from './SvelteModal';
 
 const isRootPath = (path: string): boolean => {
 	return path === '' || path === '/';
@@ -32,9 +23,6 @@ const isImportableFile = (file: TFile, issuesPath: string, dashboardPath: string
 	return true;
 };
 
-const formatPriority = (priority: Priority): string => {
-	return `${priority.charAt(0).toUpperCase()}${priority.slice(1)}`;
-};
 async function importNoteWithPriority(
 	plugin: TasksDashboardPlugin,
 	dashboard: DashboardConfig,
@@ -96,12 +84,10 @@ export class NoteImportModal extends FuzzySuggestModal<TFile> {
 	}
 }
 
-class ImportPriorityModal extends Modal {
+class ImportPriorityModal extends SvelteModal {
 	private readonly plugin: TasksDashboardPlugin;
 	private readonly dashboard: DashboardConfig;
 	private readonly sourceFile: TFile;
-	private selectedPriority: Priority = PRIORITY_OPTIONS[0];
-	private priorityButtons: Map<Priority, HTMLButtonElement> = new Map();
 
 	constructor(
 		app: App,
@@ -115,78 +101,18 @@ class ImportPriorityModal extends Modal {
 		this.sourceFile = sourceFile;
 	}
 
-	override onOpen(): void {
-		setupPromptModal(this, 'Select priority');
-		const priorityList = this.contentEl.createDiv({ cls: 'tdc-selectable-option-list' });
-
-		for (const priority of PRIORITY_OPTIONS) {
-			const optionButton = priorityList.createEl('button', {
-				cls: 'tdc-selectable-option-btn',
-				attr: {
-					type: 'button',
-					'aria-pressed': 'false'
-				}
-			});
-			const container = optionButton.createDiv({ cls: 'tdc-priority-suggestion' });
-			container.createSpan({ cls: `tdc-priority-dot priority-${priority}` });
-			container.createSpan({ text: formatPriority(priority) });
-			optionButton.addEventListener('mouseup', (event) => {
-				if (event.button !== 0) {
-					return;
-				}
-				event.preventDefault();
-				this.selectPriority(priority, true);
-				this.confirmSelection();
-			});
-			this.priorityButtons.set(priority, optionButton);
-		}
-
-		this.selectPriority(this.selectedPriority, true);
-
-		const buttonContainer = createPromptButtonsContainer(this.contentEl);
-		void createPromptCancelButton(buttonContainer, () => {
-			this.close();
-		});
-
-		this.contentEl.addEventListener('keydown', (event) => {
-			this.handleKeydown(event);
-		});
+	protected getComponent(): Component {
+		return PrioritySelector as Component;
 	}
 
-	private handleKeydown(event: KeyboardEvent): void {
-		handleListNavigationKeydown(event, {
-			onNext: () => {
-				this.moveSelection(1);
-			},
-			onPrevious: () => {
-				this.moveSelection(-1);
-			},
-			onClose: () => {
+	protected getProps(): Record<string, unknown> {
+		return {
+			title: 'Select priority',
+			onselect: (priority: Priority) => {
 				this.close();
+				void importNoteWithPriority(this.plugin, this.dashboard, this.sourceFile, priority);
 			},
-			onConfirm: () => {
-				this.confirmSelection();
-			}
-		});
-	}
-
-	private moveSelection(step: number): void {
-		const currentIndex = PRIORITY_OPTIONS.indexOf(this.selectedPriority);
-		const nextIndex = getWrappedIndex(currentIndex, step, PRIORITY_OPTIONS.length);
-		this.selectPriority(PRIORITY_OPTIONS[nextIndex], true);
-	}
-
-	private selectPriority(priority: Priority, focusButton: boolean): void {
-		this.selectedPriority = priority;
-		applySingleSelectionPressedState(this.priorityButtons, priority, focusButton);
-	}
-
-	private confirmSelection(): void {
-		this.close();
-		void this.importNote(this.selectedPriority);
-	}
-
-	private async importNote(priority: Priority): Promise<void> {
-		await importNoteWithPriority(this.plugin, this.dashboard, this.sourceFile, priority);
+			oncancel: () => this.close()
+		};
 	}
 }

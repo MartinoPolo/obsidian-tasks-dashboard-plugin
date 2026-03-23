@@ -1,19 +1,15 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App } from 'obsidian';
+import type { Component } from 'svelte';
 import TasksDashboardPlugin from '../../main';
-import { getErrorMessage } from '../settings/settings-helpers';
-import { DashboardConfig } from '../types';
-import {
-	createConfirmCancelButtons,
-	createInputWithEnterHandler,
-	setupPromptModal
-} from './modal-helpers';
+import type { DashboardConfig } from '../types';
+import RenameIssueContent from '../components/modals/RenameIssueContent.svelte';
+import { SvelteModal } from './SvelteModal';
 
-export class RenameIssueModal extends Modal {
+export class RenameIssueModal extends SvelteModal {
 	private plugin: TasksDashboardPlugin;
 	private dashboard: DashboardConfig;
 	private issueId: string;
 	private currentName: string;
-	private input: HTMLInputElement | undefined;
 
 	constructor(
 		app: App,
@@ -29,56 +25,17 @@ export class RenameIssueModal extends Modal {
 		this.currentName = currentName;
 	}
 
-	onOpen() {
-		setupPromptModal(this, 'Rename Issue');
-		const input = createInputWithEnterHandler(
-			this.contentEl,
-			'Enter new name...',
-			() => void this.confirm()
-		);
-		input.value = this.currentName;
-		input.select();
-		this.input = input;
-		createConfirmCancelButtons(
-			this.contentEl,
-			'Rename',
-			() => void this.confirm(),
-			() => this.close()
-		);
+	protected getComponent(): Component {
+		return RenameIssueContent as Component;
 	}
 
-	private getInput(): HTMLInputElement | undefined {
-		return this.input;
-	}
-
-	private async confirm() {
-		const input = this.getInput();
-		if (input === undefined) {
-			return;
-		}
-
-		const value = input.value.trim();
-		if (value === '') {
-			input.addClass('tdc-input-error');
-			input.focus();
-			return;
-		}
-
-		if (value === this.currentName) {
-			this.close();
-			return;
-		}
-
-		this.close();
-		try {
-			await this.plugin.issueManager.renameIssue(this.dashboard, this.issueId, value);
-		} catch (error) {
-			new Notice(`Error renaming issue: ${getErrorMessage(error)}`);
-		}
-	}
-
-	onClose() {
-		this.input = undefined;
-		this.contentEl.empty();
+	protected getProps(): Record<string, unknown> {
+		return {
+			plugin: this.plugin,
+			dashboard: this.dashboard,
+			issueId: this.issueId,
+			currentName: this.currentName,
+			onclose: () => this.close()
+		};
 	}
 }

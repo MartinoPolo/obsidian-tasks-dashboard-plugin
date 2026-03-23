@@ -41,12 +41,17 @@ export default tseslint.config(
 	},
 	{
 		ignores: [
+			'.claude/**',
 			'node_modules/**',
 			'main.js',
 			'dist/**',
 			'*.config.js',
 			'*.config.mjs',
-			'**/*.json'
+			'*.config.ts',
+			'**/*.json',
+			'**/*.svelte',
+			'**/*.test.ts',
+			'src/test/**'
 		]
 	}
 );

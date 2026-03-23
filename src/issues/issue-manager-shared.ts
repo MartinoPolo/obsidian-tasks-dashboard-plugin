@@ -1,5 +1,6 @@
 import { App, TFile } from 'obsidian';
-import { DashboardConfig, IssueStatus } from '../types';
+import { IssueStatus } from '../types';
+export { getDashboardFilename } from '../utils/dashboard-path';
 
 export function findIssueFilesByPath(app: App, basePath: string, issueId: string): TFile[] {
 	return app.vault
@@ -32,10 +33,6 @@ export function appendBeforeFrontmatterClose(content: string, section: string): 
 		'\n' +
 		content.slice(frontmatterCloseIndex)
 	);
-}
-
-export function getDashboardFilename(dashboard: DashboardConfig): string {
-	return dashboard.dashboardFilename || 'Dashboard.md';
 }
 
 export function getIssueFolderName(status: IssueStatus): string {

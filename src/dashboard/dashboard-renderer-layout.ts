@@ -16,13 +16,7 @@ const isIssueActionKey = (value: string): value is IssueActionKey => {
 };
 
 export const dedupeIssueActionKeys = (keys: IssueActionKey[]): IssueActionKey[] => {
-	const deduped: IssueActionKey[] = [];
-	for (const key of keys) {
-		if (!deduped.includes(key)) {
-			deduped.push(key);
-		}
-	}
-	return deduped;
+	return [...new Set(keys)] as IssueActionKey[];
 };
 
 const sanitizeLayoutKeys = (value: unknown): IssueActionKey[] => {

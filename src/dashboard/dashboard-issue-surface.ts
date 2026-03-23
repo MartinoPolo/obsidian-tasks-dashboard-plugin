@@ -66,6 +66,22 @@ const resolveIssueControlBlock = (element: HTMLElement): HTMLElement => {
 	return element;
 };
 
+/**
+ * Toggle collapsed state on sibling content blocks only (external Obsidian DOM).
+ * Use from Svelte components that already manage their own CSS classes reactively.
+ */
+export const setIssueContentBlocksCollapsed = (element: HTMLElement, collapsed: boolean): void => {
+	const controlBlock = resolveIssueControlBlock(element);
+	const contentBlocks = collectIssueContentBlocks(controlBlock);
+	for (const block of contentBlocks) {
+		block.classList.toggle('tdc-issue-content-collapsed', collapsed);
+	}
+};
+
+/**
+ * Full imperative collapsed toggle — container class, chevron, and content blocks.
+ * Use only from non-Svelte contexts (e.g. SortControls operating on DOM-queried elements).
+ */
 export const setIssueCollapsed = (element: HTMLElement, collapsed: boolean): void => {
 	const controlBlock = resolveIssueControlBlock(element);
 

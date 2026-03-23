@@ -1,17 +1,17 @@
+import { DEFAULT_DASHBOARD_FILENAME } from '../settings/settings-options';
 import type { DashboardConfig } from '../types';
+import { isNonEmptyString } from './string-utils';
 
-const DEFAULT_DASHBOARD_FILENAME = 'Dashboard.md';
-
-function isNonEmptyString(value: string | undefined): value is string {
-	return value !== undefined && value !== '';
-}
-
-function getDashboardFilename(dashboardFilename: string | undefined): string {
+function resolveDashboardFilename(dashboardFilename: string | undefined): string {
 	if (!isNonEmptyString(dashboardFilename)) {
 		return DEFAULT_DASHBOARD_FILENAME;
 	}
 
 	return dashboardFilename;
+}
+
+export function getDashboardFilename(dashboard: DashboardConfig): string {
+	return resolveDashboardFilename(dashboard.dashboardFilename);
 }
 
 function removeMarkdownExtension(filename: string): string {
@@ -32,12 +32,12 @@ function getLastPathSegment(path: string | undefined): string | undefined {
 }
 
 export function getDashboardPath(dashboard: DashboardConfig): string {
-	const filename = getDashboardFilename(dashboard.dashboardFilename);
+	const filename = resolveDashboardFilename(dashboard.dashboardFilename);
 	return `${dashboard.rootPath}/${filename}`;
 }
 
 export function getDashboardDisplayName(dashboard: DashboardConfig): string {
-	const filename = removeMarkdownExtension(getDashboardFilename(dashboard.dashboardFilename));
+	const filename = removeMarkdownExtension(resolveDashboardFilename(dashboard.dashboardFilename));
 	const parentFolder = getLastPathSegment(dashboard.rootPath);
 
 	if (isNonEmptyString(parentFolder)) {

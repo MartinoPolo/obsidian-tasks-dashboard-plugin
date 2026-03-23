@@ -1,10 +1,6 @@
 import { App } from 'obsidian';
-import { DashboardConfig } from '../types';
-import {
-	DEFAULT_DASHBOARD_FILENAME,
-	ISSUES_FOLDER_NAME,
-	OptionDefinition
-} from './settings-options';
+import { ISSUES_FOLDER_NAME, OptionDefinition } from './settings-options';
+export { getDashboardFilename, getDashboardPath } from '../utils/dashboard-path';
 
 export interface AppWithSettingsTab extends App {
 	setting?: {
@@ -35,9 +31,7 @@ export function getErrorMessage(error: unknown): string {
 	return 'Unknown error';
 }
 
-export function isNonEmptyString(value: string | undefined): value is string {
-	return value !== undefined && value !== '';
-}
+export { isNonEmptyString } from '../utils/string-utils';
 
 export function resolveCollapsedDashboardSettingsMap(settings: object): Record<string, boolean> {
 	const candidate: unknown = Reflect.get(settings, 'collapsedDashboardSettings');
@@ -54,10 +48,6 @@ export function withMarkdownExtension(filename: string): string {
 	return filename.endsWith('.md') ? filename : `${filename}.md`;
 }
 
-export function getDashboardFilename(dashboard: DashboardConfig): string {
-	return dashboard.dashboardFilename || DEFAULT_DASHBOARD_FILENAME;
-}
-
 export function buildVaultPath(rootPath: string, filename: string): string {
 	if (rootPath === '') {
 		return filename;
@@ -66,11 +56,7 @@ export function buildVaultPath(rootPath: string, filename: string): string {
 	return `${rootPath}/${filename}`;
 }
 
-export function getDashboardPath(dashboard: DashboardConfig): string {
-	return buildVaultPath(dashboard.rootPath, getDashboardFilename(dashboard));
-}
-
-export function getDashboardIssuesFolderPath(dashboard: DashboardConfig): string {
+export function getDashboardIssuesFolderPath(dashboard: { rootPath: string }): string {
 	return buildVaultPath(dashboard.rootPath, ISSUES_FOLDER_NAME);
 }
 

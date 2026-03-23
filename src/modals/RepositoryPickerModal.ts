@@ -1,9 +1,9 @@
 import { App, FuzzySuggestModal } from 'obsidian';
 import { GitHubRepository } from '../types';
+import { truncateDescription } from '../utils/string-utils';
 
 type OnSelectRepository = (repository: GitHubRepository) => void;
 const SEARCH_PLACEHOLDER = 'Search repositories...';
-const DESCRIPTION_MAX_LENGTH = 80;
 const PRIVATE_LABEL = 'Private';
 const PUBLIC_LABEL = 'Public';
 const PRIVATE_BADGE_CLASS = 'tdc-repo-badge-private';
@@ -80,15 +80,7 @@ export class RepositoryPickerModal extends FuzzySuggestModal<GitHubRepository> {
 
 		container.createDiv({
 			cls: 'tdc-repo-suggestion-description',
-			text: this.truncateDescription(description)
+			text: truncateDescription(description)
 		});
-	}
-
-	private truncateDescription(description: string): string {
-		if (description.length <= DESCRIPTION_MAX_LENGTH) {
-			return description;
-		}
-
-		return `${description.slice(0, DESCRIPTION_MAX_LENGTH)}...`;
 	}
 }
