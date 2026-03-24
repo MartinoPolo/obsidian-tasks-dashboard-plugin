@@ -13,7 +13,7 @@ Updated: 2026-03-24
 
 | Phase | Name | Status | Dependencies |
 |-------|------|--------|-------------|
-| 01 | Badge Icons + Branch/PR State Verification | Not Started | -- |
+| 01 | Badge Icons + Branch/PR State Verification | Complete | -- |
 | 02 | GitHub API Enhancements | Not Started | -- |
 | 03 | Sync Action | Not Started | 01, 02 |
 | 04 | Badge Contrast Adaptation | Not Started | 01 |
@@ -44,8 +44,7 @@ Updated: 2026-03-24
 
 ### Phase Details
 
-**Phase 01: Badge Icons + Branch/PR State Verification**
-Foundation phase. Add distinct SVG icons for all branch, PR, and issue states. Verify `resolveBranchStatus()` correctly returns `remote-gone` and `computeAggregatePrState()` correctly returns `merged`. Fix display text/color if detection is correct; fix logic if not.
+**Phase 01: Badge Icons + Branch/PR State Verification** — Complete. Added 5 branch + 1 PR review icon, verified detection logic, fixed remote-gone color.
 
 **Phase 02: GitHub API Enhancements**
 Add GitHub compare API integration (`behind_by` count) and PR `mergeable` field support. These feed the sync action in Phase 03 and the "behind base" badge state.
