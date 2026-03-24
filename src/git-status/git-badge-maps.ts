@@ -2,12 +2,13 @@ import type { IconName } from '../components/icons/index';
 import type { BranchStatus, IssueState, PrState } from './git-status-types';
 
 export const PR_STATE_ICON: Record<PrState, IconName> = {
+	// 'none' is only used for aggregatePrState (accent class); individual PRs always have a concrete state
 	none: 'gitPrOpen',
 	open: 'gitPrOpen',
 	draft: 'gitPrDraft',
 	merged: 'gitPrMerged',
 	closed: 'gitPrClosed',
-	'review-requested': 'gitPrOpen'
+	'review-requested': 'gitPrReviewRequested'
 };
 
 export const PR_STATE_CSS_CLASS: Record<PrState, string> = {
@@ -32,6 +33,7 @@ export const ISSUE_STATE_ICON: Record<IssueState, IconName> = {
 	open: 'gitIssueOpen',
 	closed: 'gitIssueClosed',
 	not_planned: 'gitIssueNotPlanned',
+	// 'unknown' is never produced by mapIssueState; exists as type-safety fallback
 	unknown: 'gitIssueOpen'
 };
 
@@ -47,6 +49,14 @@ export const ISSUE_STATE_LABEL: Record<IssueState, string> = {
 	closed: 'Closed',
 	not_planned: 'Not Planned',
 	unknown: ''
+};
+
+export const BRANCH_STATUS_ICON: Record<BranchStatus, IconName> = {
+	active: 'gitBranchActive',
+	local: 'gitBranchLocal',
+	'remote-gone': 'gitBranchRemoteGone',
+	deleted: 'gitBranchDeleted',
+	unknown: 'gitBranchUnknown'
 };
 
 export const BRANCH_STATUS_CSS_CLASS: Record<BranchStatus, string> = {

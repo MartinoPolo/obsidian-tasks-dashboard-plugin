@@ -11,6 +11,7 @@
   import {
     BRANCH_NAME_MAX_DISPLAY_LENGTH,
     BRANCH_STATUS_CSS_CLASS,
+    BRANCH_STATUS_ICON,
     BRANCH_STATUS_TOOLTIP_PREFIX
   } from '../../git-status/git-badge-maps';
   import { buildGitStatusDisplayInfo } from '../../git-status/git-status-helpers';
@@ -23,7 +24,6 @@
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
   import Icon from '../Icon.svelte';
-  import type { IconName } from '../icons/index';
   import ContextMenu from './ContextMenu.svelte';
   import HeaderBadges from './HeaderBadges.svelte';
   import IssueInfoPanel from './IssueInfoPanel.svelte';
@@ -338,7 +338,7 @@
       : gitStatus.branchName;
     const tooltipPrefix = BRANCH_STATUS_TOOLTIP_PREFIX[gitStatus.branchStatus];
     return {
-      icon: 'gitBranch' as IconName,
+      icon: BRANCH_STATUS_ICON[gitStatus.branchStatus],
       text: displayName,
       tooltip: `${tooltipPrefix}: ${gitStatus.branchName}`,
       class: BRANCH_STATUS_CSS_CLASS[gitStatus.branchStatus]

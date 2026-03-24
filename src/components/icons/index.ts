@@ -24,7 +24,6 @@ import MoreIcon from './MoreIcon.svelte';
 import FileInputIcon from './FileInputIcon.svelte';
 import SettingsIcon from './SettingsIcon.svelte';
 import RefreshIcon from './RefreshIcon.svelte';
-import GitBranchIcon from './GitBranchIcon.svelte';
 import RebuildIcon from './RebuildIcon.svelte';
 import RefreshCardIcon from './RefreshCardIcon.svelte';
 import UnlinkIcon from './UnlinkIcon.svelte';
@@ -41,6 +40,12 @@ import GitPrDraftIcon from './GitPrDraftIcon.svelte';
 import GitIssueOpenIcon from './GitIssueOpenIcon.svelte';
 import GitIssueClosedIcon from './GitIssueClosedIcon.svelte';
 import GitIssueNotPlannedIcon from './GitIssueNotPlannedIcon.svelte';
+import GitBranchActiveIcon from './GitBranchActiveIcon.svelte';
+import GitBranchLocalIcon from './GitBranchLocalIcon.svelte';
+import GitBranchRemoteGoneIcon from './GitBranchRemoteGoneIcon.svelte';
+import GitBranchDeletedIcon from './GitBranchDeletedIcon.svelte';
+import GitBranchUnknownIcon from './GitBranchUnknownIcon.svelte';
+import GitPrReviewRequestedIcon from './GitPrReviewRequestedIcon.svelte';
 
 export {
 	TrashIcon,
@@ -69,7 +74,6 @@ export {
 	FileInputIcon,
 	SettingsIcon,
 	RefreshIcon,
-	GitBranchIcon,
 	RebuildIcon,
 	RefreshCardIcon,
 	UnlinkIcon,
@@ -85,7 +89,13 @@ export {
 	GitPrDraftIcon,
 	GitIssueOpenIcon,
 	GitIssueClosedIcon,
-	GitIssueNotPlannedIcon
+	GitIssueNotPlannedIcon,
+	GitBranchActiveIcon,
+	GitBranchLocalIcon,
+	GitBranchRemoteGoneIcon,
+	GitBranchDeletedIcon,
+	GitBranchUnknownIcon,
+	GitPrReviewRequestedIcon
 };
 
 export const ICON_COMPONENTS = {
@@ -115,7 +125,6 @@ export const ICON_COMPONENTS = {
 	fileInput: FileInputIcon,
 	settings: SettingsIcon,
 	refresh: RefreshIcon,
-	gitBranch: GitBranchIcon,
 	rebuild: RebuildIcon,
 	refreshCard: RefreshCardIcon,
 	unlink: UnlinkIcon,
@@ -131,7 +140,13 @@ export const ICON_COMPONENTS = {
 	gitPrDraft: GitPrDraftIcon,
 	gitIssueOpen: GitIssueOpenIcon,
 	gitIssueClosed: GitIssueClosedIcon,
-	gitIssueNotPlanned: GitIssueNotPlannedIcon
+	gitIssueNotPlanned: GitIssueNotPlannedIcon,
+	gitBranchActive: GitBranchActiveIcon,
+	gitBranchLocal: GitBranchLocalIcon,
+	gitBranchRemoteGone: GitBranchRemoteGoneIcon,
+	gitBranchDeleted: GitBranchDeletedIcon,
+	gitBranchUnknown: GitBranchUnknownIcon,
+	gitPrReviewRequested: GitPrReviewRequestedIcon
 } as const;
 
 export type IconName = keyof typeof ICON_COMPONENTS;

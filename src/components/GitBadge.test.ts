@@ -5,7 +5,7 @@ import GitBadge from './GitBadge.svelte';
 describe('GitBadge', () => {
 	const baseProps = {
 		type: 'branch' as const,
-		icon: 'gitBranch' as const,
+		icon: 'gitBranchActive' as const,
 		text: 'main',
 		tooltip: 'Branch: main'
 	};
