@@ -29,7 +29,7 @@
 	--tdc-git-pr-review: #d29922;
 	--tdc-git-branch-active: #3fb950;
 	--tdc-git-branch-local: #a5d6a7;
-	--tdc-git-branch-remote-gone: #d29922;
+	--tdc-git-branch-remote-gone: #e3872d;
 	--tdc-git-branch-deleted: #768390;
 
 	/* Worktree status colors */
@@ -161,7 +161,6 @@
 .tdc-btn-collapse.tdc-chevron-collapsed svg {
 	transform: rotate(0deg);
 }
-
 
 /* ===== Overflow Panel (shared by IssueInfoPanel + OverflowPanel) ===== */
 .tdc-overflow-panel {
