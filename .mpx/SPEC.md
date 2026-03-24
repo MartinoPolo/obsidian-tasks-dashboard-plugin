@@ -6,10 +6,10 @@
 
 ## Badge icons per state
 
-- [ ] Add distinct SVG icons for each branch state (`active`, `local`, `remote-gone`, `deleted`, `unknown`). Use GitHub Octicons where possible, Lucide as fallback. Each state must be visually distinguishable without reading the tooltip.
-- [ ] Add distinct SVG icons for each PR state (`open`, `draft`, `merged`, `closed`, `review-requested`) and issue state (`open`, `closed`, `not-planned`). Verify existing icons are correct and add missing ones.
-- [ ] Verify branch lifecycle detection: `resolveBranchStatus()` should return `remote-gone` (not `local`) when a remote branch was deleted after full PR lifecycle. The badge text/tooltip must say "remote branch deleted" (not "not pushed yet"). If the detection is already correct, fix only the display. Use a distinct color (orange or unused color) for `remote-gone`.
-- [ ] Verify merged PR detection: `computeAggregatePrState()` should return `merged` for merged PRs. Badge must show purple color + merged icon + "Merged" text, matching GitHub's purple. If detection works, this is display-only. Test with single and multiple PRs.
+- [x] Add distinct SVG icons for each branch state (`active`, `local`, `remote-gone`, `deleted`, `unknown`). Use GitHub Octicons where possible, Lucide as fallback. Each state must be visually distinguishable without reading the tooltip.
+- [x] Add distinct SVG icons for each PR state (`open`, `draft`, `merged`, `closed`, `review-requested`) and issue state (`open`, `closed`, `not-planned`). Verify existing icons are correct and add missing ones.
+- [x] Verify branch lifecycle detection: `resolveBranchStatus()` should return `remote-gone` (not `local`) when a remote branch was deleted after full PR lifecycle. The badge text/tooltip must say "remote branch deleted" (not "not pushed yet"). If the detection is already correct, fix only the display. Use a distinct color (orange or unused color) for `remote-gone`.
+- [x] Verify merged PR detection: `computeAggregatePrState()` should return `merged` for merged PRs. Badge must show purple color + merged icon + "Merged" text, matching GitHub's purple. If detection works, this is display-only. Test with single and multiple PRs.
 
 ## Base branch sync detection
 
