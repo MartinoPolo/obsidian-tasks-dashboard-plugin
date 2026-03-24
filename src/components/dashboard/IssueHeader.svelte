@@ -711,6 +711,7 @@
 .tdc-issue-header :global(.tdc-git-badge-branch-local svg) { color: var(--tdc-git-branch-local); }
 .tdc-issue-header :global(.tdc-git-badge-branch-remote-gone svg) { color: var(--tdc-git-branch-remote-gone); }
 .tdc-issue-header :global(.tdc-git-badge-branch-deleted svg) { color: var(--tdc-git-branch-deleted); }
+.tdc-issue-header :global(.tdc-git-badge-branch-unknown svg) { color: var(--text-muted); }
 .tdc-issue-header :global(.tdc-git-badge-open svg) { color: var(--tdc-git-pr-open); }
 .tdc-issue-header :global(.tdc-git-badge-merged svg) { color: var(--tdc-git-pr-merged); }
 .tdc-issue-header :global(.tdc-git-badge-closed svg) { color: var(--tdc-git-pr-closed); }
