@@ -1,4 +1,4 @@
-import { TasksDashboardSettings } from '../types';
+import type { TasksDashboardSettings } from '../types';
 import { getIssueFolderStorageKey } from './issue-manager-shared';
 
 export function removeIssueSettings(
@@ -56,4 +56,42 @@ export function migrateIssueSettings(
 	}
 
 	return settingsChanged;
+}
+
+export function recordDeletedIssueGitHubUrls(
+	settings: TasksDashboardSettings,
+	dashboardId: string,
+	githubUrls: string[]
+): boolean {
+	if (githubUrls.length === 0) {
+		return false;
+	}
+	const existing = settings.deletedIssueGitHubUrls[dashboardId] ?? [];
+	const combined = new Set([...existing, ...githubUrls]);
+	if (combined.size === existing.length) {
+		return false;
+	}
+	settings.deletedIssueGitHubUrls[dashboardId] = Array.from(combined);
+	return true;
+}
+
+export function removeDeletedIssueGitHubUrl(
+	settings: TasksDashboardSettings,
+	dashboardId: string,
+	url: string
+): boolean {
+	const existing = settings.deletedIssueGitHubUrls[dashboardId] ?? [];
+	if (existing.length === 0) {
+		return false;
+	}
+	const filtered = existing.filter((storedUrl) => storedUrl !== url);
+	if (filtered.length === existing.length) {
+		return false;
+	}
+	if (filtered.length === 0) {
+		delete settings.deletedIssueGitHubUrls[dashboardId];
+	} else {
+		settings.deletedIssueGitHubUrls[dashboardId] = filtered;
+	}
+	return true;
 }

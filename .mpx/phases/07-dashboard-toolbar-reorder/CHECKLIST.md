@@ -1,6 +1,6 @@
 # Phase 7: Dashboard Toolbar Reorder + Grouping
 
-**Status:** Not Started
+**Status:** Complete
 **Dependencies:** None
 
 ## Objective
@@ -27,39 +27,40 @@ Reorder dashboard toolbar buttons into logical visual groups with gaps between t
 
 ### Layout
 
-- [ ] Reorder toolbar buttons into 6 visual groups
+- [x] Reorder toolbar buttons into 6 visual groups
       In `SortControls.svelte`, reorder the `ActionButton` elements to match:
       - Group 1 (Create): Add Issue, Add Worktree Issue, Import Note
       - Group 2 (View): Collapse All, Expand All, Sort
       - Group 3 (External): Open Folder, Open Terminal, Open VS Code, GitHub
-      - Group 4 (Sync): _(empty for now; Sync All + Prune added in Phases 03/08)_
+      - Group 4 (Sync): Sync All (Prune added in Phase 08)
       - Group 5 (Maintain): Refresh, Rebuild
       - Group 6 (Config): Settings (always rightmost)
-      Currently the order in `SortControls.svelte` is: Add Issue, Add Worktree Issue, Import Note, Sort, Collapse All, Expand All, Refresh, Rebuild, Settings, Open Folder, Open Terminal, Open VS Code, GitHub. Reorder and wrap each group in a container `<div>` with a shared class for gap styling.
 
-- [ ] Add visual gaps between toolbar groups
-      Apply CSS `gap` or `margin` between group containers. Use a larger gap between groups (e.g., 16px) than within groups (existing 8px). Each group `<div>` should have `display: flex; align-items: center; gap: 8px;`. The parent `.tdc-sort-container` should use `gap: 16px;` between groups.
+- [x] Add visual gaps between toolbar groups
+      Parent `.tdc-sort-container` uses `gap: 16px` between groups. Each `.tdc-toolbar-group` div uses `display: flex; align-items: center; gap: 8px`.
 
 ### Responsive Behavior
 
-- [ ] Hide Import Note and Rebuild first when space is limited
-      These are rarely used. When the toolbar wraps to multiple lines, hide Import Note and Rebuild before other buttons. Use CSS `order` and/or flex `flex-shrink` to control which buttons disappear first. Alternatively, use a resize observer on the toolbar container to toggle visibility classes. Use multi-line wrapping (`flex-wrap: wrap`) instead of a three-dots overflow menu. Settings must always remain visible and rightmost -- use `margin-left: auto` or `order: 999` to pin it.
+- [x] Hide Import Note and Rebuild first when space is limited
+      ResizeObserver on toolbar container toggles `isToolbarCompact` state when width < 500px. Import Note and Rebuild conditionally rendered via `{#if !isToolbarCompact}`. Toolbar uses `flex-wrap: wrap` for multi-line wrapping. Settings pinned rightmost via `margin-left: auto` + `order: 999`.
 
 ### Completion Criteria
 
-- [ ] Toolbar buttons appear in the specified 6-group order
-- [ ] Visual gaps separate each group
-- [ ] Import Note and Rebuild hide first when space is limited
-- [ ] Toolbar wraps to multiple lines (no overflow menu)
-- [ ] Settings button is always visible and rightmost
+- [x] Toolbar buttons appear in the specified 6-group order
+- [x] Visual gaps separate each group
+- [x] Import Note and Rebuild hide first when space is limited
+- [x] Toolbar wraps to multiple lines (no overflow menu)
+- [x] Settings button is always visible and rightmost
 
 ---
 
-Progress: 0/3 tasks complete
+Progress: 3/3 tasks complete
 
 ## Decisions
 
-[Decisions made during execution, with reasoning]
+- Used ResizeObserver (with synchronous initial measurement) instead of CSS-only approach — provides reliable detection regardless of container context.
+- Group 3 (External) conditionally rendered via `hasExternalButtons` derived to avoid empty group gap.
+- Settings group uses both `margin-left: auto` and `order: 999` for robust rightmost positioning across flex-wrap lines.
 
 ## Blockers
 

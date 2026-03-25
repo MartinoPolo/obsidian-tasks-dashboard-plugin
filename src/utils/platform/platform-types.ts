@@ -56,6 +56,7 @@ export interface PlatformService {
 		repositoryFolder: string,
 		branchName: string
 	) => 'local' | 'remote' | 'none';
+	getGitRemoteUrl: (repositoryFolder: string) => string | undefined;
 	hasBranchUpstreamConfig: (repositoryFolder: string, branchName: string) => boolean;
 	pickFolder: (defaultPath?: string) => Promise<string | undefined>;
 	pickFile: (filters?: FileDialogFilter[], defaultPath?: string) => Promise<string | undefined>;
@@ -73,6 +74,11 @@ export interface PlatformService {
 			skipConfirmation?: boolean;
 			tabColor?: string;
 		}
+	) => boolean;
+	runBulkWorktreeRemovalScript: (
+		branchNames: string[],
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string
 	) => boolean;
 }
 

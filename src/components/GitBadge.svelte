@@ -105,7 +105,8 @@ a.tdc-git-badge:hover {
 
 .tdc-git-badge-branch-unknown {
   color: var(--text-muted);
-  background: var(--background-modifier-border);
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
 
 /* PR badges */
@@ -154,7 +155,7 @@ a.tdc-git-badge:hover {
 
 .tdc-git-badge-issue-not-planned {
   color: var(--text-muted);
-  background: var(--background-modifier-border);
+  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
   border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
 

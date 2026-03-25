@@ -9,19 +9,14 @@
   	RuntimeIssueActionLayout
   } from '../../dashboard/dashboard-renderer-types';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
-  import {
-    BRANCH_NAME_MAX_DISPLAY_LENGTH,
-    BRANCH_STATUS_CSS_CLASS,
-    BRANCH_STATUS_ICON,
-    BRANCH_STATUS_TOOLTIP_PREFIX
-  } from '../../git-status/git-badge-maps';
-  import { buildGitStatusDisplayInfo } from '../../git-status/git-status-helpers';
+  import { buildInfoContent } from '../../dashboard/issue-header-info-content';
+  import { buildGitStatusDisplayInfo, type GitStatusDisplayInfo } from '../../git-status/git-status-helpers';
+  import { isFullyClosed as checkFullyClosed } from '../../git-status/git-status-types';
   import type { IssueGitStatus } from '../../git-status/git-status-types';
   import { attachResizeObserver } from '../../lib/attach-resize-observer';
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
-  import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
   import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
   import { createPlatformService } from '../../utils/platform';
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
@@ -43,6 +38,7 @@
     row2VisibleActionKeys: Set<IssueActionKey>;
     isCollapsed: boolean;
     onCollapseToggle: (newCollapsed: boolean) => void;
+    isFullyClosed?: boolean;
   }
 
   let {
@@ -54,7 +50,8 @@
     containerElement,
     row2VisibleActionKeys,
     isCollapsed,
-    onCollapseToggle
+    onCollapseToggle,
+    isFullyClosed = $bindable(false)
   }: Props = $props();
 
   // Layout override — updated by OverflowPanel's onlayoutchange until next full refresh
@@ -66,7 +63,7 @@
 
   // State
   let gitStatus = $state.raw<IssueGitStatus | undefined>(undefined);
-  let gitStatusInfoLines: string[] = $state([]);
+  let gitStatusDisplay: GitStatusDisplayInfo | undefined = $state.raw(undefined);
   let isInfoPanelOpen = $state(false);
   let isOverflowOpen = $state(false);
   let badgesContextMenuPosition: { x: number; y: number } | undefined = $state(undefined);
@@ -93,45 +90,22 @@
     )
   );
 
-  let issueFolderKey = $derived(getIssueFolderStorageKey(dashboard.id, params.issue));
-  let hasAssignedIssueFolder = $derived(
-    Object.prototype.hasOwnProperty.call(plugin.settings.issueFolders, issueFolderKey)
+  // Build info panel content with structured sections
+  let infoContent = $derived(
+    buildInfoContent(
+      {
+        name: params.name,
+        priority: params.priority,
+        githubLinks: params.githubLinks,
+        isWorktreeIssue,
+        worktreeBaseBranch: params.worktree_base_branch,
+        worktreeBranch: params.worktree_branch,
+        worktreeExpectedFolder: params.worktree_expected_folder,
+        worktreeSetupState: params.worktree_setup_state
+      },
+      gitStatusDisplay
+    )
   );
-  let assignedIssueFolder = $derived.by(() => {
-    if (!hasAssignedIssueFolder) {
-      return undefined;
-    }
-    const candidate: unknown = plugin.settings.issueFolders[issueFolderKey];
-    return typeof candidate === 'string' ? candidate : undefined;
-  });
-
-  // Build info panel content
-  let infoContent = $derived.by(() => {
-    const githubLinksText = params.githubLinks.length > 0 ? params.githubLinks.join('\n') : 'None';
-    const worktreeSummary = isWorktreeIssue
-      ? [
-          `branch: ${params.worktree_branch ?? 'n/a'}`,
-          `origin: ${params.worktree_origin_folder ?? 'n/a'}`,
-          `expected folder: ${params.worktree_expected_folder ?? 'n/a'}`,
-          `setup state: ${params.worktree_setup_state ?? 'n/a'}`,
-          `base repository: ${params.worktree_base_repository ?? 'n/a'}`,
-          `base branch: ${params.worktree_base_branch ?? 'n/a'}`
-        ].join('\n')
-      : 'not a worktree issue';
-
-    const sections: string[] = [
-      `Dashboard: ${dashboard.id}\nIssue: ${params.issue}`,
-      `Assigned folder: ${assignedIssueFolder ?? 'None'}`,
-      `GitHub links:\n${githubLinksText}`,
-      `Worktree:\n${worktreeSummary}`
-    ];
-    if (gitStatusInfoLines.length > 0) {
-      sections.push(gitStatusInfoLines.join('\n'));
-    } else {
-      sections.push('Last refreshed: Not yet');
-    }
-    return sections.join('\n\n');
-  });
 
   // Row1 visible action keys -- filter hidden
   let row1ActionKeys = $derived(
@@ -268,7 +242,7 @@
           isBadgesLoading = false;
 
           const displayInfo = buildGitStatusDisplayInfo(result);
-          gitStatusInfoLines = displayInfo.infoLines;
+          gitStatusDisplay = displayInfo;
           prAccentClass = displayInfo.prAccentClass;
 
           // Apply badge compaction after render
@@ -281,7 +255,8 @@
           if (isDestroyed) {
             return;
           }
-          gitStatusInfoLines = ['Last refreshed: Error'];
+          gitStatus = undefined;
+          gitStatusDisplay = { branchStatusLine: undefined, prLines: [], lastRefreshed: 'Error', prAccentClass: '' };
           isBadgesLoading = false;
         });
     }
@@ -367,21 +342,9 @@
   // Sync button callback — only available when worktree folder exists
   let syncHandler = $derived(hasWorktreeFolder ? handleSyncBranch : undefined);
 
-  // Branch badge data
-  let branchBadge = $derived.by(() => {
-    if (gitStatus === undefined || gitStatus.branchName === undefined) {
-      return undefined;
-    }
-    const displayName = gitStatus.branchName.length > BRANCH_NAME_MAX_DISPLAY_LENGTH
-      ? gitStatus.branchName.slice(0, BRANCH_NAME_MAX_DISPLAY_LENGTH) + '\u2026'
-      : gitStatus.branchName;
-    const tooltipPrefix = BRANCH_STATUS_TOOLTIP_PREFIX[gitStatus.branchStatus];
-    return {
-      icon: BRANCH_STATUS_ICON[gitStatus.branchStatus],
-      text: displayName,
-      tooltip: `${tooltipPrefix}: ${gitStatus.branchName}`,
-      class: BRANCH_STATUS_CSS_CLASS[gitStatus.branchStatus]
-    };
+  // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
+  $effect(() => {
+    isFullyClosed = gitStatus !== undefined && checkFullyClosed(gitStatus);
   });
 </script>
 
@@ -419,7 +382,6 @@
 
   <HeaderBadges
     {gitStatus}
-    {branchBadge}
     {isBadgesLoading}
     {shouldCompact}
     {isSyncing}
@@ -734,6 +696,12 @@
 
 .tdc-issue-header :global(.tdc-btn):active {
   background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
+}
+
+/* Badge border adapts to issue text color for contrast on colored headers */
+.tdc-issue-header :global(.tdc-git-badge),
+.tdc-issue-header :global(.tdc-sync-button) {
+  border-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 40%, transparent);
 }
 
 /* Issue 7 -- Badge text color overrides */

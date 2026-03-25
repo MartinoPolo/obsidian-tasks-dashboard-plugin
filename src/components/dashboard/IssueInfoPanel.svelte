@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { INFO_SECTION_HEADER_PREFIX } from '../../git-status/git-status-helpers';
   import { attachAnchoredPanel } from '../../lib/anchored-panel';
 
   interface Props {
@@ -8,6 +9,23 @@
   }
 
   let { content, anchorElement, onclose }: Props = $props();
+
+  interface ContentBlock {
+    type: 'section-header' | 'text';
+    text: string;
+  }
+
+  let blocks = $derived.by((): ContentBlock[] => {
+    const result: ContentBlock[] = [];
+    for (const line of content.split('\n')) {
+      if (line.startsWith(INFO_SECTION_HEADER_PREFIX)) {
+        result.push({ type: 'section-header', text: line.slice(INFO_SECTION_HEADER_PREFIX.length) });
+      } else {
+        result.push({ type: 'text', text: line });
+      }
+    }
+    return result;
+  });
 </script>
 
 <div
@@ -19,7 +37,15 @@
     useRequestAnimationFrame: false
   })}
 >
-  <div class="tdc-issue-info-panel-content">{content}</div>
+  <div class="tdc-issue-info-panel-content">
+    {#each blocks as block}
+      {#if block.type === 'section-header'}
+        <div class="tdc-info-section-header">{block.text}</div>
+      {:else}
+        {block.text}{'\n'}
+      {/if}
+    {/each}
+  </div>
 </div>
 
 <style>
@@ -34,5 +60,18 @@
   line-height: 1.45;
   white-space: pre-line;
   word-break: break-word;
+}
+
+.tdc-info-section-header {
+  font-weight: 600;
+  font-size: 1.05em;
+  margin-top: 6px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.tdc-info-section-header:first-child {
+  margin-top: 2px;
 }
 </style>

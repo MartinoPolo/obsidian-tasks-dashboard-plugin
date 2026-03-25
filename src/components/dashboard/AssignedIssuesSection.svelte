@@ -8,6 +8,8 @@
   import { getNextAvailableIssueColor } from '../../utils/issue-colors';
   import { createPlatformService } from '../../utils/platform';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
+  import { doesRemoteMatchLinkedRepos } from '../../utils/github-url';
+  import { removeDeletedIssueGitHubUrl } from '../../issues/issue-manager-settings';
   import { parseSourceKeyValueLines } from '../../dashboard/dashboard-renderer-params';
   import ActionButton from '../ActionButton.svelte';
   import LoadingIndicator from '../LoadingIndicator.svelte';
@@ -70,11 +72,46 @@
 
   const platformService = createPlatformService();
   let dashboardProjectFolder = $derived(dashboard?.projectFolder);
-  let worktreeCreationAvailable = $derived(
+  let isGitRepository = $derived(
     dashboardProjectFolder !== undefined && dashboardProjectFolder !== ''
       ? platformService.isGitRepositoryFolder(dashboardProjectFolder)
       : false
   );
+
+  const REPO_FOLDER_MISMATCH_MESSAGE = 'Repository not linked to dashboard folder.';
+
+  let cachedRemoteUrl: string | undefined = $state(undefined);
+
+  $effect(() => {
+    if (!isGitRepository || dashboardProjectFolder === undefined) {
+      cachedRemoteUrl = undefined;
+      return;
+    }
+    cachedRemoteUrl = platformService.getGitRemoteUrl(dashboardProjectFolder);
+  });
+
+  let hasRepoFolderMismatch = $derived(
+    cachedRemoteUrl !== undefined && repos.length > 0
+      ? !doesRemoteMatchLinkedRepos(cachedRemoteUrl, repos)
+      : false
+  );
+
+  let worktreeCreationAvailable = $derived(isGitRepository && !hasRepoFolderMismatch);
+
+  let worktreeButtonTooltip = $derived.by(() => {
+    if (hasRepoFolderMismatch) {
+      return REPO_FOLDER_MISMATCH_MESSAGE;
+    }
+    return 'Set dashboard project folder to a Git repository to enable worktree creation';
+  });
+
+  let deletedIssueUrls = $derived.by(() => {
+    if (dashboardId === undefined) {
+      return new Set<string>();
+    }
+    const urls = plugin.settings.deletedIssueGitHubUrls[dashboardId] ?? [];
+    return new Set(urls);
+  });
 
   async function readDashboardUrls(dashboardConfig: DashboardConfig): Promise<Set<string>> {
     const urls = new Set<string>();
@@ -180,10 +217,20 @@
     };
   });
 
+  function removeFromDeletedUrls(issueUrl: string): void {
+    if (dashboardId === undefined) {
+      return;
+    }
+    if (removeDeletedIssueGitHubUrl(plugin.settings, dashboardId, issueUrl)) {
+      void plugin.saveSettings();
+    }
+  }
+
   function handleAddIssue(issue: GitHubIssueMetadata): void {
     if (dashboard === undefined) {
       return;
     }
+    removeFromDeletedUrls(issue.url);
     openAssignedIssueNamePrompt(plugin.app, plugin, {
       dashboard,
       githubMetadata: issue,
@@ -196,9 +243,14 @@
       return;
     }
     if (!worktreeCreationAvailable) {
-      new Notice('Set dashboard project folder to a Git repository to enable worktree creation.');
+      if (hasRepoFolderMismatch) {
+        new Notice(REPO_FOLDER_MISMATCH_MESSAGE);
+      } else {
+        new Notice('Set dashboard project folder to a Git repository to enable worktree creation.');
+      }
       return;
     }
+    removeFromDeletedUrls(issue.url);
     const currentDashboard = dashboard;
     const currentFolder = dashboardProjectFolder;
     void collectDashboardIssueIdSet(plugin.app, currentDashboard)
@@ -285,6 +337,7 @@
               {/if}
 
               {#each unlinkedIssues as issue (issue.url)}
+                {@const wasPreviouslyAssigned = deletedIssueUrls.has(issue.url)}
                 <div class="tdc-assigned-issues-row">
                   <a
                     class="tdc-assigned-issues-link"
@@ -298,17 +351,22 @@
                   <div class="tdc-assigned-issues-actions">
                     <ActionButton
                       icon="plus"
-                      label={`Add issue #${issue.number} to dashboard`}
-                      class="tdc-btn-square tdc-assigned-issues-add-btn"
+                      label={wasPreviouslyAssigned
+                        ? `Re-add issue #${issue.number} to dashboard (previously removed)`
+                        : `Add issue #${issue.number} to dashboard`}
+                      class={`tdc-btn-square tdc-assigned-issues-add-btn${wasPreviouslyAssigned ? ' tdc-btn-previously-assigned' : ''}`}
                       onclick={() => handleAddIssue(issue)}
                     />
                     <ActionButton
                       icon="worktree"
                       label={worktreeCreationAvailable
-                        ? `Quick worktree from #${issue.number}`
-                        : 'Set dashboard project folder to a Git repository to enable worktree creation'}
-                      class={`tdc-btn-square tdc-assigned-issues-worktree-btn`}
+                        ? (wasPreviouslyAssigned
+                          ? `Re-add worktree from #${issue.number} (previously removed)`
+                          : `Quick worktree from #${issue.number}`)
+                        : worktreeButtonTooltip}
+                      class={`tdc-btn-square tdc-assigned-issues-worktree-btn${wasPreviouslyAssigned ? ' tdc-btn-previously-assigned' : ''}`}
                       faded={!worktreeCreationAvailable}
+                      disabled={hasRepoFolderMismatch}
                       onclick={() => handleWorktreeIssue(issue, repoName)}
                     />
                   </div>
@@ -462,5 +520,14 @@
 .tdc-assigned-issues-load-more:hover {
   background: var(--background-modifier-active-hover, var(--background-modifier-hover));
   color: var(--text-normal);
+}
+
+:global(.tdc-btn-previously-assigned) {
+  background: color-mix(in srgb, orange 25%, var(--background-modifier-hover)) !important;
+  border: 1px solid color-mix(in srgb, orange 50%, transparent) !important;
+}
+
+:global(.tdc-btn-previously-assigned:hover) {
+  background: color-mix(in srgb, orange 40%, var(--background-modifier-hover)) !important;
 }
 </style>

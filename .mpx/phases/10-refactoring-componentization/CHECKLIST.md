@@ -1,6 +1,6 @@
 # Phase 10: Refactoring / Componentization
 
-**Status:** Not Started
+**Status:** Complete
 **Dependencies:** Phases 1-9 (all feature phases complete)
 
 ## Objective
@@ -26,40 +26,52 @@ Refactor large files and extract standalone UI units into isolated modules. Runs
 
 ### Analysis
 
-- [ ] Audit codebase for large files and extraction candidates
-      Identify files exceeding ~300 lines that contain multiple distinct responsibilities. Key candidates from current codebase: `IssueHeader.svelte` (~500+ lines), `SortControls.svelte` (large toolbar), `dashboard-issue-actions.ts` (~350+ lines), `DashboardWriter.ts` (large write operations), `issue-creation-modal.ts` (~400+ lines). For each candidate, identify natural extraction boundaries (e.g., a group of related functions, a UI section that could be its own component).
+- [x] Audit codebase for large files and extraction candidates
+      14 files >300 lines identified. 6 extractions planned, 7 files marked do-not-split with justification. See ANALYSIS.md.
 
-- [ ] Analyze Obsidian Plugin componentization approach
-      Research best practices for Obsidian plugin component architecture with Svelte 5. Consider: (a) how to share plugin instance without prop drilling, (b) whether to use Svelte context for plugin/services, (c) how to structure component hierarchy for testability, (d) how modal components interact with the Obsidian Modal base class. Document findings as decisions in this checklist.
+- [x] Analyze Obsidian Plugin componentization approach
+      Decision: Keep prop drilling (max 3 levels), no Svelte context, extract logic to TS modules not components, preserve factory function pattern. See ANALYSIS.md.
 
 ### Extraction
 
-- [ ] Extract header badges into an isolated module
-      `HeaderBadges.svelte` is already a separate component but is tightly coupled to `IssueHeader.svelte` state. Consider whether badge computation logic (branch badge data, compaction, etc.) can be moved into the badges component or a dedicated badge service. Extract badge-related derived state from `IssueHeader.svelte` into a composable or helper.
+- [x] Extract header badges into an isolated module
+      Info content builder extracted to `dashboard/issue-header-info-content.ts`. Badge compaction and display logic kept in HeaderBadges.svelte (already a separate component with proper interface). No further extraction beneficial — badge state is tightly coupled to the render cycle.
 
-- [ ] Refactor large files identified in audit
-      Split files that have multiple responsibilities into focused single-responsibility files. Follow existing patterns: factory functions with closures, kebab-case file names, types in separate `*-types.ts` files. Preserve all public APIs -- refactoring must not change behavior. Run `pnpm lint` and `pnpm format` after each extraction.
+- [x] Refactor large files identified in audit
+      6 extractions completed:
+      1. SortControls.svelte: sync/prune/collapse logic → `toolbar-sync-all.ts`, `toolbar-prune.ts`, `toolbar-collapse.ts`, `dashboard-content-reader.ts` (846→634)
+      2. IssueHeader.svelte: info content builder → `issue-header-info-content.ts` (807→736, 247 lines is CSS)
+      3. issue-creation-modal.ts: helpers + file-focus → `issue-creation-helpers.ts`, `open-file-and-focus.ts` (549→347)
+      4. dashboard-issue-actions.ts: confirmations → `dashboard-issue-action-confirmations.ts` (485→404)
+      5. IssueManager.ts: block-edit → `issue-manager-block-edit.ts` (659→604)
+      6. OverflowPanel.svelte: settings mode → `OverflowLayoutSettings.svelte` (452→153)
 
 ### Verification
 
-- [ ] Run full test suite and lint after refactoring
-      Execute `pnpm lint`, `pnpm format`, and all tests. Verify no behavioral regressions. The refactoring phase should be purely structural with zero behavior changes.
+- [x] Run full test suite and lint after refactoring
+      `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check` all pass. 6 reviewers confirmed zero behavioral regressions. 7 review findings fixed and re-verified.
 
 ### Completion Criteria
 
-- [ ] No file exceeds ~300 lines (or has documented justification)
-- [ ] Each file has a single clear responsibility
-- [ ] All tests pass after refactoring
-- [ ] Lint and format checks pass
-- [ ] No behavioral changes introduced
+- [x] No file exceeds ~300 lines (or has documented justification)
+      8 files remain >300 lines with documented justification (see Decisions #6). All have single responsibilities — size is driven by irreducible CSS, dense templates, or cohesive CRUD logic.
+- [x] Each file has a single clear responsibility
+- [x] All tests pass after refactoring
+- [x] Lint and format checks pass
+- [x] No behavioral changes introduced
 
 ---
 
-Progress: 0/5 tasks complete
+Progress: 5/5 tasks complete
 
 ## Decisions
 
-[Decisions made during execution, with reasoning]
+1. **No Svelte Context** — Keep prop drilling. Max 3 levels deep, type-safe, consistent. Context adds complexity without benefit at this scale.
+2. **Extract Logic to TS Modules, Not Components** — For SortControls and IssueHeader, extracted async workflows and builders to TS modules. UI template structure stays in .svelte files.
+3. **Preserve Factory Function Pattern** — All extracted modules use factory functions or pure function exports. No classes outside Obsidian base classes.
+4. **CSS Stays in Svelte Files** — Scoped CSS cannot be extracted. IssueHeader's 247-line CSS is a known trade-off.
+5. **OverflowPanel Split Uses Child Component** — Settings mode is a genuine second UI surface justifying a Svelte sub-component.
+6. **Accept Some Files Above 300 Lines** — Files with documented justification: SortControls (634: 301 script + 257 template + 75 CSS, toolbar with 6 groups), IssueHeader (736: 349 script + 139 template + 247 CSS), IssueManager (604: partially decomposed CRUD with 6 satellite files), issue-manager-worktree (621: cohesive worktree lifecycle), GitHubSearchContent (656: well-decomposed with extracted engine/config/loaders), GitHubService (498: thin API wrappers, cache/request/mappers extracted), AssignedIssuesSection (533: single-purpose with 120 CSS), DashboardSettings (366: imperative Obsidian Setting API).
 
 ## Blockers
 

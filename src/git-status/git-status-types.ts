@@ -29,3 +29,14 @@ export interface IssueGitStatus {
 	mergeConflict: boolean | undefined;
 	fetchedAt: number;
 }
+
+export const isFullyClosed = (status: IssueGitStatus): boolean => {
+	const prClosed = status.aggregatePrState === 'merged' || status.aggregatePrState === 'closed';
+	const branchGone = status.branchStatus === 'remote-gone' || status.branchStatus === 'deleted';
+	const hasClosedGitHubIssue =
+		status.linkedIssues.length > 0 &&
+		status.linkedIssues.some(
+			(issue) => issue.state === 'closed' || issue.state === 'not_planned'
+		);
+	return prClosed && branchGone && hasClosedGitHubIssue;
+};

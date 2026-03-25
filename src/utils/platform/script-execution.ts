@@ -14,10 +14,12 @@ export const WINDOWS_GIT_BASH_CANDIDATES = [
 	'C:\\Program Files (x86)\\Git\\git-bash.exe'
 ];
 
-const UNSAFE_SCRIPT_ARGUMENT_PATTERN = /[\0\n\r`$|&;><(){}]/;
+const UNSAFE_SCRIPT_ARGUMENT_PATTERN = /[\0\n\r\t `$|&;><(){}/\\]/;
 
 export const isUnsafeScriptArgument = (value: string): boolean => {
-	return UNSAFE_SCRIPT_ARGUMENT_PATTERN.test(value);
+	return (
+		value.trim() === '' || value.includes('..') || UNSAFE_SCRIPT_ARGUMENT_PATTERN.test(value)
+	);
 };
 
 export const toWindowsBashPath = (pathValue: string): string => {
@@ -164,6 +166,36 @@ export const runWorktreeSetupScript = (
 		dashboardWorkingDirectory,
 		bashExecutablePath,
 		color
+	);
+};
+
+export const runBulkWorktreeRemovalScript = (
+	scriptPathResolver: ScriptPathResolver | undefined,
+	branchNames: string[],
+	dashboardWorkingDirectory?: string,
+	bashExecutablePath?: string
+): boolean => {
+	for (const name of branchNames) {
+		if (isUnsafeScriptArgument(name)) {
+			new Notice(`Invalid branch name -- contains forbidden characters.`);
+			return false;
+		}
+	}
+
+	if (scriptPathResolver === undefined) {
+		new Notice('Worktree scripts not available -- plugin path could not be resolved.');
+		return false;
+	}
+
+	const removeScriptPath = scriptPathResolver.resolvePluginScriptPath('remove-worktree.sh');
+	const scriptArgs = ['--skip-confirmation', ...branchNames];
+
+	return runScriptWithBash(
+		removeScriptPath,
+		scriptArgs,
+		'Could not run remove-worktree script',
+		dashboardWorkingDirectory,
+		bashExecutablePath
 	);
 };
 

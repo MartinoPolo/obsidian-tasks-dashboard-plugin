@@ -16,13 +16,13 @@ Updated: 2026-03-24
 | 01 | Badge Icons + Branch/PR State Verification | Complete | -- |
 | 02 | GitHub API Enhancements | Complete | -- |
 | 03 | Sync Action | Complete | 01, 02 |
-| 04 | Badge Contrast Adaptation | Not Started | 01 |
-| 05 | Color Picker + Closed Issue Appearance | Not Started | 01 |
-| 06 | Issue Info Panel Restructure | Not Started | -- |
-| 07 | Dashboard Toolbar Reorder | Not Started | -- |
-| 08 | Prune Worktrees | Not Started | 01, 07 |
-| 09 | Issue Creation + Worktree Safety | Not Started | -- |
-| 10 | Refactoring / Componentization | Not Started | 01-09 |
+| 04 | Badge Contrast Adaptation | Complete | 01 |
+| 05 | Color Picker + Closed Issue Appearance | Complete | 01 |
+| 06 | Issue Info Panel Restructure | Complete | -- |
+| 07 | Dashboard Toolbar Reorder | Complete | -- |
+| 08 | Prune Worktrees | Complete | 01, 07 |
+| 09 | Issue Creation + Worktree Safety | Complete | -- |
+| 10 | Refactoring / Componentization | Complete | 01-09 |
 
 ### Dependency Graph
 
@@ -50,26 +50,19 @@ Updated: 2026-03-24
 
 **Phase 03: Sync Action** — Complete. Added behind-base badge (blue, sync icon, count), merge conflict warning badge (amber, alert-triangle), per-issue sync button (opens terminal with `claude /mp-sync-base`), and Sync All toolbar button with reactive disabled state.
 
-**Phase 04: Badge Contrast Adaptation**
-Adapt badge colors to issue header background. Use semi-transparent semantic colors with issue text color as border. Depends on Phase 01 badge system being complete.
+**Phase 04: Badge Contrast Adaptation** — Complete. Badge borders adapt to issue text color via `--tdc-issue-header-link-color`, all badge backgrounds use semi-transparent `color-mix()` for contrast on colored headers.
 
-**Phase 05: Color Picker + Closed Issue Appearance**
-Rename "Text color" to "Custom color", add letter "A" preview, and implement grayscale overlay for fully-closed issues. Depends on Phase 01 for closed-issue state detection.
+**Phase 05: Color Picker + Closed Issue Appearance** — Complete. Renamed label to "Custom color", added "A" preview letter, implemented grayscale overlay for fully-closed issues (merged/closed PR + remote-gone/deleted branch + closed GitHub issue).
 
-**Phase 06: Issue Info Panel Restructure**
-Remove Dashboard/Issue IDs from panel, restructure into section hierarchy (Issue, GitHub, Branch, Worktree). Independent of other phases.
+**Phase 06: Issue Info Panel Restructure** — Complete. Removed IDs, restructured into 4 sections with styled headers, branch info deduplicated.
 
-**Phase 07: Dashboard Toolbar Reorder**
-Reorder buttons into 6 visual groups with gaps. Handle responsive hiding. Independent, but Phase 08 adds buttons to Group 4.
+**Phase 07: Dashboard Toolbar Reorder** — Complete. Restructured toolbar into 6 groups (Create, View, External, Sync, Maintain, Config) with 16px inter-group gaps, ResizeObserver-based responsive hiding of Import Note/Rebuild, Settings pinned rightmost.
 
-**Phase 08: Prune Worktrees**
-Add "Prune Closed Worktrees" button. Detect closed issues, show confirmation, bulk-remove worktrees, archive dashboard issues. Depends on Phase 01 (closed-issue detection) and Phase 07 (toolbar Group 4 placement).
+**Phase 08: Prune Worktrees** — Complete. Scissors button in toolbar Group 4 detects fully-closed worktree issues, shows confirmation modal, bulk-removes via `remove-worktree.sh --skip-confirmation`, sequentially archives. Shared `isFullyClosed()` helper, path traversal validation, partial-failure tracking.
 
-**Phase 09: Issue Creation + Worktree Safety**
-Fix GitHub search empty-result flow and add repo-folder mismatch safety check. Independent small fixes.
+**Phase 09: Issue Creation + Worktree Safety** — Complete. Standalone creation notice on empty search, repo-folder mismatch disables worktree buttons, orange re-assign buttons for previously-deleted issues.
 
-**Phase 10: Refactoring / Componentization**
-Large file refactoring and isolated component extraction. Runs after all feature work to avoid merge conflicts.
+**Phase 10: Refactoring / Componentization** — Complete. 6 extractions (SortControls toolbar logic, IssueHeader info content, issue-creation-modal helpers, action confirmations, IssueManager block-edit, OverflowPanel settings mode). 11 new focused modules, ~1100 lines moved. No Svelte context introduced; prop drilling kept. Gate review: 7 findings fixed (error handling, DRY, type safety, security).
 
 ## Decisions
 

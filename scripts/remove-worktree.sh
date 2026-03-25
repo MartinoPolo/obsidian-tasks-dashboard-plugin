@@ -73,16 +73,33 @@ if [ ${#NAMES[@]} -eq 0 ]; then
   done
 fi
 
-# Validate all worktrees exist
+# Validate worktrees exist (skip missing in bulk/skip-confirmation mode)
 PATHS=()
+VALID_NAMES=()
 for NAME in "${NAMES[@]}"; do
+  # Reject path traversal attempts
+  if [[ "$NAME" == *"/"* || "$NAME" == *"\\"* || "$NAME" == *".."* || -z "$NAME" ]]; then
+    echo -e "${RED}✗${RESET} Invalid worktree name: '$NAME'"
+    exit 1
+  fi
   WORKTREE_PATH="$WORKTREE_DIR/$NAME"
   if [ ! -d "$WORKTREE_PATH" ]; then
+    if [ "$SKIP_CONFIRMATION" = "true" ]; then
+      echo -e "${YELLOW}⚠${RESET} Worktree '$NAME' not found at $WORKTREE_PATH -- skipping"
+      continue
+    fi
     echo -e "${RED}✗${RESET} Worktree '$NAME' not found at $WORKTREE_PATH"
     exit 1
   fi
   PATHS+=("$WORKTREE_PATH")
+  VALID_NAMES+=("$NAME")
 done
+
+NAMES=("${VALID_NAMES[@]}")
+if [ ${#NAMES[@]} -eq 0 ]; then
+  echo -e "${YELLOW}⚠${RESET} No valid worktrees to remove."
+  exit 0
+fi
 
 # Show confirmation
 if [ "$SKIP_CONFIRMATION" != "true" ]; then
@@ -110,11 +127,13 @@ for i in "${!NAMES[@]}"; do
   if ! git worktree remove --force "$WORKTREE_PATH" 2>/dev/null; then
     echo -e "  ${DIM}Git worktree remove failed, unregistering manually...${RESET}"
 
-    GIT_COMMON=$(git rev-parse --git-common-dir)
-    WORKTREE_ADMIN="$GIT_COMMON/worktrees/$NAME"
-    if [ -d "$WORKTREE_ADMIN" ]; then
-      rm -rf "$WORKTREE_ADMIN"
-      echo -e "  ${DIM}Worktree unregistered.${RESET}"
+    GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null) || true
+    if [ -n "$GIT_COMMON" ]; then
+      WORKTREE_ADMIN="$GIT_COMMON/worktrees/$NAME"
+      if [ -d "$WORKTREE_ADMIN" ]; then
+        rm -rf "$WORKTREE_ADMIN" 2>/dev/null || true
+        echo -e "  ${DIM}Worktree unregistered.${RESET}"
+      fi
     fi
   fi
 

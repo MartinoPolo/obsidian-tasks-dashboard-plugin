@@ -1,6 +1,6 @@
 # Phase 9: Issue Creation Workflow Fix + Worktree Safety
 
-**Status:** Not Started
+**Status:** Complete
 **Dependencies:** None
 
 ## Objective
@@ -28,35 +28,39 @@ Fix the issue creation flow when GitHub search returns no results and add safety
 
 ### Issue Creation Workflow
 
-- [ ] Auto-advance to step 2 when GitHub search returns no results and user presses Enter
-      In the issue creation modal (`issue-creation-modal.ts` and `IssueCreationWizard.svelte`), the step 1 is a GitHub issue search. When the search returns zero results and the user presses Enter (submits), auto-advance to step 2 (name input). Pre-fill the name input with the search text the user typed. Currently, pressing Enter with no results likely does nothing or stays on step 1. Modify the Enter keydown handler or search-submit logic to detect the empty-result case and transition to step 2.
+- [x] Auto-advance to step 2 when GitHub search returns no results and user presses Enter
+      Already working via `enterSkipsWithoutSelection: true` in `openIssueCreationModal`. Search text pre-filled as issue name via callback.
 
-- [ ] Show subtle notice when creating standalone issue (no GitHub match)
-      When auto-advancing from empty search results, display a subtle notice: "No matching GitHub issue -- creating standalone." Use Obsidian's `Notice` API with a short duration (3-4 seconds). The notice should appear immediately on auto-advance, not after issue creation completes.
+- [x] Show subtle notice when creating standalone issue (no GitHub match)
+      Added Notice in `issue-creation-modal.ts` callback when url and metadata are undefined and searchQuery is present.
 
 ### Worktree Safety
 
-- [ ] Detect repository-folder mismatch and disable worktree creation
-      When the dashboard's linked GitHub repository does not match the linked project folder's git remote (e.g., folder points to repo A but GitHub link points to repo B), disable all worktree creation buttons. In `SortControls.svelte` (toolbar) and `AssignedIssuesSection.svelte` (quick-add), check if the project folder's git remote origin matches any of the linked repositories. Use `platformService.getGitRemoteUrl()` or equivalent to get the folder's remote. If mismatch: disable the "Add Worktree Issue" button with a tooltip: "Repository not linked to dashboard folder." Multi-folder support is explicitly deferred.
+- [x] Detect repository-folder mismatch and disable worktree creation
+      Added `getGitRemoteUrl` to platform service, `doesRemoteMatchLinkedRepos` utility. Both `SortControls.svelte` and `AssignedIssuesSection.svelte` detect mismatch and disable worktree buttons with tooltip.
 
-- [ ] Re-show quick-add buttons with orange styling for previously-assigned deleted issues
-      When a dashboard issue is deleted but the GitHub issue was previously assigned to it, the quick-add/assign buttons in `AssignedIssuesSection.svelte` must reappear. Style the button in orange (not the default color) to indicate this issue was previously assigned and its dashboard issue was deleted. This requires tracking "previously assigned" state — check if the GitHub issue ID exists in any archived/deleted issue records or settings. The orange color gives visual history while allowing re-assignment.
+- [x] Re-show quick-add buttons with orange styling for previously-assigned deleted issues
+      Added `deletedIssueGitHubUrls` to settings, recording on delete (filtered by `isGitHubWebUrl`), orange `tdc-btn-previously-assigned` CSS class, cleanup on re-add.
 
 ### Completion Criteria
 
-- [ ] Pressing Enter in step 1 with no search results advances to step 2 with text pre-filled
-- [ ] "No matching GitHub issue -- creating standalone" notice appears on auto-advance
-- [ ] Worktree creation buttons are disabled when repo-folder mismatch detected
-- [ ] Disabled buttons show tooltip: "Repository not linked to dashboard folder."
-- [ ] Previously-assigned issues show orange quick-add buttons after dashboard issue deletion
+- [x] Pressing Enter in step 1 with no search results advances to step 2 with text pre-filled
+- [x] "No matching GitHub issue -- creating standalone" notice appears on auto-advance
+- [x] Worktree creation buttons are disabled when repo-folder mismatch detected
+- [x] Disabled buttons show tooltip: "Repository not linked to dashboard folder."
+- [x] Previously-assigned issues show orange quick-add buttons after dashboard issue deletion
 
 ---
 
-Progress: 0/4 tasks complete
+Progress: 4/4 tasks complete
 
 ## Decisions
 
-[Decisions made during execution, with reasoning]
+- Auto-advance already worked via existing `enterSkipsWithoutSelection: true` config — no code change needed for that part.
+- Used `$effect` + `$state` for git remote URL lookup to avoid blocking the render cycle with `spawnSync` in `$derived`.
+- Extracted shared helpers: `doesRemoteMatchLinkedRepos`, `recordDeletedIssueGitHubUrls`, `removeDeletedIssueGitHubUrl`.
+- URL recording happens after `deleteIssue` succeeds to prevent orphaned entries on failure.
+- URLs filtered with `isGitHubWebUrl` before recording to prevent storage of non-web URLs.
 
 ## Blockers
 

@@ -10,5 +10,6 @@ export const DEFAULT_SETTINGS: TasksDashboardSettings = {
 	collapsedIssues: {},
 	collapsedDashboardSettings: {},
 	issueColors: {},
-	issueFolders: {}
+	issueFolders: {},
+	deletedIssueGitHubUrls: {}
 };
