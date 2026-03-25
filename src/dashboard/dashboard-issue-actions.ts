@@ -14,6 +14,7 @@ import { getGitHubLinkType, isGitHubWebUrl } from '../utils/github';
 import { formatGitHubLinkLabel } from '../utils/github-helpers';
 import { parseGitHubRepoFullName } from '../utils/github-url';
 import { getIssueFolderStorageKey } from '../issues/issue-manager-shared';
+import { recordDeletedIssueGitHubUrls } from '../issues/issue-manager-settings';
 import type { PlatformService } from '../utils/platform';
 import { isNonEmptyString } from '../utils/string-utils';
 import { openIssueColorDropdown } from './dashboard-issue-color-dropdown';
@@ -456,7 +457,20 @@ export const buildIssueActionDescriptors = (options: {
 									skipScriptConfirmation: true
 								});
 							}
-							void plugin.issueManager.deleteIssue(dashboard, params.issue);
+							void plugin.issueManager
+								.deleteIssue(dashboard, params.issue)
+								.then(() => {
+									const webUrls = params.githubLinks.filter(isGitHubWebUrl);
+									if (
+										recordDeletedIssueGitHubUrls(
+											plugin.settings,
+											dashboard.id,
+											webUrls
+										)
+									) {
+										void plugin.saveSettings();
+									}
+								});
 						}
 					);
 					modal.open();

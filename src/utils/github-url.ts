@@ -73,3 +73,31 @@ export function parseGitHubRepoFullName(url: string): string | undefined {
 	}
 	return `${parsed.owner}/${parsed.repo}`;
 }
+
+/** Extracts "owner/repo" from a git remote URL (HTTPS or SSH). */
+const GIT_REMOTE_HTTPS_PATTERN = /github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/;
+const GIT_REMOTE_SSH_PATTERN = /github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/;
+
+export function extractRepoFullNameFromRemoteUrl(remoteUrl: string): string | undefined {
+	const httpsMatch = remoteUrl.match(GIT_REMOTE_HTTPS_PATTERN) ?? undefined;
+	if (httpsMatch !== undefined) {
+		return `${httpsMatch[1]}/${httpsMatch[2]}`;
+	}
+
+	const sshMatch = remoteUrl.match(GIT_REMOTE_SSH_PATTERN) ?? undefined;
+	if (sshMatch !== undefined) {
+		return `${sshMatch[1]}/${sshMatch[2]}`;
+	}
+
+	return undefined;
+}
+
+/** Checks if a git remote URL matches any of the linked repository names. */
+export function doesRemoteMatchLinkedRepos(remoteUrl: string, linkedRepos: string[]): boolean {
+	const folderRepo = extractRepoFullNameFromRemoteUrl(remoteUrl);
+	if (folderRepo === undefined) {
+		return false;
+	}
+	const folderRepoLower = folderRepo.toLowerCase();
+	return linkedRepos.some((repo) => repo.toLowerCase() === folderRepoLower);
+}

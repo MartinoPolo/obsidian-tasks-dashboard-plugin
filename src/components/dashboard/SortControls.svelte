@@ -20,6 +20,7 @@
   } from '../../dashboard/dashboard-issue-surface';
   import { refreshDashboard } from '../../dashboard/dashboard-refresh';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
+  import { doesRemoteMatchLinkedRepos } from '../../utils/github-url';
   import ActionButton from '../ActionButton.svelte';
   import SortDropdown from './SortDropdown.svelte';
 
@@ -59,6 +60,34 @@
       ? platformService.isGitRepositoryFolder(projectFolder)
       : false
   );
+  const REPO_FOLDER_MISMATCH_MESSAGE = 'Repository not linked to dashboard folder.';
+
+  let cachedRemoteUrl: string | undefined = $state(undefined);
+
+  $effect(() => {
+    if (!isGitRepository || projectFolder === undefined) {
+      cachedRemoteUrl = undefined;
+      return;
+    }
+    cachedRemoteUrl = platformService.getGitRemoteUrl(projectFolder);
+  });
+
+  let hasRepoFolderMismatch = $derived(
+    cachedRemoteUrl !== undefined && hasRepos
+      ? !doesRemoteMatchLinkedRepos(cachedRemoteUrl, linkedRepos)
+      : false
+  );
+
+  let worktreeButtonLabel = $derived.by(() => {
+    if (hasRepoFolderMismatch) {
+      return REPO_FOLDER_MISMATCH_MESSAGE;
+    }
+    if (isGitRepository) {
+      return 'Add issue in worktree';
+    }
+    return 'Set project folder for worktree';
+  });
+
   let hasUnsyncedBranches = $derived(
     dashboardId !== undefined
       ? plugin.gitStatusService.hasUnsyncedBranches(dashboardId)
@@ -537,8 +566,9 @@
         {#if visibility?.github}
           <ActionButton
             icon="worktree"
-            label={isGitRepository ? 'Add issue in worktree' : 'Set project folder for worktree'}
-            faded={!isGitRepository}
+            label={worktreeButtonLabel}
+            faded={!isGitRepository || hasRepoFolderMismatch}
+            disabled={hasRepoFolderMismatch}
             onclick={() => {
               if (dashboard === undefined) { return; }
               if (!isGitRepository) {

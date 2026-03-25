@@ -251,6 +251,19 @@ export const checkBranchExists = (
 	return 'none';
 };
 
+export const getGitRemoteUrl = (repositoryFolder: string): string | undefined => {
+	if (repositoryFolder.trim() === '' || !isGitRepositoryFolder(repositoryFolder)) {
+		return undefined;
+	}
+
+	const output = runGitCommandOutput(repositoryFolder, ['remote', 'get-url', 'origin']);
+	if (output === undefined || output.trim() === '') {
+		return undefined;
+	}
+
+	return output.trim();
+};
+
 export const hasBranchUpstreamConfig = (repositoryFolder: string, branchName: string): boolean => {
 	if (repositoryFolder.trim() === '' || branchName.trim() === '') {
 		return false;

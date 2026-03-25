@@ -507,6 +507,14 @@ export const openIssueCreationModal = (
 			plugin,
 			dashboard,
 			(url, metadata, searchQuery) => {
+				if (
+					url === undefined &&
+					metadata === undefined &&
+					searchQuery !== undefined &&
+					searchQuery !== ''
+				) {
+					new Notice('No matching GitHub issue — creating standalone.');
+				}
 				const prefilledName =
 					getPrefilledIssueName(metadata) ??
 					(searchQuery !== undefined && searchQuery !== '' ? searchQuery : undefined);
