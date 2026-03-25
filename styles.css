@@ -24,7 +24,7 @@
 	/* Git PR state colors */
 	--tdc-git-pr-open: #238636;
 	--tdc-git-pr-merged: #8957e5;
-	--tdc-git-pr-closed: #da3633;
+	--tdc-git-pr-closed: #848d97;
 	--tdc-git-pr-draft: #768390;
 	--tdc-git-pr-review: #d29922;
 	--tdc-git-branch-active: #3fb950;
@@ -570,7 +570,19 @@
 	font-size: 0.95em;
 }
 
+.tdc-color-picker-circle-wrapper {
+	position: relative;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+}
+
 .tdc-color-picker-preview-letter {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
 	font-size: 1.6em;
 	font-weight: 700;
 	line-height: 1;
