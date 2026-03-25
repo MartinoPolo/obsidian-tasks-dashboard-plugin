@@ -7,6 +7,14 @@ import {
 } from './color';
 
 const ISSUE_COLOR_PALETTE_FOR_DARK_THEME: readonly IssueColorEntry[] = [
+	// Row 0 – vivid primaries (same for dark & light)
+	{ background: '#ff0000', foreground: '#ffffff' },
+	{ background: '#0055ff', foreground: '#ffffff' },
+	{ background: '#00cc44', foreground: '#ffffff' },
+	{ background: '#ffd700', foreground: '#000000' },
+	{ background: '#8b00ff', foreground: '#ffffff' },
+	{ background: '#ff6600', foreground: '#ffffff' },
+
 	// Row 1 – very dark saturated (white text)
 	{ background: '#5a1a1a', foreground: '#ffffff' },
 	{ background: '#1a2e5a', foreground: '#ffffff' },
@@ -49,6 +57,14 @@ const ISSUE_COLOR_PALETTE_FOR_DARK_THEME: readonly IssueColorEntry[] = [
 ] as const;
 
 const ISSUE_COLOR_PALETTE_FOR_LIGHT_THEME: readonly IssueColorEntry[] = [
+	// Row 0 – vivid primaries (same for dark & light)
+	{ background: '#ff0000', foreground: '#ffffff' },
+	{ background: '#0055ff', foreground: '#ffffff' },
+	{ background: '#00cc44', foreground: '#ffffff' },
+	{ background: '#ffd700', foreground: '#000000' },
+	{ background: '#8b00ff', foreground: '#ffffff' },
+	{ background: '#ff6600', foreground: '#ffffff' },
+
 	// Row 1 – very light pastels (black text)
 	{ background: '#ffd6d6', foreground: '#000000' },
 	{ background: '#d6e6ff', foreground: '#000000' },

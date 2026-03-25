@@ -10,7 +10,11 @@
     tooltip: string;
     class?: string;
     href?: string;
+    onclick?: (event: MouseEvent) => void;
     oncontextmenu?: (event: MouseEvent) => void;
+    secondaryIcon?: IconName;
+    spinning?: boolean;
+    disabled?: boolean;
   }
 
   let {
@@ -20,7 +24,11 @@
     tooltip,
     class: className,
     href,
-    oncontextmenu
+    onclick,
+    oncontextmenu,
+    secondaryIcon,
+    spinning = false,
+    disabled = false
   }: Props = $props();
 </script>
 
@@ -34,6 +42,23 @@
   >
     <Icon name={icon} size={14} /><span>{text}</span>
   </a>
+{:else if onclick}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <span
+    class={['tdc-git-badge', 'tdc-git-badge-clickable', `tdc-git-badge-${type}`, spinning && 'tdc-badge-spinning', className]}
+    role="button"
+    tabindex={disabled ? -1 : 0}
+    aria-disabled={disabled}
+    onclick={(event) => { if (!disabled) { event.stopPropagation(); onclick(event); } }}
+    onkeydown={(event) => { if (!disabled && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); onclick(event as unknown as MouseEvent); } }}
+    {@attach attachTooltip(tooltip, 300)}
+  >
+    <Icon name={icon} size={14} />
+    {#if secondaryIcon}
+      <Icon name={secondaryIcon} size={14} />
+    {/if}
+    <span>{text}</span>
+  </span>
 {:else}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <span
@@ -68,13 +93,24 @@
   flex-shrink: 0;
 }
 
-a.tdc-git-badge {
+a.tdc-git-badge,
+.tdc-git-badge-clickable {
   cursor: pointer;
 }
 
-a.tdc-git-badge:hover {
+a.tdc-git-badge:hover,
+.tdc-git-badge-clickable:hover:not([aria-disabled='true']) {
   text-decoration: none;
   filter: brightness(1.2);
+}
+
+.tdc-git-badge-clickable[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.tdc-badge-spinning :global(svg:first-child) {
+  animation: tdc-spin 0.8s linear infinite;
 }
 
 /* Branch badges */
