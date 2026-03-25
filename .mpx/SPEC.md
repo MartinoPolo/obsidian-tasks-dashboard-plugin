@@ -81,5 +81,5 @@
 
 ## TODO
 
-- [ ] Refactor large files; clean code sweep across the project
-- [ ] Componentize standalone UI units (e.g., header badges) into isolated modules; analyze Obsidian Plugin componentization approach
+- [x] Refactor large files; clean code sweep across the project
+- [x] Componentize standalone UI units (e.g., header badges) into isolated modules; analyze Obsidian Plugin componentization approach

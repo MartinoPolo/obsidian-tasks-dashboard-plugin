@@ -22,7 +22,7 @@ Updated: 2026-03-24
 | 07 | Dashboard Toolbar Reorder | Complete | -- |
 | 08 | Prune Worktrees | Complete | 01, 07 |
 | 09 | Issue Creation + Worktree Safety | Complete | -- |
-| 10 | Refactoring / Componentization | Not Started | 01-09 |
+| 10 | Refactoring / Componentization | Complete | 01-09 |
 
 ### Dependency Graph
 
@@ -62,8 +62,7 @@ Updated: 2026-03-24
 
 **Phase 09: Issue Creation + Worktree Safety** — Complete. Standalone creation notice on empty search, repo-folder mismatch disables worktree buttons, orange re-assign buttons for previously-deleted issues.
 
-**Phase 10: Refactoring / Componentization**
-Large file refactoring and isolated component extraction. Runs after all feature work to avoid merge conflicts.
+**Phase 10: Refactoring / Componentization** — Complete. 6 extractions (SortControls toolbar logic, IssueHeader info content, issue-creation-modal helpers, action confirmations, IssueManager block-edit, OverflowPanel settings mode). 11 new focused modules, ~1100 lines moved. No Svelte context introduced; prop drilling kept. Gate review: 7 findings fixed (error handling, DRY, type safety, security).
 
 ## Decisions
 
