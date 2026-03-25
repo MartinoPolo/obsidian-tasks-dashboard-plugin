@@ -11,6 +11,8 @@
   import { createPlatformService } from '../../utils/platform';
   import { parseDashboard } from '../../dashboard/DashboardParser';
   import { parseParams } from '../../dashboard/dashboard-renderer-params';
+  import { PruneConfirmationModal, type PrunableIssueInfo } from '../../modals/prune-confirmation-modal';
+  import { isFullyClosed } from '../../git-status/git-status-types';
   import { getButtonVisibility } from '../../dashboard/dashboard-issue-actions';
   import {
     observeContentBlockSiblings,
@@ -32,6 +34,8 @@
   let sortButtonElement: HTMLButtonElement | undefined = $state(undefined);
   let isSortOpen = $state(false);
   let isSyncingAll = $state(false);
+  let isPruning = $state(false);
+  let prunableCount = $state(0);
   let toolbarElement: HTMLDivElement | undefined = $state(undefined);
   let isToolbarCompact = $state(false);
 
@@ -145,17 +149,11 @@
   }
 
   async function getDashboardIssueIds(): Promise<string[]> {
-    if (dashboard === undefined) {
+    const dashboardData = await readDashboardContent();
+    if (dashboardData === undefined) {
       return [];
     }
-    const filename = dashboard.dashboardFilename || 'Dashboard.md';
-    const dashboardPath = `${dashboard.rootPath}/${filename}`;
-    const file = plugin.app.vault.getAbstractFileByPath(dashboardPath);
-    if (!(file instanceof TFile)) {
-      return [];
-    }
-    const content = await plugin.app.vault.read(file);
-    const parsed = parseDashboard(content);
+    const { parsed } = dashboardData;
     return [
       ...parsed.activeIssues.map((issue) => issue.id),
       ...parsed.archivedIssues.map((issue) => issue.id)
@@ -241,9 +239,27 @@
     }, DOM_SETTLE_DELAY_MS);
   }
 
-  // --- Sync All ---
+  // --- Dashboard Content Helper ---
 
   const CONTROLS_BLOCK_PATTERN = /```tasks-dashboard-controls\n([\s\S]*?)```/g;
+
+  async function readDashboardContent(): Promise<{ content: string; parsed: ReturnType<typeof parseDashboard> } | undefined> {
+    if (dashboard === undefined || dashboardId === undefined) {
+      return undefined;
+    }
+    const filename = dashboard.dashboardFilename || 'Dashboard.md';
+    const dashboardPath = `${dashboard.rootPath}/${filename}`;
+    const file = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+    if (!(file instanceof TFile)) {
+      return undefined;
+    }
+    const content = await plugin.app.vault.read(file);
+    const parsed = parseDashboard(content);
+    return { content, parsed };
+  }
+
+  // --- Sync All ---
+
   const SEQUENTIAL_SPAWN_DELAY_MS = 2000;
 
   interface UnsyncedBranchInfo {
@@ -251,18 +267,14 @@
   }
 
   async function getUnsyncedBranches(): Promise<UnsyncedBranchInfo[]> {
-    if (dashboard === undefined || dashboardId === undefined) {
+    if (dashboardId === undefined) {
       return [];
     }
-    const filename = dashboard.dashboardFilename || 'Dashboard.md';
-    const dashboardPath = `${dashboard.rootPath}/${filename}`;
-    const file = plugin.app.vault.getAbstractFileByPath(dashboardPath);
-    if (!(file instanceof TFile)) {
+    const dashboardData = await readDashboardContent();
+    if (dashboardData === undefined) {
       return [];
     }
-
-    const content = await plugin.app.vault.read(file);
-    const parsed = parseDashboard(content);
+    const { content, parsed } = dashboardData;
     const unsyncedBranches: UnsyncedBranchInfo[] = [];
 
     for (const issue of parsed.activeIssues) {
@@ -326,6 +338,147 @@
       }
     } finally {
       isSyncingAll = false;
+    }
+  }
+
+  // --- Prune Closed Worktrees ---
+
+  let cachedPrunableIssues: PrunableIssueInfo[] = [];
+  let prunableCountUpdateInProgress = false;
+
+  async function getPrunableIssues(): Promise<PrunableIssueInfo[]> {
+    if (dashboardId === undefined) {
+      return [];
+    }
+    const dashboardData = await readDashboardContent();
+    if (dashboardData === undefined) {
+      return [];
+    }
+    const { content, parsed } = dashboardData;
+    const prunableIssues: PrunableIssueInfo[] = [];
+
+    for (const issue of parsed.activeIssues) {
+      const issueContent = content.substring(issue.startIndex, issue.endIndex);
+      for (const match of issueContent.matchAll(CONTROLS_BLOCK_PATTERN)) {
+        const controlBlockContent = match[1];
+        const controlParams = parseParams(controlBlockContent);
+        if (controlParams === null || controlParams.worktree !== true) {
+          continue;
+        }
+        const branchName = controlParams.worktree_branch;
+        if (branchName === undefined || branchName === '') {
+          continue;
+        }
+        const cachedStatus = plugin.gitStatusService.getCachedStatus(dashboardId, issue.id);
+        if (cachedStatus === undefined) {
+          continue;
+        }
+        if (isFullyClosed(cachedStatus)) {
+          prunableIssues.push({
+            issueId: issue.id,
+            issueName: issue.name,
+            branchName
+          });
+        }
+      }
+    }
+
+    return prunableIssues;
+  }
+
+  function updatePrunableCount(): void {
+    if (prunableCountUpdateInProgress) {
+      return;
+    }
+    prunableCountUpdateInProgress = true;
+    void getPrunableIssues().then((issues) => {
+      cachedPrunableIssues = issues;
+      prunableCount = issues.length;
+      prunableCountUpdateInProgress = false;
+    });
+  }
+
+  // Reactively update prunable count when git status data changes
+  $effect(() => {
+    if (dashboardId === undefined) {
+      prunableCount = 0;
+      return;
+    }
+    // Access hasUnsyncedBranches to trigger re-evaluation when git status cache updates
+    void hasUnsyncedBranches;
+    updatePrunableCount();
+  });
+
+  let hasPrunableWorktrees = $derived(prunableCount > 0);
+
+  async function archiveIssuesSequentially(
+    currentDashboard: DashboardConfig,
+    issues: PrunableIssueInfo[]
+  ): Promise<number> {
+    let archivedCount = 0;
+    for (const issue of issues) {
+      try {
+        await plugin.issueManager.archiveIssue(currentDashboard, issue.issueId);
+        archivedCount++;
+      } catch {
+        new Notice(`Could not archive: ${issue.issueName}`);
+      }
+    }
+    return archivedCount;
+  }
+
+  async function handlePruneWorktrees(): Promise<void> {
+    if (isPruning || dashboard === undefined) {
+      return;
+    }
+    isPruning = true;
+
+    try {
+      // Use cached results if available, otherwise fetch
+      const prunableIssues = cachedPrunableIssues.length > 0
+        ? cachedPrunableIssues
+        : await getPrunableIssues();
+
+      if (prunableIssues.length === 0) {
+        new Notice('No closed worktrees to prune.');
+        return;
+      }
+
+      const currentDashboard = dashboard;
+
+      new PruneConfirmationModal(plugin.app, prunableIssues, (confirmed) => {
+        if (!confirmed) {
+          isPruning = false;
+          return;
+        }
+
+        const branchNames = prunableIssues.map((issue) => issue.branchName);
+        const launched = platformService.runBulkWorktreeRemovalScript(
+          branchNames,
+          currentDashboard.projectFolder
+        );
+
+        if (!launched) {
+          new Notice('Could not launch worktree removal script.');
+          isPruning = false;
+          return;
+        }
+
+        // Archive sequentially to avoid concurrent file write races
+        void archiveIssuesSequentially(currentDashboard, prunableIssues).then((archivedCount) => {
+          const total = prunableIssues.length;
+          if (archivedCount === total) {
+            new Notice(`Pruned ${total} worktree${total === 1 ? '' : 's'} and archived ${total} issue${total === 1 ? '' : 's'}.`);
+          } else {
+            new Notice(`Pruned ${total} worktree${total === 1 ? '' : 's'}. Archived ${archivedCount} of ${total} issue${total === 1 ? '' : 's'}.`);
+          }
+          plugin.triggerDashboardRefresh();
+          updatePrunableCount();
+          isPruning = false;
+        });
+      }).open();
+    } catch {
+      isPruning = false;
     }
   }
 </script>
@@ -527,6 +680,18 @@
           onclick={() => {
             if (hasUnsyncedBranches && !isSyncingAll) {
               void handleSyncAllBranches();
+            }
+          }}
+        />
+
+        <ActionButton
+          icon="scissors"
+          label={isPruning ? 'Pruning worktrees...' : hasPrunableWorktrees ? `Prune ${prunableCount} closed worktree${prunableCount === 1 ? '' : 's'}` : 'No closed worktrees to prune'}
+          faded={!hasPrunableWorktrees || isPruning}
+          disabled={!hasPrunableWorktrees || isPruning}
+          onclick={() => {
+            if (hasPrunableWorktrees && !isPruning) {
+              void handlePruneWorktrees();
             }
           }}
         />

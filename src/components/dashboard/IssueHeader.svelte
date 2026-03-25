@@ -16,6 +16,7 @@
     BRANCH_STATUS_TOOLTIP_PREFIX
   } from '../../git-status/git-badge-maps';
   import { buildGitStatusDisplayInfo, type GitStatusDisplayInfo, INFO_SECTION_HEADER_PREFIX } from '../../git-status/git-status-helpers';
+  import { isFullyClosed as checkFullyClosed } from '../../git-status/git-status-types';
   import type { IssueGitStatus } from '../../git-status/git-status-types';
   import { attachResizeObserver } from '../../lib/attach-resize-observer';
   import { attachTooltip } from '../../lib/attach-tooltip';
@@ -413,15 +414,7 @@
 
   // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
   $effect(() => {
-    if (gitStatus === undefined) {
-      isFullyClosed = false;
-      return;
-    }
-    const prClosed = gitStatus.aggregatePrState === 'merged' || gitStatus.aggregatePrState === 'closed';
-    const branchGone = gitStatus.branchStatus === 'remote-gone' || gitStatus.branchStatus === 'deleted';
-    const hasClosedGitHubIssue = gitStatus.linkedIssues.length > 0 &&
-      gitStatus.linkedIssues.some(issue => issue.state === 'closed' || issue.state === 'not_planned');
-    isFullyClosed = prClosed && branchGone && hasClosedGitHubIssue;
+    isFullyClosed = gitStatus !== undefined && checkFullyClosed(gitStatus);
   });
 </script>
 

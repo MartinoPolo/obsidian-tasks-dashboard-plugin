@@ -74,6 +74,11 @@ export interface PlatformService {
 			tabColor?: string;
 		}
 	) => boolean;
+	runBulkWorktreeRemovalScript: (
+		branchNames: string[],
+		dashboardWorkingDirectory?: string,
+		bashExecutablePath?: string
+	) => boolean;
 }
 
 export interface ScriptPathResolver {

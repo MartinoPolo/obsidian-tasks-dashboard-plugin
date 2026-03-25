@@ -16,7 +16,11 @@ import {
 	openTerminalWithCommand,
 	openVSCode
 } from './shell-launchers';
-import { runWorktreeRemovalScript, runWorktreeSetupScript } from './script-execution';
+import {
+	runBulkWorktreeRemovalScript,
+	runWorktreeRemovalScript,
+	runWorktreeSetupScript
+} from './script-execution';
 import { pickFile, pickFolder } from './electron-dialogs';
 
 export type {
@@ -72,6 +76,18 @@ export function createPlatformService(scriptPathResolver?: ScriptPathResolver): 
 				dashboardWorkingDirectory,
 				bashExecutablePath,
 				options
+			);
+		},
+		runBulkWorktreeRemovalScript: (
+			branchNames: string[],
+			dashboardWorkingDirectory?: string,
+			bashExecutablePath?: string
+		) => {
+			return runBulkWorktreeRemovalScript(
+				scriptPathResolver,
+				branchNames,
+				dashboardWorkingDirectory,
+				bashExecutablePath
 			);
 		}
 	};
