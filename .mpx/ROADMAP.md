@@ -14,7 +14,7 @@ Updated: 2026-03-24
 | Phase | Name | Status | Dependencies |
 |-------|------|--------|-------------|
 | 01 | Badge Icons + Branch/PR State Verification | Complete | -- |
-| 02 | GitHub API Enhancements | Not Started | -- |
+| 02 | GitHub API Enhancements | Complete | -- |
 | 03 | Sync Action | Not Started | 01, 02 |
 | 04 | Badge Contrast Adaptation | Not Started | 01 |
 | 05 | Color Picker + Closed Issue Appearance | Not Started | 01 |
@@ -46,8 +46,7 @@ Updated: 2026-03-24
 
 **Phase 01: Badge Icons + Branch/PR State Verification** — Complete. Added 5 branch + 1 PR review icon, verified detection logic, fixed remote-gone color.
 
-**Phase 02: GitHub API Enhancements**
-Add GitHub compare API integration (`behind_by` count) and PR `mergeable` field support. These feed the sync action in Phase 03 and the "behind base" badge state.
+**Phase 02: GitHub API Enhancements** — Complete. Added `compareBranches()` and `getPullRequestMergeable()` to GitHubService, extended `IssueGitStatus` with `behindBaseCount`/`mergeConflict`, integrated into git status flow with parallel API calls.
 
 **Phase 03: Sync Action**
 Add per-issue sync button (visible when branch is behind base) and "Sync All" toolbar button. Depends on Phase 01 (badge infrastructure) and Phase 02 (behind detection + mergeable field).
