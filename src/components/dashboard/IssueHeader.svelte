@@ -221,7 +221,8 @@
     let isDestroyed = false;
     let rafId: number | undefined;
 
-    if (isWorktreeIssue || params.githubLinks.length > 0) {
+    const isWorktreePending = isWorktreeIssue && params.worktree_setup_state === 'pending';
+    if ((isWorktreeIssue && !isWorktreePending) || params.githubLinks.length > 0) {
       isBadgesLoading = true;
       const linkedReposForInfo = getLinkedRepositories(dashboard);
       void plugin.gitStatusService
@@ -687,6 +688,7 @@
 /* Issue 3 -- Header button icon colors respect issue color */
 .tdc-issue-header :global(.tdc-btn) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 10%, transparent);
 }
 
 .tdc-issue-header :global(.tdc-btn):hover {
@@ -699,8 +701,7 @@
 }
 
 /* Badge border adapts to issue text color for contrast on colored headers */
-.tdc-issue-header :global(.tdc-git-badge),
-.tdc-issue-header :global(.tdc-sync-button) {
+.tdc-issue-header :global(.tdc-git-badge) {
   border-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 40%, transparent);
 }
 
