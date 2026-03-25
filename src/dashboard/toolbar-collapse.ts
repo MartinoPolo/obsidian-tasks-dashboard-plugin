@@ -1,3 +1,4 @@
+import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type { DashboardConfig, TasksDashboardSettings } from '../types';
 import {
@@ -55,21 +56,25 @@ export function toggleAllIssues(
 ): void {
 	const { app, dashboard, settings, saveSettings, triggerDashboardRefresh } = dependencies;
 
-	void getDashboardIssueIds(app, dashboard).then((issueIds) => {
-		for (const issueId of issueIds) {
-			if (collapsed) {
-				settings.collapsedIssues[issueId] = true;
-			} else {
-				delete settings.collapsedIssues[issueId];
+	void getDashboardIssueIds(app, dashboard)
+		.then((issueIds) => {
+			for (const issueId of issueIds) {
+				if (collapsed) {
+					settings.collapsedIssues[issueId] = true;
+				} else {
+					delete settings.collapsedIssues[issueId];
+				}
 			}
-		}
-		void saveSettings();
+			void saveSettings();
 
-		const dashboardElement = findDashboardElement(containerElement);
-		if (dashboardElement !== null) {
-			applyCollapseToControlBlocks(dashboardElement, collapsed, settings.collapsedIssues);
-		}
+			const dashboardElement = findDashboardElement(containerElement);
+			if (dashboardElement !== null) {
+				applyCollapseToControlBlocks(dashboardElement, collapsed, settings.collapsedIssues);
+			}
 
-		triggerDashboardRefresh();
-	});
+			triggerDashboardRefresh();
+		})
+		.catch(() => {
+			new Notice('Could not toggle issues.');
+		});
 }

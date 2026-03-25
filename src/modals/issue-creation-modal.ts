@@ -20,6 +20,7 @@ import {
 	getIssueLinkedRepositoryFromLinks,
 	getPrefilledIssueName
 } from './issue-creation-helpers';
+import type { AssignedIssueCreationOptions } from './issue-creation-helpers';
 
 export type { AssignedIssueCreationOptions } from './issue-creation-helpers';
 
@@ -238,12 +239,7 @@ class ManualGitHubLinkFirstModal extends SvelteModal {
 export const openAssignedIssueNamePrompt = (
 	app: App,
 	plugin: TasksDashboardPlugin,
-	options: {
-		dashboard: DashboardConfig;
-		githubMetadata: import('../types').GitHubIssueMetadata;
-		githubUrl: string;
-		quickCreateDefaults?: QuickCreateDefaults;
-	}
+	options: AssignedIssueCreationOptions
 ): void => {
 	const prefilledName = getPrefilledIssueName(options.githubMetadata);
 	new IssueCreationModal(app, plugin, options.dashboard, {

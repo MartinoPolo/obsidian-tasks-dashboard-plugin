@@ -7,10 +7,8 @@ import type { IssueManagerInstance } from '../issues/issue-manager-types';
 import type { PrunableIssueInfo } from '../modals/prune-confirmation-modal';
 import { isFullyClosed } from '../git-status/git-status-types';
 import { parseParams } from './dashboard-renderer-params';
-import { readDashboardContent } from './dashboard-content-reader';
+import { CONTROLS_BLOCK_PATTERN, readDashboardContent } from './dashboard-content-reader';
 import { PruneConfirmationModal } from '../modals/prune-confirmation-modal';
-
-const CONTROLS_BLOCK_PATTERN = /```tasks-dashboard-controls\n([\s\S]*?)```/g;
 
 export interface PruneDependencies {
 	app: App;
@@ -138,15 +136,21 @@ export async function handlePruneWorktrees(
 					}
 					triggerDashboardRefresh();
 					// Re-check prunable count after pruning
-					void getPrunableIssues(dependencies).then((issues) => {
-						callbacks.setCachedPrunableIssues(issues);
-						callbacks.onPrunableCountUpdate(issues.length);
-					});
+					void getPrunableIssues(dependencies)
+						.then((issues) => {
+							callbacks.setCachedPrunableIssues(issues);
+							callbacks.onPrunableCountUpdate(issues.length);
+						})
+						.catch(() => {
+							callbacks.setCachedPrunableIssues([]);
+							callbacks.onPrunableCountUpdate(0);
+						});
 					callbacks.onPruneEnd();
 				}
 			);
 		}).open();
 	} catch {
+		new Notice('Failed to prune worktrees.');
 		callbacks.onPruneEnd();
 	}
 }
@@ -160,9 +164,13 @@ export function updatePrunableCount(
 		return;
 	}
 	inProgressFlag.value = true;
-	void getPrunableIssues(dependencies).then((issues) => {
-		callbacks.setCachedPrunableIssues(issues);
-		callbacks.onPrunableCountUpdate(issues.length);
-		inProgressFlag.value = false;
-	});
+	void getPrunableIssues(dependencies)
+		.then((issues) => {
+			callbacks.setCachedPrunableIssues(issues);
+			callbacks.onPrunableCountUpdate(issues.length);
+			inProgressFlag.value = false;
+		})
+		.catch(() => {
+			inProgressFlag.value = false;
+		});
 }

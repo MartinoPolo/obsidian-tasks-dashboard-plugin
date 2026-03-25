@@ -5,9 +5,7 @@ import type { PlatformService } from '../utils/platform';
 import type { GitStatusServiceInstance } from '../git-status/git-status-service';
 import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../constants/sync-constants';
 import { parseParams } from './dashboard-renderer-params';
-import { readDashboardContent } from './dashboard-content-reader';
-
-const CONTROLS_BLOCK_PATTERN = /```tasks-dashboard-controls\n([\s\S]*?)```/g;
+import { CONTROLS_BLOCK_PATTERN, readDashboardContent } from './dashboard-content-reader';
 const SEQUENTIAL_SPAWN_DELAY_MS = 2000;
 
 interface UnsyncedBranchInfo {
@@ -61,27 +59,31 @@ export async function getUnsyncedBranches(
 }
 
 export async function handleSyncAllBranches(dependencies: SyncAllDependencies): Promise<void> {
-	const { platformService } = dependencies;
-	const unsyncedBranches = await getUnsyncedBranches(dependencies);
-	if (unsyncedBranches.length === 0) {
-		new Notice('No branches need syncing.');
-		return;
-	}
-
-	new Notice(
-		`Syncing ${unsyncedBranches.length} branch${unsyncedBranches.length === 1 ? '' : 'es'}...`
-	);
-
-	for (let index = 0; index < unsyncedBranches.length; index++) {
-		const branch = unsyncedBranches[index];
-		platformService.openTerminalWithCommand(branch.worktreeFolder, SYNC_COMMAND, [
-			...SYNC_COMMAND_ARGS
-		]);
-		const isLastBranch = index === unsyncedBranches.length - 1;
-		if (!isLastBranch) {
-			await new Promise<void>((resolve) => {
-				window.setTimeout(resolve, SEQUENTIAL_SPAWN_DELAY_MS);
-			});
+	try {
+		const { platformService } = dependencies;
+		const unsyncedBranches = await getUnsyncedBranches(dependencies);
+		if (unsyncedBranches.length === 0) {
+			new Notice('No branches need syncing.');
+			return;
 		}
+
+		new Notice(
+			`Syncing ${unsyncedBranches.length} branch${unsyncedBranches.length === 1 ? '' : 'es'}...`
+		);
+
+		for (let index = 0; index < unsyncedBranches.length; index++) {
+			const branch = unsyncedBranches[index];
+			platformService.openTerminalWithCommand(branch.worktreeFolder, SYNC_COMMAND, [
+				...SYNC_COMMAND_ARGS
+			]);
+			const isLastBranch = index === unsyncedBranches.length - 1;
+			if (!isLastBranch) {
+				await new Promise<void>((resolve) => {
+					window.setTimeout(resolve, SEQUENTIAL_SPAWN_DELAY_MS);
+				});
+			}
+		}
+	} catch {
+		new Notice('Failed to sync branches.');
 	}
 }

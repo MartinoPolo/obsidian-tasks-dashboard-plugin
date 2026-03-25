@@ -2,6 +2,8 @@ import { App, TFile } from 'obsidian';
 import type { DashboardConfig } from '../types';
 import { escapeForRegExp } from './issue-manager-shared';
 
+const CONTROLS_BLOCK_FENCE_START = '```tasks-dashboard-controls';
+
 export type EditDashboardIssueBlockFn = (
 	dashboard: DashboardConfig,
 	issueId: string,
@@ -57,24 +59,22 @@ export const upsertDashboardIssueBlockField: UpsertDashboardIssueBlockFieldFn = 
 	fieldName: string,
 	fieldValue: string
 ): string => {
-	const controlsStart = block.indexOf('```tasks-dashboard-controls');
+	const controlsStart = block.indexOf(CONTROLS_BLOCK_FENCE_START);
 	if (controlsStart === -1) {
 		return block;
 	}
-	const firstFenceEnd = block.indexOf(
-		'```',
-		controlsStart + '```tasks-dashboard-controls'.length
-	);
+	const firstFenceEnd = block.indexOf('```', controlsStart + CONTROLS_BLOCK_FENCE_START.length);
 	if (firstFenceEnd === -1) {
 		return block;
 	}
 
+	const sanitizedFieldValue = fieldValue.replace(/[\r\n]/g, ' ');
 	const controlsSection = block.slice(controlsStart, firstFenceEnd);
 	const escapedFieldName = escapeForRegExp(fieldName);
 	const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
 	const updatedControlsSection = fieldRegex.test(controlsSection)
-		? controlsSection.replace(fieldRegex, `${fieldName}: ${fieldValue}`)
-		: `${controlsSection}${fieldName}: ${fieldValue}\n`;
+		? controlsSection.replace(fieldRegex, `${fieldName}: ${sanitizedFieldValue}`)
+		: `${controlsSection}${fieldName}: ${sanitizedFieldValue}\n`;
 
 	return block.slice(0, controlsStart) + updatedControlsSection + block.slice(firstFenceEnd);
 };

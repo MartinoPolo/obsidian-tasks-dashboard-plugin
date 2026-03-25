@@ -3,6 +3,8 @@ import type { App } from 'obsidian';
 import type { DashboardConfig } from '../types';
 import { parseDashboard, type ParsedDashboard } from './DashboardParser';
 
+export const CONTROLS_BLOCK_PATTERN = /```tasks-dashboard-controls\n([\s\S]*?)```/g;
+
 export interface DashboardContent {
 	content: string;
 	parsed: ParsedDashboard;

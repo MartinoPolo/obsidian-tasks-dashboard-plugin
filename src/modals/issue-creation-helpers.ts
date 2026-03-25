@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import TasksDashboardPlugin from '../../main';
+import type TasksDashboardPlugin from '../../main';
 import { getErrorMessage } from '../settings/settings-helpers';
 import { DashboardConfig, GitHubIssueMetadata, GitHubRepository, Priority } from '../types';
 import { getGitHubLinkType } from '../utils/github';

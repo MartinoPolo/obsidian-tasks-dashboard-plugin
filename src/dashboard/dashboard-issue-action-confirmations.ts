@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian';
-import TasksDashboardPlugin from '../../main';
+import type TasksDashboardPlugin from '../../main';
 import { ArchiveConfirmationModal } from '../modals/archive-confirmation-modal';
 import {
 	DeleteConfirmationModal,
@@ -10,7 +10,7 @@ import { isGitHubWebUrl } from '../utils/github';
 import type { DashboardConfig } from '../types';
 import type { ControlParams } from './dashboard-renderer-types';
 
-interface ConfirmationDependencies {
+export interface ConfirmationDependencies {
 	plugin: TasksDashboardPlugin;
 	dashboard: DashboardConfig;
 	params: ControlParams;
@@ -82,12 +82,19 @@ export function handleDeleteWithConfirmation(dependencies: ConfirmationDependenc
 							skipScriptConfirmation: true
 						});
 					}
-					void plugin.issueManager.deleteIssue(dashboard, params.issue).then(() => {
-						const webUrls = params.githubLinks.filter(isGitHubWebUrl);
-						if (recordDeletedIssueGitHubUrls(plugin.settings, dashboard.id, webUrls)) {
-							void plugin.saveSettings();
-						}
-					});
+					void plugin.issueManager
+						.deleteIssue(dashboard, params.issue)
+						.then(() => {
+							const webUrls = params.githubLinks.filter(isGitHubWebUrl);
+							if (
+								recordDeletedIssueGitHubUrls(plugin.settings, dashboard.id, webUrls)
+							) {
+								void plugin.saveSettings();
+							}
+						})
+						.catch(() => {
+							new Notice('Failed to delete issue.');
+						});
 				}
 			);
 			modal.open();
