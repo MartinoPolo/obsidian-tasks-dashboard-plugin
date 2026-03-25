@@ -18,7 +18,7 @@ Updated: 2026-03-24
 | 03 | Sync Action | Complete | 01, 02 |
 | 04 | Badge Contrast Adaptation | Complete | 01 |
 | 05 | Color Picker + Closed Issue Appearance | Complete | 01 |
-| 06 | Issue Info Panel Restructure | Not Started | -- |
+| 06 | Issue Info Panel Restructure | Complete | -- |
 | 07 | Dashboard Toolbar Reorder | Not Started | -- |
 | 08 | Prune Worktrees | Not Started | 01, 07 |
 | 09 | Issue Creation + Worktree Safety | Not Started | -- |
@@ -54,8 +54,7 @@ Updated: 2026-03-24
 
 **Phase 05: Color Picker + Closed Issue Appearance** — Complete. Renamed label to "Custom color", added "A" preview letter, implemented grayscale overlay for fully-closed issues (merged/closed PR + remote-gone/deleted branch + closed GitHub issue).
 
-**Phase 06: Issue Info Panel Restructure**
-Remove Dashboard/Issue IDs from panel, restructure into section hierarchy (Issue, GitHub, Branch, Worktree). Independent of other phases.
+**Phase 06: Issue Info Panel Restructure** — Complete. Removed IDs, restructured into 4 sections with styled headers, branch info deduplicated.
 
 **Phase 07: Dashboard Toolbar Reorder**
 Reorder buttons into 6 visual groups with gaps. Handle responsive hiding. Independent, but Phase 08 adds buttons to Group 4.

@@ -37,8 +37,8 @@
 
 ## Issue info panel
 
-- [ ] Remove Dashboard ID and Issue ID from the info panel content.
-- [ ] Restructure the info panel with visually distinct section headers. Use this hierarchy:
+- [x] Remove Dashboard ID and Issue ID from the info panel content.
+- [x] Restructure the info panel with visually distinct section headers. Use this hierarchy:
   ```
   ## Issue
   Name, Priority
