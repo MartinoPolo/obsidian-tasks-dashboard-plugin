@@ -737,7 +737,8 @@
 }
 
 /* Badge border adapts to issue text color for contrast on colored headers */
-.tdc-issue-header :global(.tdc-git-badge) {
+.tdc-issue-header :global(.tdc-git-badge),
+.tdc-issue-header :global(.tdc-sync-button) {
   border-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 40%, transparent);
 }
 

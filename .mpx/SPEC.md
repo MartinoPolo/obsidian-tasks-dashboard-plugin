@@ -24,7 +24,7 @@
 
 ## Badge contrast on issue colors
 
-- [ ] Badges must adapt to the issue header's background color. Use semi-transparent versions of the semantic badge colors (green/red/purple/etc.) so the issue background bleeds through slightly. Use the issue's text color as the badge border color. This ensures both semantic meaning and sufficient contrast regardless of issue color.
+- [x] Badges must adapt to the issue header's background color. Use semi-transparent versions of the semantic badge colors (green/red/purple/etc.) so the issue background bleeds through slightly. Use the issue's text color as the badge border color. This ensures both semantic meaning and sufficient contrast regardless of issue color.
 
 ## Color picker
 
