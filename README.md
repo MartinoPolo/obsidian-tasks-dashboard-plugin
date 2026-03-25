@@ -68,6 +68,7 @@ The dashboard has four sections:
 - **Sort**: Organizes all issues by priority (or date created/edited)
 - **Collapse/Expand All**: Toggle visibility of all issue details
 - **Rebuild**: Refresh dashboard from issue files directly from dashboard controls
+- **Sync All Un-synced Branches**: Opens a terminal for each branch that is behind its base branch, running `claude /mp-sync-base` sequentially. Disabled when no branches need syncing.
 
 ### Issue Controls
 Each issue entry includes:
@@ -80,6 +81,8 @@ Each issue entry includes:
 - Archive icon (move to Archive) and delete button (with confirmation)
 - Rename, color, GitHub quick-open, and folder-link actions
 - Terminal/VS Code actions when issue folder is assigned (or when folder button is hidden)
+- **Behind-base badge** (blue): shown when the linked branch is behind its base branch, with commit count. Includes a sync button that opens a terminal and runs `claude /mp-sync-base` at the worktree folder.
+- **Merge conflict badge** (amber): shown alongside the behind-base badge when the branch has detected merge conflicts.
 - Embedded tasks query
 
 ### Issue Notes
