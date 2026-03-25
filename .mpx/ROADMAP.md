@@ -19,7 +19,7 @@ Updated: 2026-03-24
 | 04 | Badge Contrast Adaptation | Complete | 01 |
 | 05 | Color Picker + Closed Issue Appearance | Complete | 01 |
 | 06 | Issue Info Panel Restructure | Complete | -- |
-| 07 | Dashboard Toolbar Reorder | Not Started | -- |
+| 07 | Dashboard Toolbar Reorder | Complete | -- |
 | 08 | Prune Worktrees | Not Started | 01, 07 |
 | 09 | Issue Creation + Worktree Safety | Not Started | -- |
 | 10 | Refactoring / Componentization | Not Started | 01-09 |
@@ -56,8 +56,7 @@ Updated: 2026-03-24
 
 **Phase 06: Issue Info Panel Restructure** — Complete. Removed IDs, restructured into 4 sections with styled headers, branch info deduplicated.
 
-**Phase 07: Dashboard Toolbar Reorder**
-Reorder buttons into 6 visual groups with gaps. Handle responsive hiding. Independent, but Phase 08 adds buttons to Group 4.
+**Phase 07: Dashboard Toolbar Reorder** — Complete. Restructured toolbar into 6 groups (Create, View, External, Sync, Maintain, Config) with 16px inter-group gaps, ResizeObserver-based responsive hiding of Import Note/Rebuild, Settings pinned rightmost.
 
 **Phase 08: Prune Worktrees**
 Add "Prune Closed Worktrees" button. Detect closed issues, show confirmation, bulk-remove worktrees, archive dashboard issues. Depends on Phase 01 (closed-issue detection) and Phase 07 (toolbar Group 4 placement).

@@ -32,9 +32,12 @@
   let sortButtonElement: HTMLButtonElement | undefined = $state(undefined);
   let isSortOpen = $state(false);
   let isSyncingAll = $state(false);
+  let toolbarElement: HTMLDivElement | undefined = $state(undefined);
+  let isToolbarCompact = $state(false);
 
   const platformService = createPlatformService();
   const DOM_SETTLE_DELAY_MS = 120;
+  const COMPACT_TOOLBAR_WIDTH_PX = 500;
 
   let dashboardId = $derived(source.match(/dashboard:\s*([\w-]+)/)?.[1]);
   let dashboard = $derived(
@@ -57,6 +60,25 @@
       ? plugin.gitStatusService.hasUnsyncedBranches(dashboardId)
       : false
   );
+  let hasExternalButtons = $derived(
+    visibility !== undefined &&
+    (!!visibility.folder || !!visibility.terminal || !!visibility.vscode || !!visibility.github)
+  );
+
+  $effect(() => {
+    if (toolbarElement === undefined) {
+      return;
+    }
+    const element = toolbarElement;
+    isToolbarCompact = element.getBoundingClientRect().width < COMPACT_TOOLBAR_WIDTH_PX;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        isToolbarCompact = entry.contentRect.width < COMPACT_TOOLBAR_WIDTH_PX;
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
 
   let sortOptions = $derived.by(() => {
     if (dashboard === undefined) {
@@ -339,192 +361,216 @@
       {/if}
     </div>
 
-    <div class="tdc-sort-container">
-      <ActionButton
-        icon="plus"
-        label="Add Issue"
-        onclick={() => {
-          if (dashboard === undefined) { return; }
-          const folder = dashboard.projectFolder;
-          const hasGitFolder =
-            folder !== undefined &&
-            folder !== '' &&
-            platformService.isGitRepositoryFolder(folder);
-          openIssueCreationModal(plugin.app, plugin, dashboard, {
-            worktreeContext: hasGitFolder
-              ? { eligible: true, worktreeOriginFolder: folder }
-              : undefined
-          });
-        }}
-      />
-
-      {#if visibility?.github}
+    <div class="tdc-sort-container" bind:this={toolbarElement}>
+      <!-- Group 1: Create -->
+      <div class="tdc-toolbar-group">
         <ActionButton
-          icon="worktree"
-          label={isGitRepository ? 'Add issue in worktree' : 'Set project folder for worktree'}
-          faded={!isGitRepository}
+          icon="plus"
+          label="Add Issue"
           onclick={() => {
             if (dashboard === undefined) { return; }
-            if (!isGitRepository) {
-              if (!hasFolder) {
-                openProjectFolderModal();
-                return;
-              }
-              new Notice('Project folder must be a Git repository to create worktrees.');
-              return;
-            }
-            openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
-              worktreeOriginFolder: projectFolder
+            const folder = dashboard.projectFolder;
+            const hasGitFolder =
+              folder !== undefined &&
+              folder !== '' &&
+              platformService.isGitRepositoryFolder(folder);
+            openIssueCreationModal(plugin.app, plugin, dashboard, {
+              worktreeContext: hasGitFolder
+                ? { eligible: true, worktreeOriginFolder: folder }
+                : undefined
             });
           }}
-          oncontextmenu={(event) => { event.preventDefault(); openProjectFolderModal(); }}
-        />
-      {/if}
-
-      <ActionButton
-        icon="fileInput"
-        label="Import Note"
-        onclick={() => {
-          if (dashboard === undefined) { return; }
-          new NoteImportModal(plugin.app, plugin, dashboard).open();
-        }}
-      />
-
-      <div class="tdc-sort-wrapper">
-        <ActionButton
-          icon="sort"
-          label="Sort"
-          onclick={(event) => {
-            event.stopPropagation();
-            isSortOpen = !isSortOpen;
-          }}
         />
 
-        {#if isSortOpen}
-          <SortDropdown
-            options={sortOptions}
-            anchorElement={sortButtonElement ?? containerElement}
-            onclose={() => { isSortOpen = false; }}
+        {#if visibility?.github}
+          <ActionButton
+            icon="worktree"
+            label={isGitRepository ? 'Add issue in worktree' : 'Set project folder for worktree'}
+            faded={!isGitRepository}
+            onclick={() => {
+              if (dashboard === undefined) { return; }
+              if (!isGitRepository) {
+                if (!hasFolder) {
+                  openProjectFolderModal();
+                  return;
+                }
+                new Notice('Project folder must be a Git repository to create worktrees.');
+                return;
+              }
+              openWorktreeIssueCreationModal(plugin.app, plugin, dashboard, {
+                worktreeOriginFolder: projectFolder
+              });
+            }}
+            oncontextmenu={(event) => { event.preventDefault(); openProjectFolderModal(); }}
+          />
+        {/if}
+
+        {#if !isToolbarCompact}
+          <ActionButton
+            icon="fileInput"
+            label="Import Note"
+            onclick={() => {
+              if (dashboard === undefined) { return; }
+              new NoteImportModal(plugin.app, plugin, dashboard).open();
+            }}
           />
         {/if}
       </div>
 
-      <ActionButton
-        icon="foldAll"
-        label="Collapse All"
-        onclick={() => toggleAllIssues(true)}
-      />
-
-      <ActionButton
-        icon="unfoldAll"
-        label="Expand All"
-        onclick={() => toggleAllIssues(false)}
-      />
-
-      <ActionButton
-        icon="refresh"
-        label="Refresh Dashboard"
-        onclick={() => {
-          if (dashboard !== undefined) {
-            void refreshDashboard(plugin, dashboard);
-          }
-        }}
-      />
-
-      <ActionButton
-        icon="rebuild"
-        label="Rebuild"
-        onclick={() => {
-          if (dashboard !== undefined) {
-            void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
-          }
-        }}
-      />
-
-      <ActionButton
-        icon="settings"
-        label="Open Dashboard Settings"
-        onclick={() => {
-          if (hasSettingsTabApi(plugin.app)) {
-            plugin.app.setting?.openTabById(plugin.manifest.id);
-          }
-          openDashboardSettings();
-        }}
-      />
-
-      {#if visibility?.folder}
+      <!-- Group 2: View -->
+      <div class="tdc-toolbar-group">
         <ActionButton
-          icon="folder"
-          label={hasFolder ? 'Open project folder' : 'Set project folder'}
-          faded={!hasFolder}
-          onclick={() => handleFolderDependentClick((f) => platformService.openInFileExplorer(f))}
-          oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
+          icon="foldAll"
+          label="Collapse All"
+          onclick={() => toggleAllIssues(true)}
         />
+
+        <ActionButton
+          icon="unfoldAll"
+          label="Expand All"
+          onclick={() => toggleAllIssues(false)}
+        />
+
+        <div class="tdc-sort-wrapper">
+          <ActionButton
+            icon="sort"
+            label="Sort"
+            onclick={(event) => {
+              event.stopPropagation();
+              isSortOpen = !isSortOpen;
+            }}
+          />
+
+          {#if isSortOpen}
+            <SortDropdown
+              options={sortOptions}
+              anchorElement={sortButtonElement ?? containerElement}
+              onclose={() => { isSortOpen = false; }}
+            />
+          {/if}
+        </div>
+      </div>
+
+      <!-- Group 3: External -->
+      {#if hasExternalButtons}
+        <div class="tdc-toolbar-group">
+          {#if visibility?.folder}
+            <ActionButton
+              icon="folder"
+              label={hasFolder ? 'Open project folder' : 'Set project folder'}
+              faded={!hasFolder}
+              onclick={() => handleFolderDependentClick((f) => platformService.openInFileExplorer(f))}
+              oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
+            />
+          {/if}
+
+          {#if visibility?.terminal}
+            <ActionButton
+              icon="terminal"
+              label={hasFolder ? 'Open terminal' : 'Set project folder'}
+              faded={!hasFolder}
+              onclick={() => handleFolderDependentClick((f) => platformService.openTerminal(f))}
+              oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
+            />
+          {/if}
+
+          {#if visibility?.vscode}
+            <ActionButton
+              icon="vscode"
+              label={hasFolder ? 'Open in VS Code' : 'Set project folder'}
+              faded={!hasFolder}
+              onclick={() => handleFolderDependentClick((f) => platformService.openVSCode(f))}
+              oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
+            />
+          {/if}
+
+          {#if visibility?.github}
+            <ActionButton
+              icon="github"
+              label={hasRepos
+                ? linkedRepos.length === 1
+                  ? 'Open GitHub repo'
+                  : `Open GitHub repos (${linkedRepos.length})`
+                : 'Link GitHub repository'}
+              faded={!hasRepos}
+              onclick={(event) => {
+                if (linkedRepos.length === 0) {
+                  openRepositoryLinkerModal();
+                  return;
+                }
+                if (linkedRepos.length === 1) {
+                  window.open(`https://github.com/${linkedRepos[0]}`, '_blank');
+                  return;
+                }
+                const menu = new Menu();
+                for (const repo of linkedRepos) {
+                  menu.addItem((item) => {
+                    item.setTitle(repo).onClick(() => {
+                      window.open(`https://github.com/${repo}`, '_blank');
+                    });
+                  });
+                }
+                menu.showAtPosition({ x: event.clientX, y: event.clientY });
+              }}
+              oncontextmenu={(e) => { e.preventDefault(); openRepositoryLinkerModal(); }}
+            />
+          {/if}
+        </div>
       {/if}
 
-      {#if visibility?.terminal}
+      <!-- Group 4: Sync -->
+      <div class="tdc-toolbar-group">
         <ActionButton
-          icon="terminal"
-          label={hasFolder ? 'Open terminal' : 'Set project folder'}
-          faded={!hasFolder}
-          onclick={() => handleFolderDependentClick((f) => platformService.openTerminal(f))}
-          oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
-        />
-      {/if}
-
-      {#if visibility?.vscode}
-        <ActionButton
-          icon="vscode"
-          label={hasFolder ? 'Open in VS Code' : 'Set project folder'}
-          faded={!hasFolder}
-          onclick={() => handleFolderDependentClick((f) => platformService.openVSCode(f))}
-          oncontextmenu={(e) => { e.preventDefault(); openProjectFolderModal(); }}
-        />
-      {/if}
-
-      {#if visibility?.github}
-        <ActionButton
-          icon="github"
-          label={hasRepos
-            ? linkedRepos.length === 1
-              ? 'Open GitHub repo'
-              : `Open GitHub repos (${linkedRepos.length})`
-            : 'Link GitHub repository'}
-          faded={!hasRepos}
-          onclick={(event) => {
-            if (linkedRepos.length === 0) {
-              openRepositoryLinkerModal();
-              return;
+          icon="sync"
+          label={isSyncingAll ? 'Syncing all branches...' : hasUnsyncedBranches ? 'Sync all un-synced branches' : 'All branches are synced'}
+          faded={!hasUnsyncedBranches || isSyncingAll}
+          disabled={!hasUnsyncedBranches || isSyncingAll}
+          onclick={() => {
+            if (hasUnsyncedBranches && !isSyncingAll) {
+              void handleSyncAllBranches();
             }
-            if (linkedRepos.length === 1) {
-              window.open(`https://github.com/${linkedRepos[0]}`, '_blank');
-              return;
-            }
-            const menu = new Menu();
-            for (const repo of linkedRepos) {
-              menu.addItem((item) => {
-                item.setTitle(repo).onClick(() => {
-                  window.open(`https://github.com/${repo}`, '_blank');
-                });
-              });
-            }
-            menu.showAtPosition({ x: event.clientX, y: event.clientY });
           }}
-          oncontextmenu={(e) => { e.preventDefault(); openRepositoryLinkerModal(); }}
         />
-      {/if}
+      </div>
 
-      <ActionButton
-        icon="sync"
-        label={isSyncingAll ? 'Syncing all branches...' : hasUnsyncedBranches ? 'Sync all un-synced branches' : 'All branches are synced'}
-        faded={!hasUnsyncedBranches || isSyncingAll}
-        disabled={!hasUnsyncedBranches || isSyncingAll}
-        onclick={() => {
-          if (hasUnsyncedBranches && !isSyncingAll) {
-            void handleSyncAllBranches();
-          }
-        }}
-      />
+      <!-- Group 5: Maintain -->
+      <div class="tdc-toolbar-group">
+        <ActionButton
+          icon="refresh"
+          label="Refresh Dashboard"
+          onclick={() => {
+            if (dashboard !== undefined) {
+              void refreshDashboard(plugin, dashboard);
+            }
+          }}
+        />
+
+        {#if !isToolbarCompact}
+          <ActionButton
+            icon="rebuild"
+            label="Rebuild"
+            onclick={() => {
+              if (dashboard !== undefined) {
+                void plugin.dashboardWriter.rebuildDashboardFromFiles(dashboard);
+              }
+            }}
+          />
+        {/if}
+      </div>
+
+      <!-- Group 6: Config -->
+      <div class="tdc-toolbar-group tdc-toolbar-group-config">
+        <ActionButton
+          icon="settings"
+          label="Open Dashboard Settings"
+          onclick={() => {
+            if (hasSettingsTabApi(plugin.app)) {
+              plugin.app.setting?.openTabById(plugin.manifest.id);
+            }
+            openDashboardSettings();
+          }}
+        />
+      </div>
     </div>
   </div>
 {/if}
@@ -541,12 +587,23 @@
 .tdc-sort-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   flex-wrap: wrap;
   justify-content: flex-end;
   margin-left: auto;
   min-width: 0;
   padding-right: 35px;
+}
+
+.tdc-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tdc-toolbar-group-config {
+  margin-left: auto;
+  order: 999;
 }
 
 .tdc-sort-wrapper {
