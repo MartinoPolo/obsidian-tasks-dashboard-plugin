@@ -65,7 +65,9 @@ Progress: 4/4 tasks complete
 - **Merge conflict as full badge**: Rendered as a pill badge (not bare icon) for visual consistency with other badges
 - **Sync command constants**: Extracted `SYNC_COMMAND`/`SYNC_COMMAND_ARGS` to `src/constants/sync-constants.ts` to avoid duplication across IssueHeader and SortControls
 - **Sequential terminal spawn**: 2-second delay between terminals for Sync All to avoid overwhelming the system
-- **`hasUnsyncedBranches()` on GitStatusService**: Added method that iterates cached statuses to reactively determine button state without re-fetching
+- **`hasUnsyncedBranches()` on GitStatusService**: Added method that iterates cached statuses to determine button state without re-fetching. Note: not fully reactive (plain Map cache not tracked by Svelte's signal system) — button state updates on re-render, not on cache write. Full reactivity deferred to Phase 10 refactoring.
+- **`getUnsyncedBranches` re-parses dashboard file**: Reads vault file + regex to extract worktree folders on each Sync All click. Ideally would use cached data. Deferred to Phase 10 refactoring.
+- **Sync All Group 4 placement**: Button appended to toolbar without visual group separation. Group layout is Phase 07's scope.
 
 ## Blockers
 

@@ -13,14 +13,14 @@
 
 ## Base branch sync detection
 
-- [ ] Detect when a branch is behind its base branch using the GitHub compare API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`) to get the `behind_by` count. Run on the same 5-minute cache cycle as other git status checks.
-- [ ] Add a new branch badge state "behind base" with a unique color and sync icon. Show the `behind_by` count in the badge text/tooltip.
-- [ ] Detect merge conflicts using the PR's `mergeable` field from the GitHub API. When `mergeable === false`, show a warning icon (alert triangle) next to the sync badge.
+- [x] Detect when a branch is behind its base branch using the GitHub compare API (`GET /repos/{owner}/{repo}/compare/{base}...{head}`) to get the `behind_by` count. Run on the same 5-minute cache cycle as other git status checks.
+- [x] Add a new branch badge state "behind base" with a unique color and sync icon. Show the `behind_by` count in the badge text/tooltip.
+- [x] Detect merge conflicts using the PR's `mergeable` field from the GitHub API. When `mergeable === false`, show a warning badge (alert triangle, amber pill) next to the sync badge.
 
 ## Sync action
 
-- [ ] Add a sync button inline in the issue header (`HeaderBadges.svelte`), rendered right after the branch badge. Only visible when the branch is behind the base branch. Clicking it opens Windows Terminal at the worktree folder and auto-executes `claude /mp-sync-base`. Show a spinning sync icon while syncing, until the next git status refresh cycle detects the branch is up-to-date.
-- [ ] Add a "Sync All Un-synced Branches" button in the dashboard toolbar (Group 4: Sync). Disabled/grayed when no branches need syncing. Spawns terminals sequentially — one per unsynced branch — each auto-executing `claude /mp-sync-base` at the respective worktree folder.
+- [x] Add a sync button inline in the issue header (`HeaderBadges.svelte`), rendered right after the branch badge. Only visible when the branch is behind the base branch. Clicking it opens Windows Terminal at the worktree folder and auto-executes `claude /mp-sync-base`. Show a spinning sync icon while syncing, until the next git status refresh cycle detects the branch is up-to-date.
+- [x] Add a "Sync All Un-synced Branches" button in the dashboard toolbar (Group 4: Sync). Disabled/grayed when no branches need syncing. Spawns terminals sequentially — one per unsynced branch — each auto-executing `claude /mp-sync-base` at the respective worktree folder.
 
 ## Badge contrast on issue colors
 
