@@ -7,8 +7,10 @@
   import { NoteImportModal } from '../../modals/note-import-modal';
   import { RepositoryLinkerModal } from '../../modals/RepositoryLinkerModal';
   import { hasSettingsTabApi } from '../../settings/settings-helpers';
+  import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
   import { createPlatformService } from '../../utils/platform';
   import { parseDashboard } from '../../dashboard/DashboardParser';
+  import { parseParams } from '../../dashboard/dashboard-renderer-params';
   import { getButtonVisibility } from '../../dashboard/dashboard-issue-actions';
   import {
     observeContentBlockSiblings,
@@ -29,6 +31,7 @@
 
   let sortButtonElement: HTMLButtonElement | undefined = $state(undefined);
   let isSortOpen = $state(false);
+  let isSyncingAll = $state(false);
 
   const platformService = createPlatformService();
   const DOM_SETTLE_DELAY_MS = 120;
@@ -47,6 +50,11 @@
   let isGitRepository = $derived(
     hasFolder && projectFolder !== undefined
       ? platformService.isGitRepositoryFolder(projectFolder)
+      : false
+  );
+  let hasUnsyncedBranches = $derived(
+    dashboardId !== undefined
+      ? plugin.gitStatusService.hasUnsyncedBranches(dashboardId)
       : false
   );
 
@@ -210,6 +218,96 @@
         dashboardSettings.focus({ preventScroll: true });
       }
     }, DOM_SETTLE_DELAY_MS);
+  }
+
+  // --- Sync All ---
+
+  const CONTROLS_BLOCK_PATTERN = /```tasks-dashboard-controls\n([\s\S]*?)```/g;
+  const SEQUENTIAL_SPAWN_DELAY_MS = 2000;
+
+  interface UnsyncedBranchInfo {
+    worktreeFolder: string;
+    behindCount: number;
+  }
+
+  async function getUnsyncedBranches(): Promise<UnsyncedBranchInfo[]> {
+    if (dashboard === undefined || dashboardId === undefined) {
+      return [];
+    }
+    const filename = dashboard.dashboardFilename || 'Dashboard.md';
+    const dashboardPath = `${dashboard.rootPath}/${filename}`;
+    const file = plugin.app.vault.getAbstractFileByPath(dashboardPath);
+    if (!(file instanceof TFile)) {
+      return [];
+    }
+
+    const content = await plugin.app.vault.read(file);
+    const parsed = parseDashboard(content);
+    const unsyncedBranches: UnsyncedBranchInfo[] = [];
+
+    for (const issue of parsed.activeIssues) {
+      const issueContent = content.substring(issue.startIndex, issue.endIndex);
+      for (const match of issueContent.matchAll(CONTROLS_BLOCK_PATTERN)) {
+        const controlBlockContent = match[1];
+        const controlParams = parseParams(controlBlockContent);
+        if (controlParams === null) {
+          continue;
+        }
+        const worktreeFolder = controlParams.worktree_expected_folder;
+        if (worktreeFolder === undefined || worktreeFolder === '') {
+          continue;
+        }
+        const cachedStatus = plugin.gitStatusService.getCachedStatus(dashboardId, issue.id);
+        if (cachedStatus === undefined) {
+          continue;
+        }
+        const behindCount = cachedStatus.behindBaseCount;
+        if (behindCount === undefined || behindCount <= 0) {
+          continue;
+        }
+        unsyncedBranches.push({
+          worktreeFolder,
+          behindCount
+        });
+      }
+    }
+
+    return unsyncedBranches;
+  }
+
+  async function handleSyncAllBranches(): Promise<void> {
+    if (isSyncingAll) {
+      return;
+    }
+    isSyncingAll = true;
+
+    try {
+      const unsyncedBranches = await getUnsyncedBranches();
+      if (unsyncedBranches.length === 0) {
+        new Notice('No branches need syncing.');
+        return;
+      }
+
+      new Notice(`Syncing ${unsyncedBranches.length} branch${unsyncedBranches.length === 1 ? '' : 'es'}...`);
+
+      for (let index = 0; index < unsyncedBranches.length; index++) {
+        const branch = unsyncedBranches[index];
+        platformService.openTerminalWithCommand(
+          branch.worktreeFolder,
+          SYNC_COMMAND,
+          [...SYNC_COMMAND_ARGS]
+        );
+        // Wait between sequential spawns (skip delay after the last one)
+        const isLastBranch = index === unsyncedBranches.length - 1;
+        if (!isLastBranch) {
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, SEQUENTIAL_SPAWN_DELAY_MS);
+          });
+        }
+      }
+    } finally {
+      isSyncingAll = false;
+    }
   }
 </script>
 
@@ -417,6 +515,17 @@
           oncontextmenu={(e) => { e.preventDefault(); openRepositoryLinkerModal(); }}
         />
       {/if}
+
+      <ActionButton
+        icon="sync"
+        label={isSyncingAll ? 'Syncing all branches...' : hasUnsyncedBranches ? 'Sync all un-synced branches' : 'All branches are synced'}
+        faded={!hasUnsyncedBranches || isSyncingAll}
+        onclick={() => {
+          if (hasUnsyncedBranches && !isSyncingAll) {
+            void handleSyncAllBranches();
+          }
+        }}
+      />
     </div>
   </div>
 {/if}

@@ -10,7 +10,12 @@ import {
 	isGitRepositoryFolder,
 	listActiveWorktrees
 } from './git-operations';
-import { openInFileExplorer, openTerminal, openVSCode } from './shell-launchers';
+import {
+	openInFileExplorer,
+	openTerminal,
+	openTerminalWithCommand,
+	openVSCode
+} from './shell-launchers';
 import { runWorktreeRemovalScript, runWorktreeSetupScript } from './script-execution';
 import { pickFile, pickFolder } from './electron-dialogs';
 
@@ -25,6 +30,7 @@ export function createPlatformService(scriptPathResolver?: ScriptPathResolver): 
 	return {
 		openInFileExplorer,
 		openTerminal,
+		openTerminalWithCommand,
 		openVSCode,
 		isGitRepositoryFolder,
 		isGitBranchMissing,

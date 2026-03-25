@@ -24,6 +24,8 @@ interface GitStatusServiceParams {
 
 export interface GitStatusServiceInstance {
 	getIssueGitStatus: (params: GitStatusServiceParams) => Promise<IssueGitStatus>;
+	getCachedStatus: (dashboardId: string, issueId: string) => IssueGitStatus | undefined;
+	hasUnsyncedBranches: (dashboardId: string) => boolean;
 	clearCache: () => void;
 	invalidate: (dashboardId: string, issueId: string) => void;
 }
@@ -331,5 +333,26 @@ export function createGitStatusService(
 		return status;
 	};
 
-	return { getIssueGitStatus, clearCache, invalidate };
+	const getCachedStatus = (dashboardId: string, issueId: string): IssueGitStatus | undefined => {
+		return getCached(`${dashboardId}:${issueId}`);
+	};
+
+	const hasUnsyncedBranches = (dashboardId: string): boolean => {
+		const prefix = `${dashboardId}:`;
+		for (const [key, entry] of cache) {
+			if (!key.startsWith(prefix)) {
+				continue;
+			}
+			if (Date.now() - entry.timestamp > GIT_STATUS_CACHE_TTL_MS) {
+				continue;
+			}
+			const behindCount = entry.data.behindBaseCount;
+			if (behindCount !== undefined && behindCount > 0) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	return { getIssueGitStatus, getCachedStatus, hasUnsyncedBranches, clearCache, invalidate };
 }

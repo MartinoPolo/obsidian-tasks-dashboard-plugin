@@ -38,6 +38,12 @@ export interface WorktreeEntry {
 export interface PlatformService {
 	openInFileExplorer: (folderPath: string) => void;
 	openTerminal: (folderPath: string, tabColor?: string) => void;
+	openTerminalWithCommand: (
+		folderPath: string,
+		command: string,
+		args: string[],
+		tabColor?: string
+	) => void;
 	openVSCode: (folderPath: string, issueColor?: string) => void;
 	isGitRepositoryFolder: (folderPath: string) => boolean;
 	isGitBranchMissing: (folderPath: string, branchName: string) => boolean;

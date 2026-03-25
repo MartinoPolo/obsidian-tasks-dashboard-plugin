@@ -9,7 +9,9 @@
     PR_STATE_LABEL
   } from '../../git-status/git-badge-maps';
   import type { IconName } from '../icons/index';
+  import { attachTooltip } from '../../lib/attach-tooltip';
   import GitBadge from '../GitBadge.svelte';
+  import Icon from '../Icon.svelte';
 
   interface BranchBadgeData {
     icon: IconName;
@@ -23,8 +25,10 @@
     branchBadge: BranchBadgeData | undefined;
     isBadgesLoading: boolean;
     shouldCompact: boolean;
+    isSyncing: boolean;
     badgesElement: HTMLDivElement | undefined;
     oncontextmenu: (event: MouseEvent) => void;
+    onsync: (() => void) | undefined;
   }
 
   let {
@@ -32,9 +36,17 @@
     branchBadge,
     isBadgesLoading,
     shouldCompact,
+    isSyncing,
     badgesElement = $bindable(),
-    oncontextmenu
+    oncontextmenu,
+    onsync
   }: Props = $props();
+
+  let isBehindBase = $derived(
+    gitStatus !== undefined &&
+    gitStatus.behindBaseCount !== undefined &&
+    gitStatus.behindBaseCount > 0
+  );
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -68,6 +80,37 @@
         tooltip={branchBadge.tooltip}
         class={branchBadge.class}
       />
+    {/if}
+
+    {#if isBehindBase}
+      {@const baseName = gitStatus.baseBranch ?? 'base'}
+      <GitBadge
+        type="sync"
+        icon="sync"
+        text={`${gitStatus.behindBaseCount} behind`}
+        tooltip={`Branch is ${gitStatus.behindBaseCount} commit${gitStatus.behindBaseCount === 1 ? '' : 's'} behind ${baseName}`}
+        class="tdc-git-badge-sync-behind"
+      />
+      {#if gitStatus.mergeConflict === true}
+        <GitBadge
+          type="sync"
+          icon="alertTriangle"
+          text="Conflicts"
+          tooltip="Merge conflicts detected"
+          class="tdc-git-badge-merge-conflict"
+        />
+      {/if}
+
+      {#if onsync !== undefined}
+        <button
+          class={['tdc-sync-button', isSyncing && 'tdc-sync-spinning']}
+          onclick={(event) => { event.stopPropagation(); onsync!(); }}
+          disabled={isSyncing}
+          {@attach attachTooltip(isSyncing ? 'Syncing...' : 'Sync branch with base')}
+        >
+          <Icon name="sync" size={14} />
+        </button>
+      {/if}
     {/if}
 
     {#each gitStatus.linkedPullRequests as pr (pr.url)}
@@ -113,5 +156,39 @@
 
 .tdc-badges-compact :global(.tdc-git-badge > span) {
   display: none;
+}
+
+.tdc-sync-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--tdc-git-sync-behind) 40%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tdc-git-sync-behind) 20%, transparent);
+  color: var(--tdc-git-sync-behind);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.tdc-sync-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--tdc-git-sync-behind) 35%, transparent);
+}
+
+.tdc-sync-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.tdc-sync-button :global(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.tdc-sync-spinning :global(svg) {
+  animation: tdc-spin 0.8s linear infinite;
 }
 </style>

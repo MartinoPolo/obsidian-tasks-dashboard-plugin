@@ -31,6 +31,8 @@
 	--tdc-git-branch-local: #a5d6a7;
 	--tdc-git-branch-remote-gone: #e3872d;
 	--tdc-git-branch-deleted: #768390;
+	--tdc-git-sync-behind: #58a6ff;
+	--tdc-git-merge-conflict: #d29922;
 
 	/* Worktree status colors */
 	--tdc-worktree-inactive: #9e9e9e;

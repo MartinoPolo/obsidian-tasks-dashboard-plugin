@@ -4,7 +4,7 @@
   import Icon from './Icon.svelte';
 
   interface Props {
-    type: 'branch' | 'pr' | 'issue';
+    type: 'branch' | 'pr' | 'issue' | 'sync';
     icon: IconName;
     text: string;
     tooltip: string;
@@ -156,5 +156,18 @@ a.tdc-git-badge:hover {
   color: var(--text-muted);
   background: var(--background-modifier-border);
   border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
+}
+
+/* Sync badges */
+.tdc-git-badge-sync-behind {
+  color: var(--tdc-git-sync-behind);
+  background: color-mix(in srgb, var(--tdc-git-sync-behind) 15%, transparent);
+  border-color: color-mix(in srgb, var(--tdc-git-sync-behind) 40%, transparent);
+}
+
+.tdc-git-badge-merge-conflict {
+  color: var(--tdc-git-merge-conflict);
+  background: color-mix(in srgb, var(--tdc-git-merge-conflict) 15%, transparent);
+  border-color: color-mix(in srgb, var(--tdc-git-merge-conflict) 40%, transparent);
 }
 </style>

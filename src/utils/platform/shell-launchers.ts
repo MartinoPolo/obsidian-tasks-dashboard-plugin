@@ -42,6 +42,57 @@ export const openTerminal = (folderPath: string, tabColor?: string): void => {
 	}
 };
 
+export const openTerminalWithCommand = (
+	folderPath: string,
+	command: string,
+	args: string[],
+	tabColor?: string
+): void => {
+	const spawn = getSpawn();
+
+	if (Platform.isWin) {
+		// Windows Terminal: wt -w 0 nt -d <folder> [--tabColor <color>] <command> <args...>
+		const spawnArguments = ['-w', '0', 'nt', '-d', folderPath];
+		if (tabColor !== undefined && isValidHexColor(tabColor)) {
+			spawnArguments.push('--tabColor', tabColor);
+		}
+		spawnArguments.push(command, ...args);
+		notifyOnSpawnError(
+			spawn('wt', spawnArguments, { shell: false, cwd: folderPath }),
+			'Could not open Windows Terminal -- is it installed?'
+		);
+	} else if (Platform.isMacOS) {
+		// macOS: launch command directly in terminal via osascript
+		const escapedFolder = folderPath.replace(/'/g, "'\\''");
+		const escapedCommand = [command, ...args].join(' ').replace(/"/g, '\\"');
+		notifyOnSpawnError(
+			spawn(
+				'osascript',
+				[
+					'-e',
+					`tell application "Terminal" to do script "cd '${escapedFolder}' && ${escapedCommand}"`
+				],
+				{ shell: false }
+			),
+			'Could not open Terminal'
+		);
+	} else {
+		// Linux: execute command in default terminal
+		const fullCommand = [command, ...args].join(' ');
+		const terminalProcess = spawn(
+			'x-terminal-emulator',
+			['--working-directory', folderPath, '-e', fullCommand],
+			{ shell: false }
+		);
+		terminalProcess.on('error', () => {
+			notifyOnSpawnError(
+				spawn('xterm', ['-e', fullCommand], { shell: false, cwd: folderPath }),
+				'Could not open terminal -- no terminal emulator found'
+			);
+		});
+	}
+};
+
 export const ensurePeacockColor = (folderPath: string, issueColor: string): void => {
 	try {
 		const fsModule = loadModule('fs');

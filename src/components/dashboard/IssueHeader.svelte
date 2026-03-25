@@ -21,6 +21,8 @@
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
   import { getIssueFolderStorageKey } from '../../issues/issue-manager-shared';
+  import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
+  import { createPlatformService } from '../../utils/platform';
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
   import Icon from '../Icon.svelte';
@@ -59,6 +61,8 @@
   let actionLayout = $state(layout);
   $effect(() => { actionLayout = layout; });
 
+  const platformService = createPlatformService();
+
   // State
   let gitStatus = $state.raw<IssueGitStatus | undefined>(undefined);
   let gitStatusInfoLines: string[] = $state([]);
@@ -68,6 +72,7 @@
   let shouldCompact = $state(false);
   let isBadgesLoading = $state(false);
   let prAccentClass = $state('');
+  let isSyncing = $state(false);
 
   // Element refs
   let headerElement: HTMLDivElement | undefined = $state(undefined);
@@ -328,6 +333,34 @@
     )
   );
 
+  // Sync branch handler — opens terminal with `claude /mp-sync-base`
+  let hasWorktreeFolder = $derived(
+    params.worktree_expected_folder !== undefined && params.worktree_expected_folder !== ''
+  );
+
+  function handleSyncBranch(): void {
+    const folder = params.worktree_expected_folder;
+    if (!folder || isSyncing) {
+      return;
+    }
+    isSyncing = true;
+    platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
+  }
+
+  // Auto-clear syncing state when behindBaseCount drops to 0 after a refresh
+  $effect(() => {
+    if (!isSyncing) {
+      return;
+    }
+    const currentBehindCount = gitStatus?.behindBaseCount;
+    if (currentBehindCount !== undefined && currentBehindCount === 0) {
+      isSyncing = false;
+    }
+  });
+
+  // Sync button callback — only available when worktree folder exists
+  let syncHandler = $derived(hasWorktreeFolder ? handleSyncBranch : undefined);
+
   // Branch badge data
   let branchBadge = $derived.by(() => {
     if (gitStatus === undefined || gitStatus.branchName === undefined) {
@@ -383,8 +416,10 @@
     {branchBadge}
     {isBadgesLoading}
     {shouldCompact}
+    {isSyncing}
     bind:badgesElement
     oncontextmenu={handleBadgesContextMenu}
+    onsync={syncHandler}
   />
 
   {#if isWorktreeIssue}
@@ -702,7 +737,9 @@
 .tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-closed']),
 .tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-draft']),
 .tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-review']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-issue-']) {
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-issue-']),
+.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-sync-']),
+.tdc-issue-header :global(.tdc-git-badge.tdc-git-badge-merge-conflict) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
 }
 
@@ -720,4 +757,6 @@
 .tdc-issue-header :global(.tdc-git-badge-issue-open svg) { color: var(--tdc-gh-open); }
 .tdc-issue-header :global(.tdc-git-badge-issue-closed svg) { color: var(--tdc-gh-closed); }
 .tdc-issue-header :global(.tdc-git-badge-issue-not-planned svg) { color: var(--text-muted); }
+.tdc-issue-header :global(.tdc-git-badge-sync-behind svg) { color: var(--tdc-git-sync-behind); }
+.tdc-issue-header :global(.tdc-git-badge-merge-conflict svg) { color: var(--tdc-git-merge-conflict); }
 </style>

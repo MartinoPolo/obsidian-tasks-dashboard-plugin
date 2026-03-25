@@ -46,6 +46,8 @@ import GitBranchRemoteGoneIcon from './GitBranchRemoteGoneIcon.svelte';
 import GitBranchDeletedIcon from './GitBranchDeletedIcon.svelte';
 import GitBranchUnknownIcon from './GitBranchUnknownIcon.svelte';
 import GitPrReviewRequestedIcon from './GitPrReviewRequestedIcon.svelte';
+import SyncIcon from './SyncIcon.svelte';
+import AlertTriangleIcon from './AlertTriangleIcon.svelte';
 
 export {
 	TrashIcon,
@@ -95,7 +97,9 @@ export {
 	GitBranchRemoteGoneIcon,
 	GitBranchDeletedIcon,
 	GitBranchUnknownIcon,
-	GitPrReviewRequestedIcon
+	GitPrReviewRequestedIcon,
+	SyncIcon,
+	AlertTriangleIcon
 };
 
 export const ICON_COMPONENTS = {
@@ -146,7 +150,9 @@ export const ICON_COMPONENTS = {
 	gitBranchRemoteGone: GitBranchRemoteGoneIcon,
 	gitBranchDeleted: GitBranchDeletedIcon,
 	gitBranchUnknown: GitBranchUnknownIcon,
-	gitPrReviewRequested: GitPrReviewRequestedIcon
+	gitPrReviewRequested: GitPrReviewRequestedIcon,
+	sync: SyncIcon,
+	alertTriangle: AlertTriangleIcon
 } as const;
 
 export type IconName = keyof typeof ICON_COMPONENTS;
