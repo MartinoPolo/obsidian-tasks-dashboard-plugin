@@ -736,6 +736,11 @@
   background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
 }
 
+/* Badge border adapts to issue text color for contrast on colored headers */
+.tdc-issue-header :global(.tdc-git-badge) {
+  border-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 40%, transparent);
+}
+
 /* Issue 7 -- Badge text color overrides */
 .tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-branch-']),
 .tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-open']),
