@@ -1,29 +1,31 @@
 import { formatRelativeTimestamp } from '../utils/github-helpers';
 import type { IssueGitStatus } from './git-status-types';
 
+export const INFO_SECTION_HEADER_PREFIX = '## ';
+
 export interface GitStatusDisplayInfo {
-	infoLines: string[];
+	branchStatusLine: string | undefined;
+	prLines: string[];
+	lastRefreshed: string;
 	prAccentClass: string;
 }
 
 export function buildGitStatusDisplayInfo(result: IssueGitStatus): GitStatusDisplayInfo {
-	const lines: string[] = [];
-	if (result.branchName !== undefined) {
-		lines.push(`Branch: ${result.branchName} (${result.branchStatus})`);
-		if (result.baseBranch !== undefined) {
-			lines.push(`Base branch: ${result.baseBranch}`);
-		}
+	const branchStatusLine =
+		result.branchName !== undefined ? `Status: ${result.branchStatus}` : undefined;
+
+	const prLines: string[] = [];
+	for (const pr of result.linkedPullRequests) {
+		prLines.push(`#${pr.number} ${pr.state} \u2014 ${pr.title}`);
 	}
-	if (result.linkedPullRequests.length > 0) {
-		const prLines = result.linkedPullRequests.map(
-			(pr) => `  #${pr.number} ${pr.state} \u2014 ${pr.title}`
-		);
-		lines.push(`PRs:\n${prLines.join('\n')}`);
-	}
-	lines.push(`Last refreshed: ${formatRelativeTimestamp(result.fetchedAt)}`);
 
 	const prAccentClass =
 		result.aggregatePrState !== 'none' ? `tdc-pr-accent-${result.aggregatePrState}` : '';
 
-	return { infoLines: lines, prAccentClass };
+	return {
+		branchStatusLine,
+		prLines,
+		lastRefreshed: formatRelativeTimestamp(result.fetchedAt),
+		prAccentClass
+	};
 }
