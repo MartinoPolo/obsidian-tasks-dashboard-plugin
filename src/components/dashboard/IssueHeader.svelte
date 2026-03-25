@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Notice } from 'obsidian';
   import { onMount, tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
@@ -344,7 +345,12 @@
       return;
     }
     isSyncing = true;
-    platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
+    try {
+      platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
+    } catch {
+      isSyncing = false;
+      new Notice('Failed to open terminal for sync.');
+    }
   }
 
   // Auto-clear syncing state when behindBaseCount drops to 0 after a refresh

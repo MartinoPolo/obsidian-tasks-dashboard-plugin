@@ -5,6 +5,11 @@ import { getSpawn, notifyOnSpawnError } from './process-spawn';
 
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 
+/** Escape a string for safe embedding in a single-quoted shell argument. */
+const escapeShellArgument = (arg: string): string => {
+	return "'" + arg.replace(/'/g, "'\\''") + "'";
+};
+
 export const isValidHexColor = (color: string): boolean => HEX_COLOR_PATTERN.test(color);
 
 export const openInFileExplorer = (folderPath: string): void => {
@@ -63,30 +68,28 @@ export const openTerminalWithCommand = (
 		);
 	} else if (Platform.isMacOS) {
 		// macOS: launch command directly in terminal via osascript
-		const escapedFolder = folderPath.replace(/'/g, "'\\''");
-		const escapedCommand = [command, ...args].join(' ').replace(/"/g, '\\"');
+		const escapedFolder = escapeShellArgument(folderPath);
+		const escapedCommand = [command, ...args].map(escapeShellArgument).join(' ');
+		const script = `cd ${escapedFolder} && ${escapedCommand}`;
+		const escapedScript = script.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 		notifyOnSpawnError(
 			spawn(
 				'osascript',
-				[
-					'-e',
-					`tell application "Terminal" to do script "cd '${escapedFolder}' && ${escapedCommand}"`
-				],
+				['-e', `tell application "Terminal" to do script "${escapedScript}"`],
 				{ shell: false }
 			),
 			'Could not open Terminal'
 		);
 	} else {
-		// Linux: execute command in default terminal
-		const fullCommand = [command, ...args].join(' ');
+		// Linux: pass command and args as separate spawn arguments
 		const terminalProcess = spawn(
 			'x-terminal-emulator',
-			['--working-directory', folderPath, '-e', fullCommand],
+			['--working-directory', folderPath, '-e', command, ...args],
 			{ shell: false }
 		);
 		terminalProcess.on('error', () => {
 			notifyOnSpawnError(
-				spawn('xterm', ['-e', fullCommand], { shell: false, cwd: folderPath }),
+				spawn('xterm', ['-e', command, ...args], { shell: false, cwd: folderPath }),
 				'Could not open terminal -- no terminal emulator found'
 			);
 		});

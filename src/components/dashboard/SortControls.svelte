@@ -227,7 +227,6 @@
 
   interface UnsyncedBranchInfo {
     worktreeFolder: string;
-    behindCount: number;
   }
 
   async function getUnsyncedBranches(): Promise<UnsyncedBranchInfo[]> {
@@ -266,8 +265,7 @@
           continue;
         }
         unsyncedBranches.push({
-          worktreeFolder,
-          behindCount
+          worktreeFolder
         });
       }
     }
@@ -520,6 +518,7 @@
         icon="sync"
         label={isSyncingAll ? 'Syncing all branches...' : hasUnsyncedBranches ? 'Sync all un-synced branches' : 'All branches are synced'}
         faded={!hasUnsyncedBranches || isSyncingAll}
+        disabled={!hasUnsyncedBranches || isSyncingAll}
         onclick={() => {
           if (hasUnsyncedBranches && !isSyncingAll) {
             void handleSyncAllBranches();

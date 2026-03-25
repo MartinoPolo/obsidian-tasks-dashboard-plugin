@@ -11,6 +11,7 @@
     class?: string;
     labelText?: string;
     faded?: boolean;
+    disabled?: boolean;
     variant?: ButtonVariant;
     onclick: (event: MouseEvent) => void;
     oncontextmenu?: (event: MouseEvent) => void;
@@ -22,6 +23,7 @@
     class: className,
     labelText,
     faded = false,
+    disabled = false,
     variant = 'default',
     onclick,
     oncontextmenu
@@ -30,6 +32,7 @@
 
 <button
   class={['tdc-btn', className, faded && 'tdc-btn-faded', variant !== 'default' && `tdc-btn-variant-${variant}`]}
+  {disabled}
   {onclick}
   oncontextmenu={oncontextmenu !== undefined
     ? (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); oncontextmenu(event); }

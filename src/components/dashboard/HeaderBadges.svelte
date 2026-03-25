@@ -104,7 +104,7 @@
       {#if onsync !== undefined}
         <button
           class={['tdc-sync-button', isSyncing && 'tdc-sync-spinning']}
-          onclick={(event) => { event.stopPropagation(); onsync!(); }}
+          onclick={(event) => { event.stopPropagation(); onsync(); }}
           disabled={isSyncing}
           {@attach attachTooltip(isSyncing ? 'Syncing...' : 'Sync branch with base')}
         >
