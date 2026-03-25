@@ -20,7 +20,7 @@ Updated: 2026-03-24
 | 05 | Color Picker + Closed Issue Appearance | Complete | 01 |
 | 06 | Issue Info Panel Restructure | Complete | -- |
 | 07 | Dashboard Toolbar Reorder | Complete | -- |
-| 08 | Prune Worktrees | Not Started | 01, 07 |
+| 08 | Prune Worktrees | Complete | 01, 07 |
 | 09 | Issue Creation + Worktree Safety | Not Started | -- |
 | 10 | Refactoring / Componentization | Not Started | 01-09 |
 
@@ -58,8 +58,7 @@ Updated: 2026-03-24
 
 **Phase 07: Dashboard Toolbar Reorder** — Complete. Restructured toolbar into 6 groups (Create, View, External, Sync, Maintain, Config) with 16px inter-group gaps, ResizeObserver-based responsive hiding of Import Note/Rebuild, Settings pinned rightmost.
 
-**Phase 08: Prune Worktrees**
-Add "Prune Closed Worktrees" button. Detect closed issues, show confirmation, bulk-remove worktrees, archive dashboard issues. Depends on Phase 01 (closed-issue detection) and Phase 07 (toolbar Group 4 placement).
+**Phase 08: Prune Worktrees** — Complete. Scissors button in toolbar Group 4 detects fully-closed worktree issues, shows confirmation modal, bulk-removes via `remove-worktree.sh --skip-confirmation`, sequentially archives. Shared `isFullyClosed()` helper, path traversal validation, partial-failure tracking.
 
 **Phase 09: Issue Creation + Worktree Safety**
 Fix GitHub search empty-result flow and add repo-folder mismatch safety check. Independent small fixes.

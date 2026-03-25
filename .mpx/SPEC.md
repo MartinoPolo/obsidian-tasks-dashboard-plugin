@@ -56,8 +56,8 @@
 
 ## Prune worktrees
 
-- [ ] Add a "Prune Closed Worktrees" button in the dashboard toolbar (Group 4: Sync, next to Sync All). Clicking it: (1) automatically detects issues with closed/merged PR + deleted remote branch + closed GitHub issue, (2) shows a confirmation modal listing all worktrees and their associated issues to be removed, (3) on confirm, calls `remove-worktree.sh --skip-confirmation name1 name2 ...` once with all branch names, (4) archives all associated dashboard issues after successful removal.
-- [ ] Modify `remove-worktree.sh` to accept multiple branch arguments and loop internally (it already does — verify and ensure robust behavior with the `--skip-confirmation` flag for bulk operations).
+- [x] Add a "Prune Closed Worktrees" button in the dashboard toolbar (Group 4: Sync, next to Sync All). Clicking it: (1) automatically detects issues with closed/merged PR + deleted remote branch + closed GitHub issue, (2) shows a confirmation modal listing all worktrees and their associated issues to be removed, (3) on confirm, calls `remove-worktree.sh --skip-confirmation name1 name2 ...` once with all branch names, (4) archives all associated dashboard issues after successful removal.
+- [x] Modify `remove-worktree.sh` to accept multiple branch arguments and loop internally (it already does — verify and ensure robust behavior with the `--skip-confirmation` flag for bulk operations).
 
 ## Dashboard toolbar
 
