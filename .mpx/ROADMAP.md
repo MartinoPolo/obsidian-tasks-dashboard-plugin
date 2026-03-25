@@ -17,7 +17,7 @@ Updated: 2026-03-24
 | 02 | GitHub API Enhancements | Complete | -- |
 | 03 | Sync Action | Complete | 01, 02 |
 | 04 | Badge Contrast Adaptation | Complete | 01 |
-| 05 | Color Picker + Closed Issue Appearance | Not Started | 01 |
+| 05 | Color Picker + Closed Issue Appearance | Complete | 01 |
 | 06 | Issue Info Panel Restructure | Not Started | -- |
 | 07 | Dashboard Toolbar Reorder | Not Started | -- |
 | 08 | Prune Worktrees | Not Started | 01, 07 |
@@ -52,8 +52,7 @@ Updated: 2026-03-24
 
 **Phase 04: Badge Contrast Adaptation** — Complete. Badge borders adapt to issue text color via `--tdc-issue-header-link-color`, all badge backgrounds use semi-transparent `color-mix()` for contrast on colored headers.
 
-**Phase 05: Color Picker + Closed Issue Appearance**
-Rename "Text color" to "Custom color", add letter "A" preview, and implement grayscale overlay for fully-closed issues. Depends on Phase 01 for closed-issue state detection.
+**Phase 05: Color Picker + Closed Issue Appearance** — Complete. Renamed label to "Custom color", added "A" preview letter, implemented grayscale overlay for fully-closed issues (merged/closed PR + remote-gone/deleted branch + closed GitHub issue).
 
 **Phase 06: Issue Info Panel Restructure**
 Remove Dashboard/Issue IDs from panel, restructure into section hierarchy (Issue, GitHub, Branch, Worktree). Independent of other phases.

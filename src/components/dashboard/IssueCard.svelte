@@ -36,6 +36,7 @@
   let isCollapsed = $state(
     params !== null ? plugin.settings.collapsedIssues[params.issue] === true : false
   );
+  let isFullyClosed = $state(false);
   let prioritiesDisabled = $derived(dashboard !== undefined && dashboard.prioritiesEnabled === false);
   let progressBarPriority = $derived(
     prioritiesDisabled ? 'low' as const : (params?.priority ?? 'low')
@@ -159,7 +160,8 @@
       'tdc-issue-container',
       `priority-${params.priority}`,
       isCollapsed && 'tdc-collapsed',
-      prioritiesDisabled && 'tdc-priorities-disabled'
+      prioritiesDisabled && 'tdc-priorities-disabled',
+      isFullyClosed && 'tdc-issue-fully-closed'
     ]}
     bind:this={issueContainerElement}
   >
@@ -173,6 +175,7 @@
       {row2VisibleActionKeys}
       {isCollapsed}
       onCollapseToggle={handleCollapseToggle}
+      bind:isFullyClosed
     />
 
     <div class="tdc-controls">

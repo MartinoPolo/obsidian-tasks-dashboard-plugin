@@ -43,6 +43,7 @@
     row2VisibleActionKeys: Set<IssueActionKey>;
     isCollapsed: boolean;
     onCollapseToggle: (newCollapsed: boolean) => void;
+    isFullyClosed?: boolean;
   }
 
   let {
@@ -54,7 +55,8 @@
     containerElement,
     row2VisibleActionKeys,
     isCollapsed,
-    onCollapseToggle
+    onCollapseToggle,
+    isFullyClosed = $bindable(false)
   }: Props = $props();
 
   // Layout override — updated by OverflowPanel's onlayoutchange until next full refresh
@@ -281,6 +283,7 @@
           if (isDestroyed) {
             return;
           }
+          gitStatus = undefined;
           gitStatusInfoLines = ['Last refreshed: Error'];
           isBadgesLoading = false;
         });
@@ -382,6 +385,19 @@
       tooltip: `${tooltipPrefix}: ${gitStatus.branchName}`,
       class: BRANCH_STATUS_CSS_CLASS[gitStatus.branchStatus]
     };
+  });
+
+  // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
+  $effect(() => {
+    if (gitStatus === undefined) {
+      isFullyClosed = false;
+      return;
+    }
+    const prClosed = gitStatus.aggregatePrState === 'merged' || gitStatus.aggregatePrState === 'closed';
+    const branchGone = gitStatus.branchStatus === 'remote-gone' || gitStatus.branchStatus === 'deleted';
+    const hasClosedGitHubIssue = gitStatus.linkedIssues.length > 0 &&
+      gitStatus.linkedIssues.some(issue => issue.state === 'closed' || issue.state === 'not_planned');
+    isFullyClosed = prClosed && branchGone && hasClosedGitHubIssue;
   });
 </script>
 

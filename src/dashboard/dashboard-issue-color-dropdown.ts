@@ -75,15 +75,21 @@ export const openIssueColorDropdown = async (options: {
 	const colorPickerRow = dropdown.createDiv({
 		cls: 'tdc-color-picker-row tdc-issue-color-dropdown-picker'
 	});
-	colorPickerRow.createSpan({ cls: 'tdc-color-picker-label', text: 'Color picker' });
+	colorPickerRow.createSpan({ cls: 'tdc-color-picker-label', text: 'Custom color' });
 	const colorInput = colorPickerRow.createEl('input', {
 		type: 'color',
 		cls: 'tdc-color-picker-circle',
 		attr: {
-			'aria-label': 'Color picker'
+			'aria-label': 'Custom color'
 		}
 	});
 	colorInput.value = currentColor;
+	const colorPreviewLetter = colorPickerRow.createSpan({
+		cls: 'tdc-color-picker-preview-letter',
+		text: 'A',
+		attr: { 'aria-hidden': 'true' }
+	});
+	colorPreviewLetter.style.color = currentColor;
 
 	const closeDropdown = (): void => {
 		if (!didCommitSelection) {
@@ -99,6 +105,7 @@ export const openIssueColorDropdown = async (options: {
 		if (isIssueColorUsed(plugin.settings.issueColors, nextColor, issueId, dashboardIssueIds)) {
 			new Notice('Color already assigned. Pick an available color.');
 			colorInput.value = plugin.settings.issueColors[issueId] ?? ISSUE_SURFACE_COLOR_FALLBACK;
+			colorPreviewLetter.style.color = colorInput.value;
 			return;
 		}
 
@@ -184,6 +191,7 @@ export const openIssueColorDropdown = async (options: {
 	});
 
 	colorInput.addEventListener('input', () => {
+		colorPreviewLetter.style.color = colorInput.value;
 		applyIssueSurfaceStyles(container, colorInput.value);
 	});
 

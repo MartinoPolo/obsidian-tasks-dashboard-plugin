@@ -570,6 +570,14 @@
 	font-size: 0.95em;
 }
 
+.tdc-color-picker-preview-letter {
+	font-size: 1.6em;
+	font-weight: 700;
+	line-height: 1;
+	user-select: none;
+	transition: color 0.15s ease;
+}
+
 .tdc-color-picker-row input[type='color'].tdc-color-picker-circle {
 	appearance: none;
 	-webkit-appearance: none;
@@ -1285,4 +1293,10 @@
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 	margin-bottom: 6px;
+}
+
+/* ===== Fully Closed Issue Overlay ===== */
+.tdc-issue-fully-closed {
+	filter: grayscale(0.8) opacity(0.7);
+	transition: filter 0.3s ease;
 }

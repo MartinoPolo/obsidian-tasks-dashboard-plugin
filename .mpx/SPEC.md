@@ -28,12 +28,12 @@
 
 ## Color picker
 
-- [ ] Rename the "Text color" picker in the issue color dropdown to "Custom color".
-- [ ] Add a letter "A" preview in the custom color picker input area, rendered in the currently selected custom color, so the user sees how the text would look against the issue background before confirming.
+- [x] Rename the "Text color" picker in the issue color dropdown to "Custom color".
+- [x] Add a letter "A" preview in the custom color picker input area, rendered in the currently selected custom color, so the user sees how the text would look against the issue background before confirming.
 
 ## Closed issue appearance
 
-- [ ] When a dashboard issue has a closed/merged PR + remote branch deleted + GitHub issue closed, apply a CSS overlay: `filter: grayscale(0.8) opacity(0.7)`. Preserve the stored color so reopening restores the original appearance. Do not modify the color picker or stored value.
+- [x] When a dashboard issue has a closed/merged PR + remote branch deleted + GitHub issue closed, apply a CSS overlay: `filter: grayscale(0.8) opacity(0.7)`. Preserve the stored color so reopening restores the original appearance. Do not modify the color picker or stored value.
 
 ## Issue info panel
 
