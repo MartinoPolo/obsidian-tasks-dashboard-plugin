@@ -61,14 +61,14 @@
 
 ## Dashboard toolbar
 
-- [ ] Reorder dashboard toolbar buttons with visual grouping (gaps between groups). Fixed default order:
+- [x] Reorder dashboard toolbar buttons with visual grouping (gaps between groups). Fixed default order:
   - Group 1 (Create): Add Issue, Add Worktree Issue, Import Note
   - Group 2 (View): Collapse All, Expand All, Sort
   - Group 3 (External): Open Folder, Open Terminal, Open VS Code, GitHub
   - Group 4 (Sync): Sync All, Prune Worktrees
   - Group 5 (Maintain): Refresh, Rebuild
   - Group 6 (Config): Settings (always rightmost)
-- [ ] Import Note and Rebuild are rarely used — hide them first when space is limited. Use multi-line wrapping instead of a three-dots overflow menu. Settings must always remain visible and rightmost.
+- [x] Import Note and Rebuild are rarely used — hide them first when space is limited. Use multi-line wrapping instead of a three-dots overflow menu. Settings must always remain visible and rightmost.
 
 ## Issue creation workflow
 
