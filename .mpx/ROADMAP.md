@@ -21,7 +21,7 @@ Updated: 2026-03-24
 | 06 | Issue Info Panel Restructure | Complete | -- |
 | 07 | Dashboard Toolbar Reorder | Complete | -- |
 | 08 | Prune Worktrees | Complete | 01, 07 |
-| 09 | Issue Creation + Worktree Safety | Not Started | -- |
+| 09 | Issue Creation + Worktree Safety | Complete | -- |
 | 10 | Refactoring / Componentization | Not Started | 01-09 |
 
 ### Dependency Graph
@@ -60,8 +60,7 @@ Updated: 2026-03-24
 
 **Phase 08: Prune Worktrees** — Complete. Scissors button in toolbar Group 4 detects fully-closed worktree issues, shows confirmation modal, bulk-removes via `remove-worktree.sh --skip-confirmation`, sequentially archives. Shared `isFullyClosed()` helper, path traversal validation, partial-failure tracking.
 
-**Phase 09: Issue Creation + Worktree Safety**
-Fix GitHub search empty-result flow and add repo-folder mismatch safety check. Independent small fixes.
+**Phase 09: Issue Creation + Worktree Safety** — Complete. Standalone creation notice on empty search, repo-folder mismatch disables worktree buttons, orange re-assign buttons for previously-deleted issues.
 
 **Phase 10: Refactoring / Componentization**
 Large file refactoring and isolated component extraction. Runs after all feature work to avoid merge conflicts.

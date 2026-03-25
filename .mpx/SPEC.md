@@ -72,12 +72,12 @@
 
 ## Issue creation workflow
 
-- [ ] When the GitHub search in step 1 returns no results and the user presses Enter, auto-advance to step 2 (name input) with the search text pre-filled as the issue name. Show a subtle notice: "No matching GitHub issue — creating standalone."
+- [x] When the GitHub search in step 1 returns no results and the user presses Enter, auto-advance to step 2 (name input) with the search text pre-filled as the issue name. Show a subtle notice: "No matching GitHub issue — creating standalone."
 
 ## Worktree safety
 
-- [ ] When the linked GitHub repository does not match the linked folder (e.g., folder points to repo A but GitHub link points to repo B), disable worktree creation buttons with a tooltip: "Repository not linked to dashboard folder." Multi-folder support deferred.
-- [ ] When a dashboard issue is deleted but the GitHub issue was previously assigned, the quick-add/assign buttons must reappear in the assigned issues section. However, the button should be styled in orange (not the default color) to indicate this issue was previously assigned and its dashboard issue was deleted. This gives visual history while allowing re-assignment.
+- [x] When the linked GitHub repository does not match the linked folder (e.g., folder points to repo A but GitHub link points to repo B), disable worktree creation buttons with a tooltip: "Repository not linked to dashboard folder." Multi-folder support deferred.
+- [x] When a dashboard issue is deleted but the GitHub issue was previously assigned, the quick-add/assign buttons must reappear in the assigned issues section. However, the button should be styled in orange (not the default color) to indicate this issue was previously assigned and its dashboard issue was deleted. This gives visual history while allowing re-assignment.
 
 ## TODO
 
