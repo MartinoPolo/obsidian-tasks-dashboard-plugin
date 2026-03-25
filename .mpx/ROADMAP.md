@@ -15,7 +15,7 @@ Updated: 2026-03-24
 |-------|------|--------|-------------|
 | 01 | Badge Icons + Branch/PR State Verification | Complete | -- |
 | 02 | GitHub API Enhancements | Complete | -- |
-| 03 | Sync Action | Not Started | 01, 02 |
+| 03 | Sync Action | Complete | 01, 02 |
 | 04 | Badge Contrast Adaptation | Not Started | 01 |
 | 05 | Color Picker + Closed Issue Appearance | Not Started | 01 |
 | 06 | Issue Info Panel Restructure | Not Started | -- |
@@ -48,8 +48,7 @@ Updated: 2026-03-24
 
 **Phase 02: GitHub API Enhancements** — Complete. Added `compareBranches()` and `getPullRequestMergeable()` to GitHubService, extended `IssueGitStatus` with `behindBaseCount`/`mergeConflict`, integrated into git status flow with parallel API calls.
 
-**Phase 03: Sync Action**
-Add per-issue sync button (visible when branch is behind base) and "Sync All" toolbar button. Depends on Phase 01 (badge infrastructure) and Phase 02 (behind detection + mergeable field).
+**Phase 03: Sync Action** — Complete. Added behind-base badge (blue, sync icon, count), merge conflict warning badge (amber, alert-triangle), per-issue sync button (opens terminal with `claude /mp-sync-base`), and Sync All toolbar button with reactive disabled state.
 
 **Phase 04: Badge Contrast Adaptation**
 Adapt badge colors to issue header background. Use semi-transparent semantic colors with issue text color as border. Depends on Phase 01 badge system being complete.
