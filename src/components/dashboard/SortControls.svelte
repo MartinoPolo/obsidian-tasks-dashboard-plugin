@@ -70,7 +70,6 @@
       return;
     }
     const element = toolbarElement;
-    isToolbarCompact = element.getBoundingClientRect().width < COMPACT_TOOLBAR_WIDTH_PX;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         isToolbarCompact = entry.contentRect.width < COMPACT_TOOLBAR_WIDTH_PX;
