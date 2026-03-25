@@ -1,0 +1,1 @@
+Test file for branch: 13-test-open-issue-closed-pr-branch-remote-gone
