@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { IssueGitStatus } from '../../git-status/git-status-types';
   import {
+    BRANCH_NAME_MAX_DISPLAY_LENGTH,
+    BRANCH_STATUS_CSS_CLASS,
+    BRANCH_STATUS_ICON,
+    BRANCH_STATUS_TOOLTIP_PREFIX,
     ISSUE_STATE_ICON,
     ISSUE_STATE_CSS_CLASS,
     ISSUE_STATE_LABEL,
@@ -8,21 +12,12 @@
     PR_STATE_CSS_CLASS,
     PR_STATE_LABEL
   } from '../../git-status/git-badge-maps';
-  import type { IconName } from '../icons/index';
   import { attachTooltip } from '../../lib/attach-tooltip';
   import GitBadge from '../GitBadge.svelte';
   import Icon from '../Icon.svelte';
 
-  interface BranchBadgeData {
-    icon: IconName;
-    text: string;
-    tooltip: string;
-    class: string;
-  }
-
   interface Props {
     gitStatus: IssueGitStatus | undefined;
-    branchBadge: BranchBadgeData | undefined;
     isBadgesLoading: boolean;
     shouldCompact: boolean;
     isSyncing: boolean;
@@ -33,7 +28,6 @@
 
   let {
     gitStatus,
-    branchBadge,
     isBadgesLoading,
     shouldCompact,
     isSyncing,
@@ -41,6 +35,23 @@
     oncontextmenu,
     onsync
   }: Props = $props();
+
+  // Derive branch badge from git status
+  let branchBadge = $derived.by(() => {
+    if (gitStatus === undefined || gitStatus.branchName === undefined) {
+      return undefined;
+    }
+    const displayName = gitStatus.branchName.length > BRANCH_NAME_MAX_DISPLAY_LENGTH
+      ? gitStatus.branchName.slice(0, BRANCH_NAME_MAX_DISPLAY_LENGTH) + '\u2026'
+      : gitStatus.branchName;
+    const tooltipPrefix = BRANCH_STATUS_TOOLTIP_PREFIX[gitStatus.branchStatus];
+    return {
+      icon: BRANCH_STATUS_ICON[gitStatus.branchStatus],
+      text: displayName,
+      tooltip: `${tooltipPrefix}: ${gitStatus.branchName}`,
+      class: BRANCH_STATUS_CSS_CLASS[gitStatus.branchStatus]
+    };
+  });
 
   let isBehindBase = $derived(
     gitStatus !== undefined &&

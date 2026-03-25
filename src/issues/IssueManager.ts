@@ -15,8 +15,11 @@ import {
 } from './issue-manager-github';
 import { migrateIssueSettings, removeIssueSettings } from './issue-manager-settings';
 import {
+	createEditDashboardIssueBlock,
+	upsertDashboardIssueBlockField
+} from './issue-manager-block-edit';
+import {
 	appendBeforeFrontmatterClose,
-	escapeForRegExp,
 	findIssueFilesByPath,
 	getDashboardFilename,
 	getFrontmatterCloseIndex,
@@ -151,65 +154,7 @@ export function createIssueManager(
 		return matchingFiles.at(0);
 	};
 
-	const editDashboardIssueBlock = async (
-		dashboard: DashboardConfig,
-		issueId: string,
-		transformBlock: (block: string) => string
-	): Promise<void> => {
-		const dashboardFile = getDashboardFile(dashboard);
-		if (dashboardFile === undefined) {
-			return;
-		}
-
-		let dashboardContent = await app.vault.read(dashboardFile);
-		const startMarker = `%% ISSUE:${issueId}:START %%`;
-		const endMarker = `%% ISSUE:${issueId}:END %%`;
-		const startIndex = dashboardContent.indexOf(startMarker);
-		const endIndex = dashboardContent.indexOf(endMarker);
-
-		if (startIndex === -1 || endIndex === -1) {
-			return;
-		}
-
-		const blockEnd = endIndex + endMarker.length;
-		const originalBlock = dashboardContent.substring(startIndex, blockEnd);
-		const updatedBlock = transformBlock(originalBlock);
-
-		if (updatedBlock === originalBlock) {
-			return;
-		}
-
-		dashboardContent =
-			dashboardContent.slice(0, startIndex) + updatedBlock + dashboardContent.slice(blockEnd);
-		await app.vault.modify(dashboardFile, dashboardContent);
-	};
-
-	const upsertDashboardIssueBlockField = (
-		block: string,
-		fieldName: string,
-		fieldValue: string
-	): string => {
-		const controlsStart = block.indexOf('```tasks-dashboard-controls');
-		if (controlsStart === -1) {
-			return block;
-		}
-		const firstFenceEnd = block.indexOf(
-			'```',
-			controlsStart + '```tasks-dashboard-controls'.length
-		);
-		if (firstFenceEnd === -1) {
-			return block;
-		}
-
-		const controlsSection = block.slice(controlsStart, firstFenceEnd);
-		const escapedFieldName = escapeForRegExp(fieldName);
-		const fieldRegex = new RegExp(`^${escapedFieldName}:\\s*.*$`, 'm');
-		const updatedControlsSection = fieldRegex.test(controlsSection)
-			? controlsSection.replace(fieldRegex, `${fieldName}: ${fieldValue}`)
-			: `${controlsSection}${fieldName}: ${fieldValue}\n`;
-
-		return block.slice(0, controlsStart) + updatedControlsSection + block.slice(firstFenceEnd);
-	};
+	const editDashboardIssueBlock = createEditDashboardIssueBlock(app, getDashboardFile);
 
 	const moveIssueState = async (
 		dashboard: DashboardConfig,

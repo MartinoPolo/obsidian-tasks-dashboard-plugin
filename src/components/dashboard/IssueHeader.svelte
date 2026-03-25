@@ -9,13 +9,8 @@
   	RuntimeIssueActionLayout
   } from '../../dashboard/dashboard-renderer-types';
   import { getLinkedRepositories } from '../../dashboard/dashboard-writer-helpers';
-  import {
-    BRANCH_NAME_MAX_DISPLAY_LENGTH,
-    BRANCH_STATUS_CSS_CLASS,
-    BRANCH_STATUS_ICON,
-    BRANCH_STATUS_TOOLTIP_PREFIX
-  } from '../../git-status/git-badge-maps';
-  import { buildGitStatusDisplayInfo, type GitStatusDisplayInfo, INFO_SECTION_HEADER_PREFIX } from '../../git-status/git-status-helpers';
+  import { buildInfoContent } from '../../dashboard/issue-header-info-content';
+  import { buildGitStatusDisplayInfo, type GitStatusDisplayInfo } from '../../git-status/git-status-helpers';
   import { isFullyClosed as checkFullyClosed } from '../../git-status/git-status-types';
   import type { IssueGitStatus } from '../../git-status/git-status-types';
   import { attachResizeObserver } from '../../lib/attach-resize-observer';
@@ -96,69 +91,21 @@
   );
 
   // Build info panel content with structured sections
-  let infoContent = $derived.by(() => {
-    const h = INFO_SECTION_HEADER_PREFIX;
-    const sections: string[] = [];
-
-    // == Issue section ==
-    const issueLines = [`${h}Issue`, `Name: ${params.name}`];
-    if (params.priority !== undefined) {
-      issueLines.push(`Priority: ${params.priority}`);
-    }
-    sections.push(issueLines.join('\n'));
-
-    // == GitHub section ==
-    const githubLines = [`${h}GitHub`];
-    if (params.githubLinks.length > 0) {
-      for (const link of params.githubLinks) {
-        githubLines.push(link);
-      }
-    } else {
-      githubLines.push('No linked issues');
-    }
-    if (gitStatusDisplay !== undefined && gitStatusDisplay.prLines.length > 0) {
-      githubLines.push('');
-      githubLines.push('Pull requests:');
-      for (const prLine of gitStatusDisplay.prLines) {
-        githubLines.push(`  ${prLine}`);
-      }
-    }
-    sections.push(githubLines.join('\n'));
-
-    // == Branch section ==
-    const branchSectionLines = [`${h}Branch`];
-    if (isWorktreeIssue) {
-      branchSectionLines.push(`Base: ${params.worktree_base_branch ?? 'n/a'}`);
-      branchSectionLines.push(`Local: ${params.worktree_branch ?? 'n/a'}`);
-      const remoteBranch = params.worktree_branch !== undefined ? `origin/${params.worktree_branch}` : 'n/a';
-      branchSectionLines.push(`Remote: ${remoteBranch}`);
-      if (gitStatusDisplay?.branchStatusLine !== undefined) {
-        branchSectionLines.push(gitStatusDisplay.branchStatusLine);
-      }
-    } else {
-      branchSectionLines.push('No branch linked');
-    }
-    sections.push(branchSectionLines.join('\n'));
-
-    // == Worktree section ==
-    const worktreeLines = [`${h}Worktree`];
-    if (isWorktreeIssue) {
-      worktreeLines.push(`Folder: ${params.worktree_expected_folder ?? 'n/a'}`);
-      worktreeLines.push(`State: ${params.worktree_setup_state ?? 'n/a'}`);
-    } else {
-      worktreeLines.push('Not a worktree issue');
-    }
-    sections.push(worktreeLines.join('\n'));
-
-    // == Footer ==
-    if (gitStatusDisplay !== undefined) {
-      sections.push(`Last refreshed: ${gitStatusDisplay.lastRefreshed}`);
-    } else {
-      sections.push('Last refreshed: Not yet');
-    }
-
-    return sections.join('\n\n');
-  });
+  let infoContent = $derived(
+    buildInfoContent(
+      {
+        name: params.name,
+        priority: params.priority,
+        githubLinks: params.githubLinks,
+        isWorktreeIssue,
+        worktreeBaseBranch: params.worktree_base_branch,
+        worktreeBranch: params.worktree_branch,
+        worktreeExpectedFolder: params.worktree_expected_folder,
+        worktreeSetupState: params.worktree_setup_state
+      },
+      gitStatusDisplay
+    )
+  );
 
   // Row1 visible action keys -- filter hidden
   let row1ActionKeys = $derived(
@@ -395,23 +342,6 @@
   // Sync button callback — only available when worktree folder exists
   let syncHandler = $derived(hasWorktreeFolder ? handleSyncBranch : undefined);
 
-  // Branch badge data
-  let branchBadge = $derived.by(() => {
-    if (gitStatus === undefined || gitStatus.branchName === undefined) {
-      return undefined;
-    }
-    const displayName = gitStatus.branchName.length > BRANCH_NAME_MAX_DISPLAY_LENGTH
-      ? gitStatus.branchName.slice(0, BRANCH_NAME_MAX_DISPLAY_LENGTH) + '\u2026'
-      : gitStatus.branchName;
-    const tooltipPrefix = BRANCH_STATUS_TOOLTIP_PREFIX[gitStatus.branchStatus];
-    return {
-      icon: BRANCH_STATUS_ICON[gitStatus.branchStatus],
-      text: displayName,
-      tooltip: `${tooltipPrefix}: ${gitStatus.branchName}`,
-      class: BRANCH_STATUS_CSS_CLASS[gitStatus.branchStatus]
-    };
-  });
-
   // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
   $effect(() => {
     isFullyClosed = gitStatus !== undefined && checkFullyClosed(gitStatus);
@@ -452,7 +382,6 @@
 
   <HeaderBadges
     {gitStatus}
-    {branchBadge}
     {isBadgesLoading}
     {shouldCompact}
     {isSyncing}
