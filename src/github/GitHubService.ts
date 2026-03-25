@@ -1,6 +1,7 @@
 import { GitHubIssueMetadata, GitHubRepoMetadata, GitHubRepository } from '../types';
 import { parseGitHubUrl } from '../utils/github-url';
 import {
+	GitHubCompareApiResponse,
 	GitHubIssueApiResponse,
 	GitHubOrgApiResponse,
 	GitHubPullRequestApiResponse,
@@ -129,6 +130,47 @@ export function createGitHubService(): GitHubServiceInstance {
 		const items = data.map((pr) => mapPullRequestResponse(pr, owner, repo));
 		cacheStore.set(cacheKey, items);
 		return items;
+	};
+
+	const compareBranches = async (
+		owner: string,
+		repo: string,
+		base: string,
+		head: string
+	): Promise<{ behindBy: number; aheadBy: number } | undefined> => {
+		const cacheKey = `compare:${owner}/${repo}:${base}...${head}`;
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubCompareApiResponse>(
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
+
+			return { behindBy: data.behind_by, aheadBy: data.ahead_by };
+		});
+	};
+
+	const getPullRequestMergeable = async (
+		owner: string,
+		repo: string,
+		number: number
+	): Promise<boolean | undefined> => {
+		const cacheKey = `pr-mergeable:${owner}/${repo}#${number}`;
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubPullRequestApiResponse>(
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${number}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
+
+			if (data.mergeable === null || data.mergeable === undefined) {
+				return undefined;
+			}
+
+			return data.mergeable;
+		});
 	};
 
 	const getMetadataFromUrl = async (url: string): Promise<GitHubIssueMetadata | undefined> => {
@@ -430,6 +472,8 @@ export function createGitHubService(): GitHubServiceInstance {
 		getIssue,
 		getPullRequest,
 		getPullRequestsByBranch,
+		compareBranches,
+		getPullRequestMergeable,
 		searchIssues,
 		searchPullRequests,
 		searchIssuesInMyRepos,

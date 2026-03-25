@@ -37,6 +37,16 @@ const PR_STATE_PRIORITY: Record<PrState, number> = {
 	none: 5
 };
 
+const OPEN_PR_STATES: PrState[] = ['open', 'review-requested', 'draft'];
+
+function parseRepoFullName(fullName: string): { owner: string; repo: string } | undefined {
+	const parts = fullName.split('/');
+	if (parts.length !== 2) {
+		return undefined;
+	}
+	return { owner: parts[0], repo: parts[1] };
+}
+
 function mapPrStatusToPrState(prStatus: GitHubIssueMetadata['prStatus']): PrState {
 	if (prStatus === undefined) {
 		return 'none';
@@ -163,15 +173,14 @@ export function createGitStatusService(
 		// Discover PRs by branch name from linked repos
 		if (params.branchName !== undefined && params.branchName !== '') {
 			for (const repoFullName of params.linkedRepos) {
-				const parts = repoFullName.split('/');
-				if (parts.length !== 2) {
+				const parsed = parseRepoFullName(repoFullName);
+				if (parsed === undefined) {
 					continue;
 				}
-				const [owner, repo] = parts;
 				try {
 					const branchPrs = await githubService.getPullRequestsByBranch(
-						owner,
-						repo,
+						parsed.owner,
+						parsed.repo,
 						params.branchName
 					);
 					for (const pr of branchPrs) {
@@ -237,12 +246,65 @@ export function createGitStatusService(
 
 		let linkedPullRequests: LinkedPullRequest[] = [];
 		let linkedIssues: LinkedGitHubIssue[] = [];
+		let behindBaseCount: number | undefined;
+		let mergeConflict: boolean | undefined;
+
 		if (githubService.isAuthenticated()) {
 			linkedPullRequests = await discoverPullRequests(params);
 			linkedIssues = await discoverLinkedIssues(params);
+
+			if (
+				params.baseBranch !== undefined &&
+				params.branchName !== undefined &&
+				branchStatus === 'active' &&
+				params.linkedRepos.length > 0
+			) {
+				const parsedRepo = parseRepoFullName(params.linkedRepos[0]);
+				if (parsedRepo !== undefined) {
+					try {
+						const compareResult = await githubService.compareBranches(
+							parsedRepo.owner,
+							parsedRepo.repo,
+							params.baseBranch,
+							params.branchName
+						);
+						if (compareResult !== undefined) {
+							behindBaseCount = compareResult.behindBy;
+						}
+					} catch {
+						// Graceful degradation — field stays undefined
+					}
+				}
+			}
+
+			const openPullRequests = linkedPullRequests
+				.filter((pr) => OPEN_PR_STATES.includes(pr.state))
+				.sort((a, b) => PR_STATE_PRIORITY[a.state] - PR_STATE_PRIORITY[b.state]);
+
+			if (openPullRequests.length > 0) {
+				const highestPriorityPr = openPullRequests[0];
+				const parsedPrRepo = parseRepoFullName(highestPriorityPr.repository);
+				if (parsedPrRepo !== undefined) {
+					try {
+						const mergeable = await githubService.getPullRequestMergeable(
+							parsedPrRepo.owner,
+							parsedPrRepo.repo,
+							highestPriorityPr.number
+						);
+						if (mergeable === false) {
+							mergeConflict = true;
+						} else if (mergeable === true) {
+							mergeConflict = false;
+						}
+					} catch {
+						// Graceful degradation — field stays undefined
+					}
+				}
+			}
 		}
 
 		const aggregatePrState = computeAggregatePrState(linkedPullRequests);
+
 		const fetchedAt = Date.now();
 
 		const status: IssueGitStatus = {
@@ -252,6 +314,8 @@ export function createGitStatusService(
 			linkedPullRequests,
 			linkedIssues,
 			aggregatePrState,
+			behindBaseCount,
+			mergeConflict,
 			fetchedAt
 		};
 

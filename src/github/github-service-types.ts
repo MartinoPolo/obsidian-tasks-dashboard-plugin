@@ -49,6 +49,17 @@ export interface GitHubServiceInstance {
 		repo: string,
 		branch: string
 	) => Promise<GitHubIssueMetadata[]>;
+	compareBranches: (
+		owner: string,
+		repo: string,
+		base: string,
+		head: string
+	) => Promise<{ behindBy: number; aheadBy: number } | undefined>;
+	getPullRequestMergeable: (
+		owner: string,
+		repo: string,
+		number: number
+	) => Promise<boolean | undefined>;
 	clearCache: () => void;
 	clearCacheForUrl: (url: string) => void;
 	isAuthenticated: () => boolean;

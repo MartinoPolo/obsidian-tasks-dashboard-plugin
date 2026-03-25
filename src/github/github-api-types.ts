@@ -31,11 +31,18 @@ export interface GitHubPullRequestApiResponse extends GitHubIssueLikeApiResponse
 	merged: boolean;
 	draft: boolean;
 	requested_reviewers?: GitHubAssigneeApiResponse[];
+	mergeable?: boolean | null;
 }
 
 export interface GitHubSearchApiResponse {
 	total_count: number;
 	items: GitHubIssueApiResponse[];
+}
+
+export interface GitHubCompareApiResponse {
+	status: string;
+	behind_by: number;
+	ahead_by: number;
 }
 
 export interface GitHubRepoApiResponse {
