@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { IconName } from './icons/index';
   import { attachTooltip } from '../lib/attach-tooltip';
   import Icon from './Icon.svelte';
+  import type { IconName } from './icons/index';
 
   interface Props {
     type: 'branch' | 'pr' | 'issue' | 'sync';
@@ -80,95 +80,95 @@ a.tdc-git-badge:hover {
 /* Branch badges */
 .tdc-git-badge-branch-active {
   color: var(--tdc-git-branch-active);
-  background: color-mix(in srgb, var(--tdc-git-branch-active) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-branch-active) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-branch-active) 40%, transparent);
 }
 
 .tdc-git-badge-branch-local {
   color: var(--tdc-git-branch-local);
-  background: color-mix(in srgb, var(--tdc-git-branch-local) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-branch-local) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-branch-local) 40%, transparent);
 }
 
 .tdc-git-badge-branch-remote-gone {
   color: var(--tdc-git-branch-remote-gone);
-  background: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 40%, transparent);
 }
 
 .tdc-git-badge-branch-deleted {
   color: var(--tdc-git-branch-deleted);
-  background: color-mix(in srgb, var(--tdc-git-branch-deleted) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-branch-deleted) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-branch-deleted) 40%, transparent);
   text-decoration: line-through;
 }
 
 .tdc-git-badge-branch-unknown {
   color: var(--text-muted);
-  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
   border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
 
 /* PR badges */
 .tdc-git-badge-open {
   color: var(--tdc-git-pr-open);
-  background: color-mix(in srgb, var(--tdc-git-pr-open) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-pr-open) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-pr-open) 40%, transparent);
 }
 
 .tdc-git-badge-merged {
   color: var(--tdc-git-pr-merged);
-  background: color-mix(in srgb, var(--tdc-git-pr-merged) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-pr-merged) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-pr-merged) 40%, transparent);
 }
 
 .tdc-git-badge-closed {
   color: var(--tdc-git-pr-closed);
-  background: color-mix(in srgb, var(--tdc-git-pr-closed) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-pr-closed) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-pr-closed) 40%, transparent);
 }
 
 .tdc-git-badge-draft {
   color: var(--tdc-git-pr-draft);
-  background: color-mix(in srgb, var(--tdc-git-pr-draft) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-pr-draft) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-pr-draft) 40%, transparent);
 }
 
 .tdc-git-badge-review {
   color: var(--tdc-git-pr-review);
-  background: color-mix(in srgb, var(--tdc-git-pr-review) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-pr-review) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-pr-review) 40%, transparent);
 }
 
 /* Issue badges */
 .tdc-git-badge-issue-open {
   color: var(--tdc-gh-open);
-  background: color-mix(in srgb, var(--tdc-gh-open) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-gh-open) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-gh-open) 40%, transparent);
 }
 
 .tdc-git-badge-issue-closed {
   color: var(--tdc-gh-closed);
-  background: color-mix(in srgb, var(--tdc-gh-closed) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-gh-closed) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-gh-closed) 40%, transparent);
 }
 
 .tdc-git-badge-issue-not-planned {
   color: var(--text-muted);
-  background: color-mix(in srgb, var(--text-muted) 15%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 30%, transparent);
   border-color: color-mix(in srgb, var(--text-muted) 40%, transparent);
 }
 
 /* Sync badges */
 .tdc-git-badge-sync-behind {
   color: var(--tdc-git-sync-behind);
-  background: color-mix(in srgb, var(--tdc-git-sync-behind) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-sync-behind) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-sync-behind) 40%, transparent);
 }
 
 .tdc-git-badge-merge-conflict {
   color: var(--tdc-git-merge-conflict);
-  background: color-mix(in srgb, var(--tdc-git-merge-conflict) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-git-merge-conflict) 30%, transparent);
   border-color: color-mix(in srgb, var(--tdc-git-merge-conflict) 40%, transparent);
 }
 </style>

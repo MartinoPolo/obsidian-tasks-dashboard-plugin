@@ -221,7 +221,8 @@
     let isDestroyed = false;
     let rafId: number | undefined;
 
-    if (isWorktreeIssue || params.githubLinks.length > 0) {
+    const isWorktreePending = isWorktreeIssue && params.worktree_setup_state === 'pending';
+    if ((isWorktreeIssue && !isWorktreePending) || params.githubLinks.length > 0) {
       isBadgesLoading = true;
       const linkedReposForInfo = getLinkedRepositories(dashboard);
       void plugin.gitStatusService
