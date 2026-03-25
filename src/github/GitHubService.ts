@@ -27,7 +27,11 @@ import {
 	getIssueCacheKey,
 	uniqueByUrl
 } from './github-service-search-helpers';
-import { GitHubSearchResult, GitHubServiceInstance } from './github-service-types';
+import {
+	BranchCompareResult,
+	GitHubSearchResult,
+	GitHubServiceInstance
+} from './github-service-types';
 
 export { GitHubApiError } from './github-service-types';
 export type { GitHubApiErrorKind, GitHubServiceInstance } from './github-service-types';
@@ -137,7 +141,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		repo: string,
 		base: string,
 		head: string
-	): Promise<{ behindBy: number; aheadBy: number } | undefined> => {
+	): Promise<BranchCompareResult | undefined> => {
 		const cacheKey = `compare:${owner}/${repo}:${base}...${head}`;
 		return cacheStore.getOrLoadOptional(cacheKey, async () => {
 			const data = await requestClient.apiRequest<GitHubCompareApiResponse>(

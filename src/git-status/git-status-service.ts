@@ -253,54 +253,62 @@ export function createGitStatusService(
 			linkedPullRequests = await discoverPullRequests(params);
 			linkedIssues = await discoverLinkedIssues(params);
 
-			if (
-				params.baseBranch !== undefined &&
-				params.branchName !== undefined &&
-				branchStatus === 'active' &&
-				params.linkedRepos.length > 0
-			) {
-				const parsedRepo = parseRepoFullName(params.linkedRepos[0]);
-				if (parsedRepo !== undefined) {
-					try {
-						const compareResult = await githubService.compareBranches(
-							parsedRepo.owner,
-							parsedRepo.repo,
-							params.baseBranch,
-							params.branchName
-						);
-						if (compareResult !== undefined) {
-							behindBaseCount = compareResult.behindBy;
-						}
-					} catch {
-						// Graceful degradation — field stays undefined
-					}
+			const comparePromise = (async (): Promise<void> => {
+				if (
+					params.baseBranch === undefined ||
+					params.branchName === undefined ||
+					branchStatus !== 'active' ||
+					params.linkedRepos.length === 0
+				) {
+					return;
 				}
-			}
+				const parsedRepo = parseRepoFullName(params.linkedRepos[0]);
+				if (parsedRepo === undefined) {
+					return;
+				}
+				try {
+					const compareResult = await githubService.compareBranches(
+						parsedRepo.owner,
+						parsedRepo.repo,
+						params.baseBranch,
+						params.branchName
+					);
+					if (compareResult !== undefined) {
+						behindBaseCount = compareResult.behindBy;
+					}
+				} catch {
+					// Graceful degradation — field stays undefined
+				}
+			})();
 
-			const openPullRequests = linkedPullRequests
-				.filter((pr) => OPEN_PR_STATES.includes(pr.state))
-				.sort((a, b) => PR_STATE_PRIORITY[a.state] - PR_STATE_PRIORITY[b.state]);
+			const mergeablePromise = (async (): Promise<void> => {
+				const openPullRequests = linkedPullRequests
+					.filter((pr) => OPEN_PR_STATES.includes(pr.state))
+					.sort((a, b) => PR_STATE_PRIORITY[a.state] - PR_STATE_PRIORITY[b.state]);
 
-			if (openPullRequests.length > 0) {
+				if (openPullRequests.length === 0) {
+					return;
+				}
 				const highestPriorityPr = openPullRequests[0];
 				const parsedPrRepo = parseRepoFullName(highestPriorityPr.repository);
-				if (parsedPrRepo !== undefined) {
-					try {
-						const mergeable = await githubService.getPullRequestMergeable(
-							parsedPrRepo.owner,
-							parsedPrRepo.repo,
-							highestPriorityPr.number
-						);
-						if (mergeable === false) {
-							mergeConflict = true;
-						} else if (mergeable === true) {
-							mergeConflict = false;
-						}
-					} catch {
-						// Graceful degradation — field stays undefined
-					}
+				if (parsedPrRepo === undefined) {
+					return;
 				}
-			}
+				try {
+					const mergeable = await githubService.getPullRequestMergeable(
+						parsedPrRepo.owner,
+						parsedPrRepo.repo,
+						highestPriorityPr.number
+					);
+					if (mergeable !== undefined) {
+						mergeConflict = !mergeable;
+					}
+				} catch {
+					// Graceful degradation — field stays undefined
+				}
+			})();
+
+			await Promise.all([comparePromise, mergeablePromise]);
 		}
 
 		const aggregatePrState = computeAggregatePrState(linkedPullRequests);

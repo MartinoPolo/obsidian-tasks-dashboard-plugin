@@ -19,6 +19,11 @@ export interface GitHubSearchResult {
 
 export type GitHubIssueState = GitHubIssueMetadata['state'];
 
+export interface BranchCompareResult {
+	behindBy: number;
+	aheadBy: number;
+}
+
 export interface GitHubServiceInstance {
 	setAuth: (auth: GitHubAuth) => void;
 	validateToken: () => Promise<{ valid: boolean; username?: string; error?: string }>;
@@ -54,7 +59,7 @@ export interface GitHubServiceInstance {
 		repo: string,
 		base: string,
 		head: string
-	) => Promise<{ behindBy: number; aheadBy: number } | undefined>;
+	) => Promise<BranchCompareResult | undefined>;
 	getPullRequestMergeable: (
 		owner: string,
 		repo: string,
