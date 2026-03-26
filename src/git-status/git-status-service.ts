@@ -11,7 +11,7 @@ import type {
 } from './git-status-types';
 import { notifyCacheUpdate } from './git-status-cache-signal';
 import { createFetchCoordinator, resolveRepoRoot } from './git-fetch-coordinator';
-import { getBehindCount, detectMergeConflicts } from './git-local-detection';
+import { getBehindCount, getRemoteBehindCount, detectMergeConflicts } from './git-local-detection';
 
 const GIT_STATUS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -255,11 +255,38 @@ export function createGitStatusService(
 		let linkedPullRequests: LinkedPullRequest[] = [];
 		let linkedIssues: LinkedGitHubIssue[] = [];
 		let behindBaseCount: number | undefined;
+		let remoteBehindBaseCount: number | undefined;
 		let mergeConflict: boolean | undefined;
+		let prMergeConflict: boolean | undefined;
 
 		if (githubService.isAuthenticated()) {
 			linkedPullRequests = await discoverPullRequests(params);
 			linkedIssues = await discoverLinkedIssues(params);
+
+			// Check PR mergeability for highest-priority open PR
+			const openPrStates: PrState[] = ['open', 'review-requested', 'draft'];
+			const openPullRequests = linkedPullRequests
+				.filter((pr) => openPrStates.includes(pr.state))
+				.sort((a, b) => PR_STATE_PRIORITY[a.state] - PR_STATE_PRIORITY[b.state]);
+
+			if (openPullRequests.length > 0) {
+				const highestPriorityPr = openPullRequests[0];
+				const parsedPrRepo = parseRepoFullName(highestPriorityPr.repository);
+				if (parsedPrRepo !== undefined) {
+					try {
+						const mergeable = await githubService.getPullRequestMergeable(
+							parsedPrRepo.owner,
+							parsedPrRepo.repo,
+							highestPriorityPr.number
+						);
+						if (mergeable !== undefined) {
+							prMergeConflict = !mergeable;
+						}
+					} catch {
+						// Graceful degradation
+					}
+				}
+			}
 		}
 
 		// Local git detection — runs from worktree folder where HEAD is the feature branch
@@ -281,6 +308,17 @@ export function createGitStatusService(
 			const count = getBehindCount(detectionFolder, params.baseBranch);
 			if (count !== undefined) {
 				behindBaseCount = count;
+			}
+
+			if (params.branchName !== undefined) {
+				const remoteBehind = getRemoteBehindCount(
+					detectionFolder,
+					params.branchName,
+					params.baseBranch
+				);
+				if (remoteBehind !== undefined) {
+					remoteBehindBaseCount = remoteBehind;
+				}
 			}
 
 			try {
@@ -305,7 +343,9 @@ export function createGitStatusService(
 			linkedIssues,
 			aggregatePrState,
 			behindBaseCount,
+			remoteBehindBaseCount,
 			mergeConflict,
+			prMergeConflict,
 			fetchedAt
 		};
 

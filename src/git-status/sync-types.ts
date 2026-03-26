@@ -17,6 +17,7 @@ export type BranchSyncStatus =
 	| 'done'
 	| 'dirty'
 	| 'conflicts'
+	| 'no-upstream'
 	| 'failed';
 
 export interface BranchSyncLine {

@@ -42,6 +42,7 @@
 	--tdc-git-branch-remote-gone: #b56d1f;
 	--tdc-git-branch-deleted: #545d68;
 	--tdc-git-sync-behind: #1a6bc4;
+	--tdc-git-push-behind: #1a8f6e;
 	--tdc-git-merge-conflict: #9e7318;
 }
 
@@ -65,6 +66,7 @@
 	--tdc-git-branch-remote-gone: #f0a050;
 	--tdc-git-branch-deleted: #adbac7;
 	--tdc-git-sync-behind: #79c0ff;
+	--tdc-git-push-behind: #59c9a5;
 	--tdc-git-merge-conflict: #e5b567;
 }
 
