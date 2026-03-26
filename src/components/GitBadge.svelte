@@ -120,7 +120,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-branch-active) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-branch-active :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-branch-active) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-branch-active) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-branch-local {
@@ -129,7 +129,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-branch-local) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-branch-local :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-branch-local) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-branch-local) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-branch-remote-gone {
@@ -138,7 +138,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-branch-remote-gone :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-branch-remote-gone) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-branch-deleted {
@@ -148,7 +148,7 @@ a.tdc-git-badge:hover,
   text-decoration: line-through;
 }
 .tdc-git-badge-branch-deleted :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-branch-deleted) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-branch-deleted) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-branch-unknown {
@@ -157,7 +157,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--text-muted) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-branch-unknown :global(svg) {
-  color: color-mix(in srgb, var(--text-muted) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--text-muted) 35%, var(--tdc-badge-icon-mix));
 }
 
 /* PR badges */
@@ -167,7 +167,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-pr-open) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-open :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-pr-open) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-pr-open) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-merged {
@@ -176,7 +176,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-pr-merged) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-merged :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-pr-merged) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-pr-merged) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-closed {
@@ -185,7 +185,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-pr-closed) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-closed :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-pr-closed) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-pr-closed) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-draft {
@@ -194,7 +194,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-pr-draft) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-draft :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-pr-draft) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-pr-draft) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-review {
@@ -203,7 +203,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-pr-review) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-review :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-pr-review) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-pr-review) 35%, var(--tdc-badge-icon-mix));
 }
 
 /* Issue badges */
@@ -213,7 +213,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-gh-open) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-issue-open :global(svg) {
-  color: color-mix(in srgb, var(--tdc-gh-open) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-gh-open) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-issue-closed {
@@ -222,7 +222,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-gh-closed) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-issue-closed :global(svg) {
-  color: color-mix(in srgb, var(--tdc-gh-closed) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-gh-closed) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-issue-not-planned {
@@ -231,7 +231,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--text-muted) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-issue-not-planned :global(svg) {
-  color: color-mix(in srgb, var(--text-muted) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--text-muted) 35%, var(--tdc-badge-icon-mix));
 }
 
 /* Sync badges */
@@ -241,7 +241,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-sync-behind) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-sync-behind :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-sync-behind) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-sync-behind) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-merge-conflict {
@@ -250,7 +250,7 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-merge-conflict) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-merge-conflict :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-merge-conflict) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-merge-conflict) 35%, var(--tdc-badge-icon-mix));
 }
 
 .tdc-git-badge-push-behind {
@@ -259,6 +259,6 @@ a.tdc-git-badge:hover,
   border-color: color-mix(in srgb, var(--tdc-git-push-behind) 60%, var(--tdc-badge-border-mix));
 }
 .tdc-git-badge-push-behind :global(svg) {
-  color: color-mix(in srgb, var(--tdc-git-push-behind) 60%, var(--tdc-badge-icon-mix));
+  color: color-mix(in srgb, var(--tdc-git-push-behind) 35%, var(--tdc-badge-icon-mix));
 }
 </style>

@@ -367,8 +367,12 @@ export function createGitStatusService(
 			if (Date.now() - entry.timestamp > GIT_STATUS_CACHE_TTL_MS) {
 				continue;
 			}
-			const behindCount = entry.data.behindBaseCount;
-			if (behindCount !== undefined && behindCount > 0) {
+			const localBehind = entry.data.behindBaseCount;
+			const remoteBehind = entry.data.remoteBehindBaseCount;
+			if (
+				(localBehind !== undefined && localBehind > 0) ||
+				(remoteBehind !== undefined && remoteBehind > 0)
+			) {
 				return true;
 			}
 		}

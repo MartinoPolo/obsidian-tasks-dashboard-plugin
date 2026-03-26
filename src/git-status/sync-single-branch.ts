@@ -1,10 +1,9 @@
 import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import { detectMergeConflicts, isWorktreeDirty } from './git-local-detection';
-import { mergeAndPush, pushBranch } from './sync-merge-push';
+import { mergeAndPush } from './sync-merge-push';
 import { SyncProgressModal } from '../modals/sync-progress-modal';
 import { DirtyWorktreeModal } from '../modals/dirty-worktree-modal';
-import { NoUpstreamModal } from '../modals/no-upstream-modal';
 import type { PlatformService } from '../utils/platform';
 import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../constants/sync-constants';
 
@@ -40,8 +39,6 @@ export async function syncSingleBranch(params: SyncSingleBranchParams): Promise<
 	const progressModal = new SyncProgressModal(app, baseBranch);
 	progressModal.open();
 
-	let deferredCleanup = false;
-
 	try {
 		// Step 3: Check for conflicts
 		progressModal.updateStep(0, 'active');
@@ -65,35 +62,9 @@ export async function syncSingleBranch(params: SyncSingleBranchParams): Promise<
 			return;
 		}
 
-		// Step 4: Merge + Push
+		// Step 4: Merge + Push (auto-creates upstream if needed)
 		progressModal.updateStep(1, 'active');
 		const result = await mergeAndPush(worktreeFolder, baseBranch, branchName);
-
-		if (result.outcome === 'no-upstream') {
-			deferredCleanup = true;
-			progressModal.close();
-			new NoUpstreamModal(app, branchName, (choice) => {
-				if (choice === 'push-set-upstream') {
-					void pushBranch(worktreeFolder, branchName, true).then((pushResult) => {
-						if (pushResult.outcome === 'success') {
-							new Notice('Branch pushed with upstream tracking');
-							onSuccess();
-						} else if (pushResult.outcome === 'push-failed') {
-							new Notice(`Push failed: ${pushResult.errorMessage}`);
-						}
-						onFinally();
-					});
-				} else if (choice === 'let-claude-handle') {
-					platformService.openTerminalWithCommand(worktreeFolder, SYNC_COMMAND, [
-						...SYNC_COMMAND_ARGS
-					]);
-					onFinally();
-				} else {
-					onFinally();
-				}
-			}).open();
-			return;
-		}
 
 		if (result.outcome === 'merge-failed') {
 			progressModal.updateStep(1, 'failed', result.errorMessage);
@@ -112,8 +83,6 @@ export async function syncSingleBranch(params: SyncSingleBranchParams): Promise<
 		progressModal.close();
 		onSuccess();
 	} finally {
-		if (!deferredCleanup) {
-			onFinally();
-		}
+		onFinally();
 	}
 }
