@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Menu, Notice } from 'obsidian';
+  import { Menu } from 'obsidian';
   import { onMount, tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
@@ -17,7 +17,7 @@
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
-  import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
+  import { syncSingleBranch } from '../../git-status/sync-single-branch';
   import { createPlatformService } from '../../utils/platform';
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
@@ -317,16 +317,26 @@
 
   function handleSyncBranch(): void {
     const folder = params.worktree_expected_folder;
-    if (!folder || isSyncing) {
+    const baseBranch = params.worktree_base_branch;
+    const branchName = params.worktree_branch;
+    if (!folder || !baseBranch || !branchName || isSyncing) {
       return;
     }
     isSyncing = true;
-    try {
-      platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
-    } catch {
+    void syncSingleBranch({
+      app: plugin.app,
+      worktreeFolder: folder,
+      baseBranch,
+      branchName,
+      platformService,
+      onSuccess: () => {
+        plugin.gitStatusService.invalidate(dashboard.id, params.issue);
+        badgeRefreshTrigger++;
+        isSyncing = false;
+      }
+    }).catch(() => {
       isSyncing = false;
-      new Notice('Failed to open terminal for sync.');
-    }
+    });
   }
 
   // Auto-clear syncing state when behindBaseCount drops to 0 after a refresh

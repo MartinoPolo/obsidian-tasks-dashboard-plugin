@@ -10,6 +10,8 @@ import type {
 	PrState
 } from './git-status-types';
 import { notifyCacheUpdate } from './git-status-cache-signal';
+import { createFetchCoordinator, resolveRepoRoot } from './git-fetch-coordinator';
+import { getBehindCount, detectMergeConflicts } from './git-local-detection';
 
 const GIT_STATUS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -39,8 +41,6 @@ const PR_STATE_PRIORITY: Record<PrState, number> = {
 	closed: 4,
 	none: 5
 };
-
-const OPEN_PR_STATES: PrState[] = ['open', 'review-requested', 'draft'];
 
 function parseRepoFullName(fullName: string): { owner: string; repo: string } | undefined {
 	const parts = fullName.split('/');
@@ -124,9 +124,11 @@ export function createGitStatusService(
 	platformService: PlatformService
 ): GitStatusServiceInstance {
 	const cache = new Map<string, { data: IssueGitStatus; timestamp: number }>();
+	const fetchCoordinator = createFetchCoordinator();
 
 	const clearCache = (): void => {
 		cache.clear();
+		fetchCoordinator.reset();
 		notifyCacheUpdate();
 	};
 
@@ -257,63 +259,35 @@ export function createGitStatusService(
 		if (githubService.isAuthenticated()) {
 			linkedPullRequests = await discoverPullRequests(params);
 			linkedIssues = await discoverLinkedIssues(params);
+		}
 
-			const comparePromise = (async (): Promise<void> => {
-				if (
-					params.baseBranch === undefined ||
-					params.branchName === undefined ||
-					branchStatus !== 'active' ||
-					params.linkedRepos.length === 0
-				) {
-					return;
-				}
-				const parsedRepo = parseRepoFullName(params.linkedRepos[0]);
-				if (parsedRepo === undefined) {
-					return;
-				}
-				try {
-					const compareResult = await githubService.compareBranches(
-						parsedRepo.owner,
-						parsedRepo.repo,
-						params.baseBranch,
-						params.branchName
-					);
-					if (compareResult !== undefined) {
-						behindBaseCount = compareResult.behindBy;
-					}
-				} catch {
-					// Graceful degradation — field stays undefined
-				}
-			})();
+		// Local git detection — does not need GitHub auth
+		if (
+			params.baseBranch !== undefined &&
+			branchStatus === 'active' &&
+			params.originFolder !== undefined
+		) {
+			const repoRoot = resolveRepoRoot(params.originFolder);
+			if (repoRoot !== undefined) {
+				await fetchCoordinator.fetchOnce(repoRoot);
+			}
 
-			const mergeablePromise = (async (): Promise<void> => {
-				const openPullRequests = linkedPullRequests
-					.filter((pr) => OPEN_PR_STATES.includes(pr.state))
-					.sort((a, b) => PR_STATE_PRIORITY[a.state] - PR_STATE_PRIORITY[b.state]);
+			const count = getBehindCount(params.originFolder, params.baseBranch);
+			if (count !== undefined) {
+				behindBaseCount = count;
+			}
 
-				if (openPullRequests.length === 0) {
-					return;
+			try {
+				const hasConflicts = await detectMergeConflicts(
+					params.originFolder,
+					params.baseBranch
+				);
+				if (hasConflicts !== undefined) {
+					mergeConflict = hasConflicts;
 				}
-				const highestPriorityPr = openPullRequests[0];
-				const parsedPrRepo = parseRepoFullName(highestPriorityPr.repository);
-				if (parsedPrRepo === undefined) {
-					return;
-				}
-				try {
-					const mergeable = await githubService.getPullRequestMergeable(
-						parsedPrRepo.owner,
-						parsedPrRepo.repo,
-						highestPriorityPr.number
-					);
-					if (mergeable !== undefined) {
-						mergeConflict = !mergeable;
-					}
-				} catch {
-					// Graceful degradation — field stays undefined
-				}
-			})();
-
-			await Promise.all([comparePromise, mergeablePromise]);
+			} catch {
+				// Graceful degradation — field stays undefined
+			}
 		}
 
 		const aggregatePrState = computeAggregatePrState(linkedPullRequests);
