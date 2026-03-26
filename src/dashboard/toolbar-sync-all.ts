@@ -106,7 +106,16 @@ async function syncOneBranch(
 
 	// Merge + Push
 	progressModal.updateBranch(branch.branchName, 'merging');
-	const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch);
+	const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch, branch.branchName);
+
+	if (result.outcome === 'no-upstream') {
+		progressModal.updateBranch(
+			branch.branchName,
+			'failed',
+			'No upstream — push with: git push -u origin ' + branch.branchName
+		);
+		return;
+	}
 
 	if (result.outcome === 'merge-failed') {
 		progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
