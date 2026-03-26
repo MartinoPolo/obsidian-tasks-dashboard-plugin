@@ -515,7 +515,6 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 						worktreeSetupState: 'active'
 					});
 				}
-				new Notice(`Worktree is active: ${issueId}`);
 				plugin.triggerDashboardRefresh();
 				return;
 			}
@@ -548,7 +547,6 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 						worktreeSetupState: 'active'
 					});
 					assignIssueFolderLikeManual(dashboard.id, issueId, detectedFolder);
-					new Notice(`Worktree is active: ${issueId}`);
 					plugin.triggerDashboardRefresh();
 					return;
 				}
@@ -561,8 +559,6 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 				worktreeSetupState: 'failed'
 			});
 			new Notice(`Worktree folder not found: ${issueId}`);
-		} else {
-			new Notice(`Worktree state unchanged: ${issueId}`);
 		}
 		plugin.triggerDashboardRefresh();
 	};

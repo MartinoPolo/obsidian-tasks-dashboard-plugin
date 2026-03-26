@@ -9,6 +9,7 @@ import type {
 	LinkedPullRequest,
 	PrState
 } from './git-status-types';
+import { notifyCacheUpdate } from './git-status-cache-signal';
 
 const GIT_STATUS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -126,10 +127,12 @@ export function createGitStatusService(
 
 	const clearCache = (): void => {
 		cache.clear();
+		notifyCacheUpdate();
 	};
 
 	const invalidate = (dashboardId: string, issueId: string): void => {
 		cache.delete(`${dashboardId}:${issueId}`);
+		notifyCacheUpdate();
 	};
 
 	const getCached = (key: string): IssueGitStatus | undefined => {
@@ -330,6 +333,7 @@ export function createGitStatusService(
 		};
 
 		cache.set(cacheKey, { data: status, timestamp: fetchedAt });
+		notifyCacheUpdate();
 		return status;
 	};
 

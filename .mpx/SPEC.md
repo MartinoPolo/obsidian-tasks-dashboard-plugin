@@ -83,3 +83,14 @@
 
 - [x] Refactor large files; clean code sweep across the project
 - [x] Componentize standalone UI units (e.g., header badges) into isolated modules; analyze Obsidian Plugin componentization approach
+
+## BUGS
+- [x] After worktree creation with quick add worktree, the branch badge says branch deleted.
+- [x] Color picker has custom color picker section. It should have letter A inside the color preview circle. The letter is next to the color preview circle and has incorrect colot. It should be black or white depending on the contrast with the background color. However it currently always have the same color as the background color.
+- [-] The visibility of Git batch icons is very poor, so we should change the icon color to match the text color of the header so that there's always enough contrast with the background of the issue header. We should make the background of the badge more vivid. Currently, I think it's set with some opacity. We should definitely make it less transparent and more colorful, because now the background will be the only thing carrying the color. The text of the badge, the border of the badge, and the icon of the badge will now all share the same color, which will be black for light backgrounds and white for dark backgrounds. Find me the value which sets the transparency, and I'll play with it manually for a while.
+
+- [x] Add one more row at the top of color picker with vivid colors.
+- [x] We now have a sync branch badge and button. The buttons spawns a claude code terminal with /mp-sync skill. This is good but we should improve it. First let's run the claude code with "claude --dangerously-skip-permissions" command instead "claude". Also, it goes to plan mode by default, and I would like it to go to accept edits or bypass permissions mode. This should also be set programmatically. Please see the Claude Code CLI documentation about this. Otherwise, the syncing always asks me, and I would like it to be automatic.
+Let's remove the duplication in the badge and button for syncing. The badge itself should just be a clickable button similar to GitHub issue and GitHub PR badges.
+If there are conflicts, we correctly detect this already; however, we create a separate badge for conflicts. Let's just put the warning icon next to the sync icon in the sync badge and just enrich the tool tip to say something like "sync branch and resolve conflicts".
+
