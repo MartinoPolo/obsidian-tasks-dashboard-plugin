@@ -82,34 +82,36 @@
     {/each}
 
     {#if branchBadge !== undefined}
-      <GitBadge
-        type="branch"
-        icon={branchBadge.icon}
-        text={branchBadge.text}
-        tooltip={branchBadge.tooltip}
-        class={branchBadge.class}
-      />
-    {/if}
+      <div class={['tdc-branch-sync-group', isBehindBase && 'tdc-branch-sync-connected']}>
+        <GitBadge
+          type="branch"
+          icon={branchBadge.icon}
+          text={branchBadge.text}
+          tooltip={branchBadge.tooltip}
+          class={branchBadge.class}
+        />
 
-    {#if isBehindBase}
-      {@const baseName = gitStatus.baseBranch ?? 'base'}
-      {@const hasConflicts = gitStatus.mergeConflict === true}
-      {@const badgeClass = hasConflicts ? 'tdc-git-badge-merge-conflict' : 'tdc-git-badge-sync-behind'}
-      {@const behindLabel = `${gitStatus.behindBaseCount} commit${gitStatus.behindBaseCount === 1 ? '' : 's'} behind ${baseName}`}
-      {@const conflictSuffix = hasConflicts ? ' — merge conflicts detected' : ''}
-      {@const clickHint = onsync !== undefined ? (isSyncing ? ' (syncing...)' : ' — click to sync') : ''}
-      {@const tooltipText = `Branch is ${behindLabel}${conflictSuffix}${clickHint}`}
-      <GitBadge
-        type="sync"
-        icon="sync"
-        text={`${gitStatus.behindBaseCount} behind`}
-        tooltip={tooltipText}
-        class={badgeClass}
-        secondaryIcon={hasConflicts ? 'alertTriangle' : undefined}
-        onclick={onsync !== undefined ? onsync : undefined}
-        spinning={isSyncing}
-        disabled={isSyncing}
-      />
+        {#if isBehindBase}
+          {@const baseName = gitStatus.baseBranch ?? 'base'}
+          {@const hasConflicts = gitStatus.mergeConflict === true}
+          {@const badgeClass = hasConflicts ? 'tdc-git-badge-merge-conflict' : 'tdc-git-badge-sync-behind'}
+          {@const behindLabel = `${gitStatus.behindBaseCount} commit${gitStatus.behindBaseCount === 1 ? '' : 's'} behind ${baseName}`}
+          {@const conflictSuffix = hasConflicts ? ' — merge conflicts detected' : ''}
+          {@const clickHint = onsync !== undefined ? (isSyncing ? ' (syncing...)' : ' — click to sync') : ''}
+          {@const tooltipText = `Branch is ${behindLabel}${conflictSuffix}${clickHint}`}
+          <GitBadge
+            type="sync"
+            icon="sync"
+            text={`${gitStatus.behindBaseCount} behind`}
+            tooltip={tooltipText}
+            class={badgeClass}
+            secondaryIcon={hasConflicts ? 'alertTriangle' : undefined}
+            onclick={onsync !== undefined ? onsync : undefined}
+            spinning={isSyncing}
+            disabled={isSyncing}
+          />
+        {/if}
+      </div>
     {/if}
 
     {#each gitStatus.linkedPullRequests as pr (pr.url)}
@@ -155,6 +157,24 @@
 
 .tdc-badges-compact :global(.tdc-git-badge > span) {
   display: none;
+}
+
+/* Branch + Sync connected pill */
+.tdc-branch-sync-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tdc-branch-sync-connected :global(.tdc-git-badge:first-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+}
+
+.tdc-branch-sync-connected :global(.tdc-git-badge:last-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
 }
 
 </style>

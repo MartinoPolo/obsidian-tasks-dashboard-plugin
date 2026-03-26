@@ -40,12 +40,6 @@ export interface GitHubSearchApiResponse {
 	items: GitHubIssueApiResponse[];
 }
 
-export interface GitHubCompareApiResponse {
-	status: string;
-	behind_by: number;
-	ahead_by: number;
-}
-
 export interface GitHubRepoApiResponse {
 	full_name: string;
 	description: string | null;
