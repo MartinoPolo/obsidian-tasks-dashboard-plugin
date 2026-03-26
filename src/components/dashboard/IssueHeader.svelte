@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Notice } from 'obsidian';
+  import { Menu, Notice } from 'obsidian';
   import { onMount, tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
@@ -22,7 +22,6 @@
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
   import Icon from '../Icon.svelte';
-  import ContextMenu from './ContextMenu.svelte';
   import HeaderBadges from './HeaderBadges.svelte';
   import IssueInfoPanel from './IssueInfoPanel.svelte';
   import OverflowPanel from './OverflowPanel.svelte';
@@ -66,8 +65,8 @@
   let gitStatusDisplay: GitStatusDisplayInfo | undefined = $state.raw(undefined);
   let isInfoPanelOpen = $state(false);
   let isOverflowOpen = $state(false);
-  let badgesContextMenuPosition: { x: number; y: number } | undefined = $state(undefined);
   let shouldCompact = $state(false);
+  let badgeRefreshTrigger = $state(0);
   let isBadgesLoading = $state(false);
   let prAccentClass = $state('');
   let isSyncing = $state(false);
@@ -193,7 +192,7 @@
     isInfoPanelOpen = !isInfoPanelOpen;
   }
 
-  // Badge context menu (event delegation)
+  // Badge context menu (event delegation) — uses Obsidian native Menu
   function handleBadgesContextMenu(event: MouseEvent): void {
     const target = event.target;
     if (!(target instanceof Element)) {
@@ -204,20 +203,21 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    badgesContextMenuPosition = { x: event.clientX, y: event.clientY };
+
+    const menu = new Menu();
+    menu.addItem((item) => {
+      item.setTitle('Refresh');
+      item.onClick(() => {
+        plugin.gitStatusService.invalidate(dashboard.id, params.issue);
+        badgeRefreshTrigger++;
+      });
+    });
+    menu.showAtPosition({ x: event.clientX, y: event.clientY });
   }
 
-  function handleBadgesRefresh(): void {
-    plugin.gitStatusService.invalidate(dashboard.id, params.issue);
-    plugin.triggerDashboardRefresh();
-  }
-
-  let badgesContextMenuItems = $derived([
-    { label: 'Refresh', action: handleBadgesRefresh }
-  ]);
-
-  // Async fetch git status
+  // Async fetch git status (re-runs on badgeRefreshTrigger for granular refresh)
   $effect(() => {
+    void badgeRefreshTrigger;
     let isDestroyed = false;
     let rafId: number | undefined;
 
@@ -479,13 +479,6 @@
     />
   {/if}
 
-  {#if badgesContextMenuPosition !== undefined}
-    <ContextMenu
-      items={badgesContextMenuItems}
-      position={badgesContextMenuPosition}
-      onclose={() => { badgesContextMenuPosition = undefined; }}
-    />
-  {/if}
 </div>
 
 <style>
@@ -700,38 +693,4 @@
   background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
 }
 
-/* Badge border adapts to issue text color for contrast on colored headers */
-.tdc-issue-header :global(.tdc-git-badge) {
-  border-color: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 40%, transparent);
-}
-
-/* Issue 7 -- Badge text color overrides */
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-branch-']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-open']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-merged']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-closed']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-draft']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-review']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-issue-']),
-.tdc-issue-header :global(.tdc-git-badge[class*='tdc-git-badge-sync-']),
-.tdc-issue-header :global(.tdc-git-badge.tdc-git-badge-merge-conflict) {
-  color: var(--tdc-issue-header-link-color, var(--text-normal));
-}
-
-/* Per-state SVG color overrides */
-.tdc-issue-header :global(.tdc-git-badge-branch-active svg) { color: var(--tdc-git-branch-active); }
-.tdc-issue-header :global(.tdc-git-badge-branch-local svg) { color: var(--tdc-git-branch-local); }
-.tdc-issue-header :global(.tdc-git-badge-branch-remote-gone svg) { color: var(--tdc-git-branch-remote-gone); }
-.tdc-issue-header :global(.tdc-git-badge-branch-deleted svg) { color: var(--tdc-git-branch-deleted); }
-.tdc-issue-header :global(.tdc-git-badge-branch-unknown svg) { color: var(--text-muted); }
-.tdc-issue-header :global(.tdc-git-badge-open svg) { color: var(--tdc-git-pr-open); }
-.tdc-issue-header :global(.tdc-git-badge-merged svg) { color: var(--tdc-git-pr-merged); }
-.tdc-issue-header :global(.tdc-git-badge-closed svg) { color: var(--tdc-git-pr-closed); }
-.tdc-issue-header :global(.tdc-git-badge-draft svg) { color: var(--tdc-git-pr-draft); }
-.tdc-issue-header :global(.tdc-git-badge-review svg) { color: var(--tdc-git-pr-review); }
-.tdc-issue-header :global(.tdc-git-badge-issue-open svg) { color: var(--tdc-gh-open); }
-.tdc-issue-header :global(.tdc-git-badge-issue-closed svg) { color: var(--tdc-gh-closed); }
-.tdc-issue-header :global(.tdc-git-badge-issue-not-planned svg) { color: var(--text-muted); }
-.tdc-issue-header :global(.tdc-git-badge-sync-behind svg) { color: var(--tdc-git-sync-behind); }
-.tdc-issue-header :global(.tdc-git-badge-merge-conflict svg) { color: var(--tdc-git-merge-conflict); }
 </style>
