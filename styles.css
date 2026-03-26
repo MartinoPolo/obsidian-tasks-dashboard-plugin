@@ -15,29 +15,57 @@
 	--tdc-shadow-dropdown: 0 4px 12px rgba(0, 0, 0, 0.15);
 	--tdc-vscode-accent: #007acc;
 
-	/* GitHub colors */
-	--tdc-gh-open: #238636;
-	--tdc-gh-closed: #8957e5;
-	--tdc-gh-merged: #8957e5;
-	--tdc-gh-draft: #6e7681;
-
-	/* Git PR state colors */
-	--tdc-git-pr-open: #238636;
-	--tdc-git-pr-merged: #8957e5;
-	--tdc-git-pr-closed: #848d97;
-	--tdc-git-pr-draft: #768390;
-	--tdc-git-pr-review: #d29922;
-	--tdc-git-branch-active: #3fb950;
-	--tdc-git-branch-local: #a5d6a7;
-	--tdc-git-branch-remote-gone: #e3872d;
-	--tdc-git-branch-deleted: #768390;
-	--tdc-git-sync-behind: #58a6ff;
-	--tdc-git-merge-conflict: #d29922;
-
 	/* Worktree status colors */
 	--tdc-worktree-inactive: #9e9e9e;
 	--tdc-worktree-failed-hover: #ff5252;
 	--tdc-worktree-active-hover: #66bb6a;
+}
+
+/* ===== Theme-Specific Git Badge Colors ===== */
+.theme-dark {
+	--tdc-badge-text: #ffffff;
+	--tdc-badge-icon-mix: white;
+	--tdc-badge-border-mix: black;
+
+	--tdc-gh-open: #238636;
+	--tdc-gh-closed: #6e40c9;
+	--tdc-gh-merged: #6e40c9;
+	--tdc-gh-draft: #545d68;
+
+	--tdc-git-pr-open: #238636;
+	--tdc-git-pr-merged: #6e40c9;
+	--tdc-git-pr-closed: #5c6370;
+	--tdc-git-pr-draft: #545d68;
+	--tdc-git-pr-review: #9e7318;
+	--tdc-git-branch-active: #238636;
+	--tdc-git-branch-local: #2e7d32;
+	--tdc-git-branch-remote-gone: #b56d1f;
+	--tdc-git-branch-deleted: #545d68;
+	--tdc-git-sync-behind: #1a6bc4;
+	--tdc-git-merge-conflict: #9e7318;
+}
+
+.theme-light {
+	--tdc-badge-text: #1c2128;
+	--tdc-badge-icon-mix: black;
+	--tdc-badge-border-mix: white;
+
+	--tdc-gh-open: #57ab5a;
+	--tdc-gh-closed: #a371f7;
+	--tdc-gh-merged: #a371f7;
+	--tdc-gh-draft: #adbac7;
+
+	--tdc-git-pr-open: #57ab5a;
+	--tdc-git-pr-merged: #a371f7;
+	--tdc-git-pr-closed: #adbac7;
+	--tdc-git-pr-draft: #adbac7;
+	--tdc-git-pr-review: #e5b567;
+	--tdc-git-branch-active: #57ab5a;
+	--tdc-git-branch-local: #7bc47f;
+	--tdc-git-branch-remote-gone: #f0a050;
+	--tdc-git-branch-deleted: #adbac7;
+	--tdc-git-sync-behind: #79c0ff;
+	--tdc-git-merge-conflict: #e5b567;
 }
 
 /* ===== Hide Comments in Live Preview ===== */
