@@ -24,6 +24,9 @@ import {
 } from './script-execution';
 import { pickFile, pickFolder } from './electron-dialogs';
 
+export { runGitCommandAsync } from './process-spawn';
+export type { AsyncGitCommandResult } from './process-spawn';
+
 export type {
 	FileDialogFilter,
 	PlatformService,

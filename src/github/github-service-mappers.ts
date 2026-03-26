@@ -75,7 +75,8 @@ export const mapPullRequestResponse = (
 ): GitHubIssueMetadata => {
 	const hasReviewRequested =
 		data.requested_reviewers !== undefined && data.requested_reviewers.length > 0;
-	const prStatus: NonNullable<GitHubIssueMetadata['prStatus']> = data.merged
+	const isMerged = data.merged === true || (data.state === 'closed' && data.merged_at != null);
+	const prStatus: NonNullable<GitHubIssueMetadata['prStatus']> = isMerged
 		? 'merged'
 		: data.draft
 			? 'draft'

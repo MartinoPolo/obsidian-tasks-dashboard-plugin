@@ -16,6 +16,7 @@
   import { handleSyncAllBranches, type SyncAllDependencies } from '../../dashboard/toolbar-sync-all';
   import { handlePruneWorktrees, updatePrunableCount, type PruneDependencies } from '../../dashboard/toolbar-prune';
   import { toggleAllIssues } from '../../dashboard/toolbar-collapse';
+  import { subscribeToCacheUpdates } from '../../git-status/git-status-cache-signal';
   import ActionButton from '../ActionButton.svelte';
   import SortDropdown from './SortDropdown.svelte';
 
@@ -83,11 +84,17 @@
     return 'Set project folder for worktree';
   });
 
-  let hasUnsyncedBranches = $derived(
-    dashboardId !== undefined
+  let cacheVersion = $state(0);
+  $effect(() => {
+    return subscribeToCacheUpdates(() => { cacheVersion++; });
+  });
+
+  let hasUnsyncedBranches = $derived.by(() => {
+    void cacheVersion;
+    return dashboardId !== undefined
       ? plugin.gitStatusService.hasUnsyncedBranches(dashboardId)
-      : false
-  );
+      : false;
+  });
   let hasExternalButtons = $derived(
     visibility !== undefined &&
     (!!visibility.folder || !!visibility.terminal || !!visibility.vscode || !!visibility.github)

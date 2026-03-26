@@ -12,9 +12,7 @@
     PR_STATE_CSS_CLASS,
     PR_STATE_LABEL
   } from '../../git-status/git-badge-maps';
-  import { attachTooltip } from '../../lib/attach-tooltip';
   import GitBadge from '../GitBadge.svelte';
-  import Icon from '../Icon.svelte';
 
   interface Props {
     gitStatus: IssueGitStatus | undefined;
@@ -84,44 +82,36 @@
     {/each}
 
     {#if branchBadge !== undefined}
-      <GitBadge
-        type="branch"
-        icon={branchBadge.icon}
-        text={branchBadge.text}
-        tooltip={branchBadge.tooltip}
-        class={branchBadge.class}
-      />
-    {/if}
-
-    {#if isBehindBase}
-      {@const baseName = gitStatus.baseBranch ?? 'base'}
-      <GitBadge
-        type="sync"
-        icon="sync"
-        text={`${gitStatus.behindBaseCount} behind`}
-        tooltip={`Branch is ${gitStatus.behindBaseCount} commit${gitStatus.behindBaseCount === 1 ? '' : 's'} behind ${baseName}`}
-        class="tdc-git-badge-sync-behind"
-      />
-      {#if gitStatus.mergeConflict === true}
+      <div class={['tdc-branch-sync-group', isBehindBase && 'tdc-branch-sync-connected']}>
         <GitBadge
-          type="sync"
-          icon="alertTriangle"
-          text="Conflicts"
-          tooltip="Merge conflicts detected"
-          class="tdc-git-badge-merge-conflict"
+          type="branch"
+          icon={branchBadge.icon}
+          text={branchBadge.text}
+          tooltip={branchBadge.tooltip}
+          class={branchBadge.class}
         />
-      {/if}
 
-      {#if onsync !== undefined}
-        <button
-          class={['tdc-sync-button', isSyncing && 'tdc-sync-spinning']}
-          onclick={(event) => { event.stopPropagation(); onsync(); }}
-          disabled={isSyncing}
-          {@attach attachTooltip(isSyncing ? 'Syncing...' : 'Sync branch with base')}
-        >
-          <Icon name="sync" size={14} />
-        </button>
-      {/if}
+        {#if isBehindBase}
+          {@const baseName = gitStatus.baseBranch ?? 'base'}
+          {@const hasConflicts = gitStatus.mergeConflict === true}
+          {@const badgeClass = hasConflicts ? 'tdc-git-badge-merge-conflict' : 'tdc-git-badge-sync-behind'}
+          {@const behindLabel = `${gitStatus.behindBaseCount} commit${gitStatus.behindBaseCount === 1 ? '' : 's'} behind ${baseName}`}
+          {@const conflictSuffix = hasConflicts ? ' — merge conflicts detected' : ''}
+          {@const clickHint = onsync !== undefined ? (isSyncing ? ' (syncing...)' : ' — click to sync') : ''}
+          {@const tooltipText = `Branch is ${behindLabel}${conflictSuffix}${clickHint}`}
+          <GitBadge
+            type="sync"
+            icon="sync"
+            text={`${gitStatus.behindBaseCount} behind`}
+            tooltip={tooltipText}
+            class={badgeClass}
+            secondaryIcon={hasConflicts ? 'alertTriangle' : undefined}
+            onclick={onsync !== undefined ? onsync : undefined}
+            spinning={isSyncing}
+            disabled={isSyncing}
+          />
+        {/if}
+      </div>
     {/if}
 
     {#each gitStatus.linkedPullRequests as pr (pr.url)}
@@ -169,37 +159,22 @@
   display: none;
 }
 
-.tdc-sync-button {
+/* Branch + Sync connected pill */
+.tdc-branch-sync-group {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid color-mix(in srgb, var(--tdc-git-sync-behind) 40%, transparent);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tdc-git-sync-behind) 20%, transparent);
-  color: var(--tdc-git-sync-behind);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
-.tdc-sync-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--tdc-git-sync-behind) 35%, transparent);
+.tdc-branch-sync-connected :global(.tdc-git-badge:first-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
 }
 
-.tdc-sync-button:disabled {
-  cursor: default;
-  opacity: 0.7;
+.tdc-branch-sync-connected :global(.tdc-git-badge:last-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
 }
 
-.tdc-sync-button :global(svg) {
-  width: 14px;
-  height: 14px;
-}
-
-.tdc-sync-spinning :global(svg) {
-  animation: tdc-spin 0.8s linear infinite;
-}
 </style>
