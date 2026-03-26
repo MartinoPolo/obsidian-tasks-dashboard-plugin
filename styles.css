@@ -37,12 +37,12 @@
 	--tdc-git-pr-closed: #5c6370;
 	--tdc-git-pr-draft: #545d68;
 	--tdc-git-pr-review: #9e7318;
-	--tdc-git-branch-active: #238636;
-	--tdc-git-branch-local: #2e7d32;
+	--tdc-git-branch-active: #1a7f6d;
+	--tdc-git-branch-local: #1a6b5e;
 	--tdc-git-branch-remote-gone: #b56d1f;
 	--tdc-git-branch-deleted: #545d68;
 	--tdc-git-sync-behind: #1a6bc4;
-	--tdc-git-push-behind: #1a8f6e;
+	--tdc-git-push-behind: #c47a1a;
 	--tdc-git-merge-conflict: #9e7318;
 }
 
@@ -61,12 +61,12 @@
 	--tdc-git-pr-closed: #adbac7;
 	--tdc-git-pr-draft: #adbac7;
 	--tdc-git-pr-review: #e5b567;
-	--tdc-git-branch-active: #57ab5a;
-	--tdc-git-branch-local: #7bc47f;
+	--tdc-git-branch-active: #3daa97;
+	--tdc-git-branch-local: #5ebfad;
 	--tdc-git-branch-remote-gone: #f0a050;
 	--tdc-git-branch-deleted: #adbac7;
 	--tdc-git-sync-behind: #79c0ff;
-	--tdc-git-push-behind: #59c9a5;
+	--tdc-git-push-behind: #e5a040;
 	--tdc-git-merge-conflict: #e5b567;
 }
 
