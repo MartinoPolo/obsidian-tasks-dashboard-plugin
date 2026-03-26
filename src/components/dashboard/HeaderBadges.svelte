@@ -19,11 +19,9 @@
     isBadgesLoading: boolean;
     shouldCompact: boolean;
     isSyncing: boolean;
-    isPushing: boolean;
     badgesElement: HTMLDivElement | undefined;
     oncontextmenu: (event: MouseEvent) => void;
     onsync: (() => void) | undefined;
-    onpush: (() => void) | undefined;
   }
 
   let {
@@ -31,11 +29,9 @@
     isBadgesLoading,
     shouldCompact,
     isSyncing,
-    isPushing,
     badgesElement = $bindable(),
     oncontextmenu,
-    onsync,
-    onpush
+    onsync
   }: Props = $props();
 
   // Derive branch badge from git status
@@ -111,7 +107,7 @@
           {@const tooltipText = `Branch is ${behindLabel}${conflictSuffix}${clickHint}`}
           <GitBadge
             type="sync"
-            icon="sync"
+            icon="pullDown"
             text={`${gitStatus.behindBaseCount} behind`}
             tooltip={tooltipText}
             class={badgeClass}
@@ -124,17 +120,17 @@
 
         {#if isRemoteBehindBase}
           {@const baseName = gitStatus.baseBranch ?? 'base'}
-          {@const clickHint = onpush !== undefined ? (isPushing ? ' (pushing...)' : ' — click to push') : ''}
+          {@const clickHint = onsync !== undefined ? (isSyncing ? ' (syncing...)' : ' — click to sync') : ''}
           {@const tooltipText = `Remote branch is ${gitStatus.remoteBehindBaseCount} commit${gitStatus.remoteBehindBaseCount === 1 ? '' : 's'} behind ${baseName}${clickHint}`}
           <GitBadge
             type="sync"
-            icon="up"
+            icon="pushUp"
             text={`${gitStatus.remoteBehindBaseCount} behind`}
             tooltip={tooltipText}
             class="tdc-git-badge-push-behind"
-            onclick={onpush !== undefined ? onpush : undefined}
-            spinning={isPushing}
-            disabled={isPushing}
+            onclick={onsync !== undefined ? onsync : undefined}
+            spinning={isSyncing}
+            disabled={isSyncing}
           />
         {/if}
       </div>

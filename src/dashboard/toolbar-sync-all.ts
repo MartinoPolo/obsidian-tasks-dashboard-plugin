@@ -62,8 +62,11 @@ export async function getUnsyncedBranches(
 			if (cachedStatus === undefined) {
 				continue;
 			}
-			const behindCount = cachedStatus.behindBaseCount;
-			if (behindCount === undefined || behindCount <= 0) {
+			const localBehind = cachedStatus.behindBaseCount;
+			const remoteBehind = cachedStatus.remoteBehindBaseCount;
+			const isLocalBehind = localBehind !== undefined && localBehind > 0;
+			const isRemoteBehind = remoteBehind !== undefined && remoteBehind > 0;
+			if (!isLocalBehind && !isRemoteBehind) {
 				continue;
 			}
 			unsyncedBranches.push({
@@ -107,15 +110,6 @@ async function syncOneBranch(
 	// Merge + Push
 	progressModal.updateBranch(branch.branchName, 'merging');
 	const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch, branch.branchName);
-
-	if (result.outcome === 'no-upstream') {
-		progressModal.updateBranch(
-			branch.branchName,
-			'failed',
-			'No upstream — push with: git push -u origin ' + branch.branchName
-		);
-		return;
-	}
 
 	if (result.outcome === 'merge-failed') {
 		progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
