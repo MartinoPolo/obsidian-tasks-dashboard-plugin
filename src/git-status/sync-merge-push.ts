@@ -9,6 +9,10 @@ export async function mergeAndPush(
 	worktreeFolder: string,
 	baseBranch: string
 ): Promise<MergeAndPushResult> {
+	if (baseBranch.startsWith('-')) {
+		return { outcome: 'merge-failed', errorMessage: 'Invalid branch name' };
+	}
+
 	try {
 		const mergeResult = await runGitCommandAsync(worktreeFolder, [
 			'merge',

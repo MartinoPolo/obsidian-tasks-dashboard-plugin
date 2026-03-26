@@ -332,10 +332,10 @@
       onSuccess: () => {
         plugin.gitStatusService.invalidate(dashboard.id, params.issue);
         badgeRefreshTrigger++;
+      },
+      onFinally: () => {
         isSyncing = false;
       }
-    }).catch(() => {
-      isSyncing = false;
     });
   }
 

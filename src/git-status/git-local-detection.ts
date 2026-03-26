@@ -1,6 +1,13 @@
 import { runGitCommandAsync, runGitCommandOutput } from '../utils/platform/process-spawn';
 
+function isUnsafeBranchRef(ref: string): boolean {
+	return ref.startsWith('-');
+}
+
 export function getBehindCount(worktreeFolder: string, baseBranch: string): number | undefined {
+	if (isUnsafeBranchRef(baseBranch)) {
+		return undefined;
+	}
 	const output = runGitCommandOutput(worktreeFolder, [
 		'rev-list',
 		'--count',
@@ -28,6 +35,9 @@ export async function detectMergeConflicts(
 	worktreeFolder: string,
 	baseBranch: string
 ): Promise<boolean | undefined> {
+	if (isUnsafeBranchRef(baseBranch)) {
+		return undefined;
+	}
 	try {
 		const result = await runGitCommandAsync(worktreeFolder, [
 			'merge-tree',

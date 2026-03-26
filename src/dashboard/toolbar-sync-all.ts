@@ -79,6 +79,51 @@ export async function getUnsyncedBranches(
 	return unsyncedBranches;
 }
 
+async function syncOneBranch(
+	branch: UnsyncedBranchInfo,
+	progressModal: SyncAllProgressModal,
+	gitStatusService: GitStatusServiceInstance
+): Promise<void> {
+	// Check dirty
+	progressModal.updateBranch(branch.branchName, 'checking');
+	const dirty = isWorktreeDirty(branch.worktreeFolder);
+	if (dirty === true) {
+		progressModal.updateBranch(branch.branchName, 'dirty');
+		return;
+	}
+
+	// Check conflicts via merge-tree
+	try {
+		const hasConflicts = await detectMergeConflicts(branch.worktreeFolder, branch.baseBranch);
+		if (hasConflicts === true) {
+			progressModal.updateBranch(branch.branchName, 'conflicts');
+			return;
+		}
+	} catch {
+		progressModal.updateBranch(branch.branchName, 'failed', 'Conflict check failed');
+		return;
+	}
+
+	// Merge + Push
+	progressModal.updateBranch(branch.branchName, 'merging');
+	const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch);
+
+	if (result.outcome === 'merge-failed') {
+		progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
+		return;
+	}
+
+	progressModal.updateBranch(branch.branchName, 'pushing');
+	if (result.outcome === 'push-failed') {
+		progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
+		return;
+	}
+
+	// Success
+	progressModal.updateBranch(branch.branchName, 'done');
+	gitStatusService.invalidate(branch.dashboardId, branch.issueId);
+}
+
 export async function handleSyncAllBranches(dependencies: SyncAllDependencies): Promise<void> {
 	try {
 		const { app, platformService, gitStatusService } = dependencies;
@@ -101,13 +146,16 @@ export async function handleSyncAllBranches(dependencies: SyncAllDependencies): 
 		});
 		progressModal.open();
 
-		// Deduplicate repo roots and fetch once per repo
+		// Deduplicate repo roots and group branches by repo
 		const fetchCoordinator = createFetchCoordinator();
-		const repoRoots = new Set<string>();
+		const branchesByRepoRoot = new Map<string, UnsyncedBranchInfo[]>();
 		for (const branch of unsyncedBranches) {
-			const repoRoot = resolveRepoRoot(branch.worktreeFolder);
-			if (repoRoot !== undefined) {
-				repoRoots.add(repoRoot);
+			const repoRoot = resolveRepoRoot(branch.worktreeFolder) ?? branch.worktreeFolder;
+			const existing = branchesByRepoRoot.get(repoRoot);
+			if (existing !== undefined) {
+				existing.push(branch);
+			} else {
+				branchesByRepoRoot.set(repoRoot, [branch]);
 			}
 		}
 
@@ -116,59 +164,21 @@ export async function handleSyncAllBranches(dependencies: SyncAllDependencies): 
 			progressModal.updateBranch(branch.branchName, 'fetching');
 		}
 		await Promise.all(
-			[...repoRoots].map((root) =>
+			[...branchesByRepoRoot.keys()].map((root) =>
 				fetchCoordinator.fetchOnce(root).catch(() => {
 					// Fetch failed for this repo — continue with stale refs
 				})
 			)
 		);
 
-		// Sync each branch in parallel
-		const syncPromises = unsyncedBranches.map(async (branch) => {
-			// Check dirty
-			progressModal.updateBranch(branch.branchName, 'checking');
-			const dirty = isWorktreeDirty(branch.worktreeFolder);
-			if (dirty === true) {
-				progressModal.updateBranch(branch.branchName, 'dirty');
-				return;
+		// Sync branches — parallel across repos, sequential within same repo to avoid lock contention
+		const repoGroupPromises = [...branchesByRepoRoot.values()].map(async (repoBranches) => {
+			for (const branch of repoBranches) {
+				await syncOneBranch(branch, progressModal, gitStatusService);
 			}
-
-			// Check conflicts via merge-tree
-			try {
-				const hasConflicts = await detectMergeConflicts(
-					branch.worktreeFolder,
-					branch.baseBranch
-				);
-				if (hasConflicts === true) {
-					progressModal.updateBranch(branch.branchName, 'conflicts');
-					return;
-				}
-			} catch {
-				progressModal.updateBranch(branch.branchName, 'failed', 'Conflict check failed');
-				return;
-			}
-
-			// Merge + Push
-			progressModal.updateBranch(branch.branchName, 'merging');
-			const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch);
-
-			if (result.outcome === 'merge-failed') {
-				progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
-				return;
-			}
-
-			progressModal.updateBranch(branch.branchName, 'pushing');
-			if (result.outcome === 'push-failed') {
-				progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
-				return;
-			}
-
-			// Success
-			progressModal.updateBranch(branch.branchName, 'done');
-			gitStatusService.invalidate(branch.dashboardId, branch.issueId);
 		});
 
-		await Promise.all(syncPromises);
+		await Promise.all(repoGroupPromises);
 		progressModal.markComplete();
 	} catch {
 		new Notice('Failed to sync branches.');
