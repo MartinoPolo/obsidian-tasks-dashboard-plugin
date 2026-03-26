@@ -29,6 +29,7 @@ export interface GitHubIssueApiResponse extends GitHubIssueLikeApiResponse {
 
 export interface GitHubPullRequestApiResponse extends GitHubIssueLikeApiResponse {
 	merged: boolean;
+	merged_at?: string | null;
 	draft: boolean;
 	requested_reviewers?: GitHubAssigneeApiResponse[];
 	mergeable?: boolean | null;
@@ -37,12 +38,6 @@ export interface GitHubPullRequestApiResponse extends GitHubIssueLikeApiResponse
 export interface GitHubSearchApiResponse {
 	total_count: number;
 	items: GitHubIssueApiResponse[];
-}
-
-export interface GitHubCompareApiResponse {
-	status: string;
-	behind_by: number;
-	ahead_by: number;
 }
 
 export interface GitHubRepoApiResponse {

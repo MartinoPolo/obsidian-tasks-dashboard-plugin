@@ -8,13 +8,15 @@ import {
 	getThemeAwareIssueColorPalette,
 	isIssueColorUsed
 } from '../utils/issue-colors';
+import { getContrastingForegroundColor } from '../utils/color';
 import { ISSUE_SURFACE_COLOR_FALLBACK } from './dashboard-renderer-constants';
 
 const COLOR_DROPDOWN_MARGIN = 8;
 
 const positionColorDropdown = (
 	dropdown: HTMLElement,
-	anchorElement: HTMLElement | undefined
+	anchorElement: HTMLElement | undefined,
+	capturedAnchorRect?: DOMRect
 ): void => {
 	if (anchorElement === undefined) {
 		dropdown.setCssProps({
@@ -25,7 +27,18 @@ const positionColorDropdown = (
 		return;
 	}
 
-	const anchorRect = anchorElement.getBoundingClientRect();
+	const anchorRect = anchorElement.isConnected
+		? anchorElement.getBoundingClientRect()
+		: capturedAnchorRect;
+
+	if (anchorRect === undefined) {
+		dropdown.setCssProps({
+			left: '50%',
+			top: '50%',
+			transform: 'translate(-50%, -50%)'
+		});
+		return;
+	}
 	const dropdownRect = dropdown.getBoundingClientRect();
 	const maxLeft = window.innerWidth - dropdownRect.width - COLOR_DROPDOWN_MARGIN;
 	const preferredLeft = anchorRect.right - dropdownRect.width;
@@ -53,6 +66,7 @@ export const openIssueColorDropdown = async (options: {
 }): Promise<void> => {
 	const { plugin, dashboard, issueId, container, anchorElement, applyIssueSurfaceStyles } =
 		options;
+	const capturedAnchorRect = anchorElement?.getBoundingClientRect();
 	const dashboardIssueIds = await collectDashboardIssueIdSet(plugin.app, dashboard);
 	const palette = getThemeAwareIssueColorPalette();
 	const usedColors = collectUsedIssueColors(plugin.settings.issueColors, dashboardIssueIds);
@@ -76,7 +90,10 @@ export const openIssueColorDropdown = async (options: {
 		cls: 'tdc-color-picker-row tdc-issue-color-dropdown-picker'
 	});
 	colorPickerRow.createSpan({ cls: 'tdc-color-picker-label', text: 'Custom color' });
-	const colorInput = colorPickerRow.createEl('input', {
+	const colorPickerCircleWrapper = colorPickerRow.createDiv({
+		cls: 'tdc-color-picker-circle-wrapper'
+	});
+	const colorInput = colorPickerCircleWrapper.createEl('input', {
 		type: 'color',
 		cls: 'tdc-color-picker-circle',
 		attr: {
@@ -84,12 +101,12 @@ export const openIssueColorDropdown = async (options: {
 		}
 	});
 	colorInput.value = currentColor;
-	const colorPreviewLetter = colorPickerRow.createSpan({
+	const colorPreviewLetter = colorPickerCircleWrapper.createSpan({
 		cls: 'tdc-color-picker-preview-letter',
 		text: 'A',
 		attr: { 'aria-hidden': 'true' }
 	});
-	colorPreviewLetter.style.color = currentColor;
+	colorPreviewLetter.style.color = getContrastingForegroundColor(currentColor);
 
 	const closeDropdown = (): void => {
 		if (!didCommitSelection) {
@@ -105,7 +122,7 @@ export const openIssueColorDropdown = async (options: {
 		if (isIssueColorUsed(plugin.settings.issueColors, nextColor, issueId, dashboardIssueIds)) {
 			new Notice('Color already assigned. Pick an available color.');
 			colorInput.value = plugin.settings.issueColors[issueId] ?? ISSUE_SURFACE_COLOR_FALLBACK;
-			colorPreviewLetter.style.color = colorInput.value;
+			colorPreviewLetter.style.color = getContrastingForegroundColor(colorInput.value);
 			return;
 		}
 
@@ -191,7 +208,7 @@ export const openIssueColorDropdown = async (options: {
 	});
 
 	colorInput.addEventListener('input', () => {
-		colorPreviewLetter.style.color = colorInput.value;
+		colorPreviewLetter.style.color = getContrastingForegroundColor(colorInput.value);
 		applyIssueSurfaceStyles(container, colorInput.value);
 	});
 
@@ -223,11 +240,11 @@ export const openIssueColorDropdown = async (options: {
 	};
 
 	const onWindowResize = (): void => {
-		positionColorDropdown(dropdown, anchorElement);
+		positionColorDropdown(dropdown, anchorElement, capturedAnchorRect);
 	};
 
 	document.body.appendChild(dropdown);
-	positionColorDropdown(dropdown, anchorElement);
+	positionColorDropdown(dropdown, anchorElement, capturedAnchorRect);
 	document.addEventListener('mousedown', onDocumentMouseDown, true);
 	document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onWindowResize);

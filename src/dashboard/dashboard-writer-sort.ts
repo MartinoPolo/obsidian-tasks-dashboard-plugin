@@ -227,6 +227,7 @@ export function createSortOperations(deps: SortOperationsDeps): SortOperationsIn
 				const gitStatus = await plugin.gitStatusService.getIssueGitStatus({
 					branchName: extractBranchFromBlock(block),
 					originFolder: extractWorktreeOriginFolderFromBlock(block),
+					worktreeFolder: undefined,
 					baseBranch: undefined,
 					githubLinks: extractGithubLinksFromBlock(block),
 					dashboardId: dashboard.id,
