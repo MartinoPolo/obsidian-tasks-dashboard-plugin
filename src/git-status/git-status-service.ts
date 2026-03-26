@@ -18,6 +18,7 @@ const GIT_STATUS_CACHE_TTL_MS = 5 * 60 * 1000;
 interface GitStatusServiceParams {
 	branchName: string | undefined;
 	originFolder: string | undefined;
+	worktreeFolder: string | undefined;
 	baseBranch: string | undefined;
 	githubLinks: string[];
 	dashboardId: string;
@@ -261,13 +262,14 @@ export function createGitStatusService(
 			linkedIssues = await discoverLinkedIssues(params);
 		}
 
-		// Local git detection — does not need GitHub auth
+		// Local git detection — runs from worktree folder where HEAD is the feature branch
+		const detectionFolder = params.worktreeFolder ?? params.originFolder;
 		if (
 			params.baseBranch !== undefined &&
 			branchStatus === 'active' &&
-			params.originFolder !== undefined
+			detectionFolder !== undefined
 		) {
-			const repoRoot = resolveRepoRoot(params.originFolder);
+			const repoRoot = resolveRepoRoot(detectionFolder);
 			if (repoRoot !== undefined) {
 				try {
 					await fetchCoordinator.fetchOnce(repoRoot);
@@ -276,16 +278,13 @@ export function createGitStatusService(
 				}
 			}
 
-			const count = getBehindCount(params.originFolder, params.baseBranch);
+			const count = getBehindCount(detectionFolder, params.baseBranch);
 			if (count !== undefined) {
 				behindBaseCount = count;
 			}
 
 			try {
-				const hasConflicts = await detectMergeConflicts(
-					params.originFolder,
-					params.baseBranch
-				);
+				const hasConflicts = await detectMergeConflicts(detectionFolder, params.baseBranch);
 				if (hasConflicts !== undefined) {
 					mergeConflict = hasConflicts;
 				}

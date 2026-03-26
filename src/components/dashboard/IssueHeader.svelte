@@ -229,6 +229,7 @@
         .getIssueGitStatus({
           branchName: params.worktree_branch,
           originFolder: params.worktree_origin_folder,
+          worktreeFolder: params.worktree_expected_folder,
           baseBranch: params.worktree_base_branch,
           githubLinks: params.githubLinks,
           dashboardId: dashboard.id,
