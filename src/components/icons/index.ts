@@ -47,6 +47,8 @@ import GitBranchDeletedIcon from './GitBranchDeletedIcon.svelte';
 import GitBranchUnknownIcon from './GitBranchUnknownIcon.svelte';
 import GitPrReviewRequestedIcon from './GitPrReviewRequestedIcon.svelte';
 import SyncIcon from './SyncIcon.svelte';
+import PullDownIcon from './PullDownIcon.svelte';
+import PushUpIcon from './PushUpIcon.svelte';
 import ScissorsIcon from './ScissorsIcon.svelte';
 import AlertTriangleIcon from './AlertTriangleIcon.svelte';
 
@@ -100,6 +102,8 @@ export {
 	GitBranchUnknownIcon,
 	GitPrReviewRequestedIcon,
 	SyncIcon,
+	PullDownIcon,
+	PushUpIcon,
 	ScissorsIcon,
 	AlertTriangleIcon
 };
@@ -154,6 +158,8 @@ export const ICON_COMPONENTS = {
 	gitBranchUnknown: GitBranchUnknownIcon,
 	gitPrReviewRequested: GitPrReviewRequestedIcon,
 	sync: SyncIcon,
+	pullDown: PullDownIcon,
+	pushUp: PushUpIcon,
 	scissors: ScissorsIcon,
 	alertTriangle: AlertTriangleIcon
 } as const;
