@@ -15,7 +15,8 @@ const COLOR_DROPDOWN_MARGIN = 8;
 
 const positionColorDropdown = (
 	dropdown: HTMLElement,
-	anchorElement: HTMLElement | undefined
+	anchorElement: HTMLElement | undefined,
+	capturedAnchorRect?: DOMRect
 ): void => {
 	if (anchorElement === undefined) {
 		dropdown.setCssProps({
@@ -26,7 +27,18 @@ const positionColorDropdown = (
 		return;
 	}
 
-	const anchorRect = anchorElement.getBoundingClientRect();
+	const anchorRect = anchorElement.isConnected
+		? anchorElement.getBoundingClientRect()
+		: capturedAnchorRect;
+
+	if (anchorRect === undefined) {
+		dropdown.setCssProps({
+			left: '50%',
+			top: '50%',
+			transform: 'translate(-50%, -50%)'
+		});
+		return;
+	}
 	const dropdownRect = dropdown.getBoundingClientRect();
 	const maxLeft = window.innerWidth - dropdownRect.width - COLOR_DROPDOWN_MARGIN;
 	const preferredLeft = anchorRect.right - dropdownRect.width;
@@ -54,6 +66,7 @@ export const openIssueColorDropdown = async (options: {
 }): Promise<void> => {
 	const { plugin, dashboard, issueId, container, anchorElement, applyIssueSurfaceStyles } =
 		options;
+	const capturedAnchorRect = anchorElement?.getBoundingClientRect();
 	const dashboardIssueIds = await collectDashboardIssueIdSet(plugin.app, dashboard);
 	const palette = getThemeAwareIssueColorPalette();
 	const usedColors = collectUsedIssueColors(plugin.settings.issueColors, dashboardIssueIds);
@@ -227,11 +240,11 @@ export const openIssueColorDropdown = async (options: {
 	};
 
 	const onWindowResize = (): void => {
-		positionColorDropdown(dropdown, anchorElement);
+		positionColorDropdown(dropdown, anchorElement, capturedAnchorRect);
 	};
 
 	document.body.appendChild(dropdown);
-	positionColorDropdown(dropdown, anchorElement);
+	positionColorDropdown(dropdown, anchorElement, capturedAnchorRect);
 	document.addEventListener('mousedown', onDocumentMouseDown, true);
 	document.addEventListener('keydown', onDocumentKeyDown, true);
 	window.addEventListener('resize', onWindowResize);
