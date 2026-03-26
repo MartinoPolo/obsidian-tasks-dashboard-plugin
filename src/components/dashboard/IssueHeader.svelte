@@ -17,10 +17,8 @@
   import { attachTooltip } from '../../lib/attach-tooltip';
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
+  import { subscribeToCacheUpdates } from '../../git-status/git-status-cache-signal';
   import { syncSingleBranch } from '../../git-status/sync-single-branch';
-  import { pushBranch } from '../../git-status/sync-merge-push';
-  import { NoUpstreamModal } from '../../modals/no-upstream-modal';
-  import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
   import { createPlatformService } from '../../utils/platform';
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
@@ -73,7 +71,6 @@
   let isBadgesLoading = $state(false);
   let prAccentClass = $state('');
   let isSyncing = $state(false);
-  let isPushing = $state(false);
 
   // Element refs
   let headerElement: HTMLDivElement | undefined = $state(undefined);
@@ -344,69 +341,30 @@
     });
   }
 
-  // Push branch handler — pushes local branch to remote
-  function handlePushBranch(): void {
-    const folder = params.worktree_expected_folder;
-    const originFolder = params.worktree_origin_folder;
-    const branchName = params.worktree_branch;
-    if (!folder || !branchName || isPushing || isSyncing) {
-      return;
-    }
-    isPushing = true;
-
-    const doPush = async (setUpstream: boolean): Promise<void> => {
-      try {
-        const result = await pushBranch(folder, branchName, setUpstream);
-        if (result.outcome === 'success') {
-          new Notice('Branch pushed successfully');
-          plugin.gitStatusService.invalidate(dashboard.id, params.issue);
-          badgeRefreshTrigger++;
-        } else if (result.outcome === 'push-failed') {
-          new Notice(`Push failed: ${result.errorMessage}`);
-        }
-      } catch {
-        new Notice('Push failed');
-      } finally {
-        isPushing = false;
-      }
-    };
-
-    // Check upstream config before pushing
-    const checkFolder = originFolder ?? folder;
-    const hasUpstream = platformService.hasBranchUpstreamConfig(checkFolder, branchName);
-    if (!hasUpstream) {
-      new NoUpstreamModal(plugin.app, branchName, (choice) => {
-        if (choice === 'push-set-upstream') {
-          void doPush(true);
-        } else if (choice === 'let-claude-handle') {
-          isPushing = false;
-          platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
-        } else {
-          isPushing = false;
-        }
-      }).open();
-      return;
-    }
-
-    void doPush(false);
-  }
-
-  // Auto-clear syncing state when behindBaseCount drops to 0 after a refresh
+  // Auto-clear syncing state when both local and remote behind counts drop to 0
   $effect(() => {
     if (!isSyncing) {
       return;
     }
-    const currentBehindCount = gitStatus?.behindBaseCount;
-    if (currentBehindCount !== undefined && currentBehindCount === 0) {
+    const localBehind = gitStatus?.behindBaseCount;
+    const remoteBehind = gitStatus?.remoteBehindBaseCount;
+    if (localBehind === 0 && (remoteBehind === undefined || remoteBehind === 0)) {
       isSyncing = false;
     }
   });
 
+  // Re-fetch git status when cache is invalidated externally (e.g., Sync All)
+  $effect(() => {
+    return subscribeToCacheUpdates(() => {
+      const cached = plugin.gitStatusService.getCachedStatus(dashboard.id, params.issue);
+      if (cached === undefined && gitStatus !== undefined) {
+        badgeRefreshTrigger++;
+      }
+    });
+  });
+
   // Sync button callback — only available when worktree folder exists
   let syncHandler = $derived(hasWorktreeFolder ? handleSyncBranch : undefined);
-
-  // Push button callback — only available when worktree folder exists
-  let pushHandler = $derived(hasWorktreeFolder ? handlePushBranch : undefined);
 
   // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
   $effect(() => {
@@ -451,11 +409,9 @@
     {isBadgesLoading}
     {shouldCompact}
     {isSyncing}
-    {isPushing}
     bind:badgesElement
     oncontextmenu={handleBadgesContextMenu}
     onsync={syncHandler}
-    onpush={pushHandler}
   />
 
   {#if isWorktreeIssue}
@@ -748,16 +704,24 @@
 /* Issue 3 -- Header button icon colors respect issue color */
 .tdc-issue-header :global(.tdc-btn) {
   color: var(--tdc-issue-header-link-color, var(--text-normal));
-  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 10%, transparent);
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 18%, transparent);
 }
 
 .tdc-issue-header :global(.tdc-btn):hover {
-  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 15%, transparent);
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 22%, transparent);
   color: var(--tdc-issue-header-link-color, var(--text-normal));
 }
 
 .tdc-issue-header :global(.tdc-btn):active {
-  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 25%, transparent);
+  background: color-mix(in srgb, var(--tdc-issue-header-link-color, var(--text-normal)) 30%, transparent);
+}
+
+.tdc-issue-header :global(.tdc-btn svg) {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.3));
+}
+
+:global(.theme-light) .tdc-issue-header :global(.tdc-btn svg) {
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.15));
 }
 
 </style>
