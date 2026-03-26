@@ -495,8 +495,10 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 
 	const refreshWorktreeState = async (
 		dashboard: DashboardConfig,
-		issueId: string
+		issueId: string,
+		options?: { silent?: boolean }
 	): Promise<void> => {
+		const silent = options?.silent === true;
 		const metadata = await getIssueWorktreeMetadata(dashboard, issueId);
 		if (!metadata.worktree) {
 			return;
@@ -532,7 +534,9 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 					worktree: true,
 					worktreeSetupState: 'failed'
 				});
-				new Notice(`Worktree branch missing: ${branch}`);
+				if (!silent) {
+					new Notice(`Worktree branch missing: ${branch}`);
+				}
 				plugin.triggerDashboardRefresh();
 				return;
 			}
@@ -558,7 +562,9 @@ export function createWorktreeOperations(deps: WorktreeOperationsDeps): Worktree
 				worktree: true,
 				worktreeSetupState: 'failed'
 			});
-			new Notice(`Worktree folder not found: ${issueId}`);
+			if (!silent) {
+				new Notice(`Worktree folder not found: ${issueId}`);
+			}
 		}
 		plugin.triggerDashboardRefresh();
 	};
