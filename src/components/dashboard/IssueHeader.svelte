@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Menu } from 'obsidian';
+  import { Menu, Notice } from 'obsidian';
   import { onMount, tick } from 'svelte';
   import type TasksDashboardPlugin from '../../../main';
   import { HEADER_HOVER_TITLE_MIN_WIDTH } from '../../dashboard/dashboard-renderer-constants';
@@ -18,6 +18,9 @@
   import { WorktreeRetryModal } from '../../modals/worktree-retry-modal';
   import type { DashboardConfig, IssueActionKey } from '../../types';
   import { syncSingleBranch } from '../../git-status/sync-single-branch';
+  import { pushBranch } from '../../git-status/sync-merge-push';
+  import { NoUpstreamModal } from '../../modals/no-upstream-modal';
+  import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../../constants/sync-constants';
   import { createPlatformService } from '../../utils/platform';
   import { buildWorktreeLocationTooltip, deriveWorktreeDisplayState } from '../../utils/worktree-helpers';
   import ActionButton from '../ActionButton.svelte';
@@ -70,6 +73,7 @@
   let isBadgesLoading = $state(false);
   let prAccentClass = $state('');
   let isSyncing = $state(false);
+  let isPushing = $state(false);
 
   // Element refs
   let headerElement: HTMLDivElement | undefined = $state(undefined);
@@ -340,6 +344,53 @@
     });
   }
 
+  // Push branch handler — pushes local branch to remote
+  function handlePushBranch(): void {
+    const folder = params.worktree_expected_folder;
+    const originFolder = params.worktree_origin_folder;
+    const branchName = params.worktree_branch;
+    if (!folder || !branchName || isPushing || isSyncing) {
+      return;
+    }
+    isPushing = true;
+
+    const doPush = async (setUpstream: boolean): Promise<void> => {
+      try {
+        const result = await pushBranch(folder, branchName, setUpstream);
+        if (result.outcome === 'success') {
+          new Notice('Branch pushed successfully');
+          plugin.gitStatusService.invalidate(dashboard.id, params.issue);
+          badgeRefreshTrigger++;
+        } else if (result.outcome === 'push-failed') {
+          new Notice(`Push failed: ${result.errorMessage}`);
+        }
+      } catch {
+        new Notice('Push failed');
+      } finally {
+        isPushing = false;
+      }
+    };
+
+    // Check upstream config before pushing
+    const checkFolder = originFolder ?? folder;
+    const hasUpstream = platformService.hasBranchUpstreamConfig(checkFolder, branchName);
+    if (!hasUpstream) {
+      new NoUpstreamModal(plugin.app, branchName, (choice) => {
+        if (choice === 'push-set-upstream') {
+          void doPush(true);
+        } else if (choice === 'let-claude-handle') {
+          isPushing = false;
+          platformService.openTerminalWithCommand(folder, SYNC_COMMAND, [...SYNC_COMMAND_ARGS]);
+        } else {
+          isPushing = false;
+        }
+      }).open();
+      return;
+    }
+
+    void doPush(false);
+  }
+
   // Auto-clear syncing state when behindBaseCount drops to 0 after a refresh
   $effect(() => {
     if (!isSyncing) {
@@ -353,6 +404,9 @@
 
   // Sync button callback — only available when worktree folder exists
   let syncHandler = $derived(hasWorktreeFolder ? handleSyncBranch : undefined);
+
+  // Push button callback — only available when worktree folder exists
+  let pushHandler = $derived(hasWorktreeFolder ? handlePushBranch : undefined);
 
   // Fully closed detection — all PRs merged/closed, branch gone, and at least one GitHub issue closed
   $effect(() => {
@@ -397,9 +451,11 @@
     {isBadgesLoading}
     {shouldCompact}
     {isSyncing}
+    {isPushing}
     bind:badgesElement
     oncontextmenu={handleBadgesContextMenu}
     onsync={syncHandler}
+    onpush={pushHandler}
   />
 
   {#if isWorktreeIssue}

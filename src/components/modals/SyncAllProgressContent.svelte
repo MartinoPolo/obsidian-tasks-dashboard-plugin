@@ -20,6 +20,7 @@
     done: 'Synced',
     dirty: 'Dirty — needs manual handling',
     conflicts: 'Conflicts — needs manual handling',
+    'no-upstream': 'No upstream — push manually',
     failed: 'Failed'
   };
 
@@ -32,11 +33,12 @@
     done: '✓',
     dirty: '⚠',
     conflicts: '⚠',
+    'no-upstream': '⚠',
     failed: '✗'
   };
 
   let needsClaudeCode = $derived(
-    branches.filter((b) => b.status === 'dirty' || b.status === 'conflicts')
+    branches.filter((b) => b.status === 'dirty' || b.status === 'conflicts' || b.status === 'no-upstream')
   );
 
   let completedCount = $derived(
@@ -69,7 +71,7 @@
           <p class="tdc-sync-fallback-title">Branches needing manual handling:</p>
           {#each needsClaudeCode as branch}
             <div class="tdc-sync-fallback-row">
-              <span>{branch.branchName} — {branch.status === 'dirty' ? 'uncommitted changes' : 'merge conflicts'}</span>
+              <span>{branch.branchName} — {branch.status === 'dirty' ? 'uncommitted changes' : branch.status === 'conflicts' ? 'merge conflicts' : 'no upstream tracking'}</span>
               {#if onclaudehandle !== undefined}
                 <button class="tdc-prompt-btn tdc-prompt-btn-secondary tdc-sync-fallback-btn" onclick={() => onclaudehandle(branch.branchName)}>
                   Let Claude Code handle
@@ -137,7 +139,8 @@
 }
 .tdc-sync-branch-done { color: var(--tdc-git-branch-active, #3fb950); }
 .tdc-sync-branch-dirty,
-.tdc-sync-branch-conflicts { color: var(--tdc-git-sync-behind, #d29922); }
+.tdc-sync-branch-conflicts,
+.tdc-sync-branch-no-upstream { color: var(--tdc-git-sync-behind, #d29922); }
 .tdc-sync-branch-failed { color: var(--tdc-priority-high, #f85149); }
 
 .tdc-sync-branch-error {

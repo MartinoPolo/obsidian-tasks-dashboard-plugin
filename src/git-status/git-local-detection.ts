@@ -23,6 +23,29 @@ export function getBehindCount(worktreeFolder: string, baseBranch: string): numb
 	return count;
 }
 
+export function getRemoteBehindCount(
+	folder: string,
+	branchName: string,
+	baseBranch: string
+): number | undefined {
+	if (isUnsafeBranchRef(branchName) || isUnsafeBranchRef(baseBranch)) {
+		return undefined;
+	}
+	const output = runGitCommandOutput(folder, [
+		'rev-list',
+		'--count',
+		`origin/${branchName}..origin/${baseBranch}`
+	]);
+	if (output === undefined) {
+		return undefined;
+	}
+	const count = parseInt(output.trim(), 10);
+	if (Number.isNaN(count)) {
+		return undefined;
+	}
+	return count;
+}
+
 export function isWorktreeDirty(worktreeFolder: string): boolean | undefined {
 	const output = runGitCommandOutput(worktreeFolder, ['status', '--porcelain']);
 	if (output === undefined) {

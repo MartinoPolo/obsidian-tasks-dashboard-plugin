@@ -26,7 +26,9 @@ export interface IssueGitStatus {
 	linkedIssues: LinkedGitHubIssue[];
 	aggregatePrState: PrState;
 	behindBaseCount: number | undefined;
+	remoteBehindBaseCount: number | undefined;
 	mergeConflict: boolean | undefined;
+	prMergeConflict: boolean | undefined;
 	fetchedAt: number;
 }
 
