@@ -269,7 +269,11 @@ export function createGitStatusService(
 		) {
 			const repoRoot = resolveRepoRoot(params.originFolder);
 			if (repoRoot !== undefined) {
-				await fetchCoordinator.fetchOnce(repoRoot);
+				try {
+					await fetchCoordinator.fetchOnce(repoRoot);
+				} catch {
+					// Fetch failed — continue with potentially stale refs
+				}
 			}
 
 			const count = getBehindCount(params.originFolder, params.baseBranch);

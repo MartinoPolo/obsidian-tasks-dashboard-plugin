@@ -26,8 +26,9 @@ export function createFetchCoordinator(): FetchCoordinator {
 			.then(() => {
 				inFlightFetches.delete(repoRoot);
 			})
-			.catch(() => {
+			.catch((error: unknown) => {
 				inFlightFetches.delete(repoRoot);
+				throw error;
 			});
 
 		inFlightFetches.set(repoRoot, fetchPromise);

@@ -3,12 +3,12 @@ import type { App } from 'obsidian';
 import type { DashboardConfig } from '../types';
 import type { PlatformService } from '../utils/platform';
 import type { GitStatusServiceInstance } from '../git-status/git-status-service';
-import { runGitCommandAsync } from '../utils/platform/process-spawn';
 import { SYNC_COMMAND, SYNC_COMMAND_ARGS } from '../constants/sync-constants';
 import { parseParams } from './dashboard-renderer-params';
 import { CONTROLS_BLOCK_PATTERN, readDashboardContent } from './dashboard-content-reader';
 import { resolveRepoRoot, createFetchCoordinator } from '../git-status/git-fetch-coordinator';
 import { isWorktreeDirty, detectMergeConflicts } from '../git-status/git-local-detection';
+import { mergeAndPush } from '../git-status/sync-merge-push';
 import { SyncAllProgressModal } from '../modals/sync-all-progress-modal';
 
 interface UnsyncedBranchInfo {
@@ -115,7 +115,13 @@ export async function handleSyncAllBranches(dependencies: SyncAllDependencies): 
 		for (const branch of unsyncedBranches) {
 			progressModal.updateBranch(branch.branchName, 'fetching');
 		}
-		await Promise.all([...repoRoots].map((root) => fetchCoordinator.fetchOnce(root)));
+		await Promise.all(
+			[...repoRoots].map((root) =>
+				fetchCoordinator.fetchOnce(root).catch(() => {
+					// Fetch failed for this repo — continue with stale refs
+				})
+			)
+		);
 
 		// Sync each branch in parallel
 		const syncPromises = unsyncedBranches.map(async (branch) => {
@@ -142,41 +148,18 @@ export async function handleSyncAllBranches(dependencies: SyncAllDependencies): 
 				return;
 			}
 
-			// Merge
+			// Merge + Push
 			progressModal.updateBranch(branch.branchName, 'merging');
-			try {
-				const mergeResult = await runGitCommandAsync(branch.worktreeFolder, [
-					'merge',
-					`origin/${branch.baseBranch}`,
-					'--no-edit'
-				]);
-				if (mergeResult.status !== 0) {
-					progressModal.updateBranch(
-						branch.branchName,
-						'failed',
-						mergeResult.stderr.trim() || 'Merge failed'
-					);
-					return;
-				}
-			} catch {
-				progressModal.updateBranch(branch.branchName, 'failed', 'Merge command failed');
+			const result = await mergeAndPush(branch.worktreeFolder, branch.baseBranch);
+
+			if (result.outcome === 'merge-failed') {
+				progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
 				return;
 			}
 
-			// Push
 			progressModal.updateBranch(branch.branchName, 'pushing');
-			try {
-				const pushResult = await runGitCommandAsync(branch.worktreeFolder, ['push']);
-				if (pushResult.status !== 0) {
-					progressModal.updateBranch(
-						branch.branchName,
-						'failed',
-						pushResult.stderr.trim() || 'Push failed'
-					);
-					return;
-				}
-			} catch {
-				progressModal.updateBranch(branch.branchName, 'failed', 'Push command failed');
+			if (result.outcome === 'push-failed') {
+				progressModal.updateBranch(branch.branchName, 'failed', result.errorMessage);
 				return;
 			}
 

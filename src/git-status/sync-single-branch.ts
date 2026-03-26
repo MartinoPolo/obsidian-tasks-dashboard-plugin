@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
-import { runGitCommandAsync } from '../utils/platform/process-spawn';
 import { detectMergeConflicts, isWorktreeDirty } from './git-local-detection';
+import { mergeAndPush } from './sync-merge-push';
 import { SyncProgressModal } from '../modals/sync-progress-modal';
 import { DirtyWorktreeModal } from '../modals/dirty-worktree-modal';
 import type { PlatformService } from '../utils/platform';
@@ -54,41 +54,23 @@ export async function syncSingleBranch(params: SyncSingleBranchParams): Promise<
 		return;
 	}
 
-	// Step 4: Merge
+	// Step 4: Merge + Push
 	progressModal.updateStep(1, 'active');
-	try {
-		const mergeResult = await runGitCommandAsync(worktreeFolder, [
-			'merge',
-			`origin/${baseBranch}`,
-			'--no-edit'
-		]);
-		if (mergeResult.status !== 0) {
-			const errorMessage = mergeResult.stderr.trim() || 'Merge failed';
-			progressModal.updateStep(1, 'failed', errorMessage);
-			return;
-		}
-		progressModal.updateStep(1, 'complete');
-	} catch {
-		progressModal.updateStep(1, 'failed', 'Merge command failed');
+	const result = await mergeAndPush(worktreeFolder, baseBranch);
+
+	if (result.outcome === 'merge-failed') {
+		progressModal.updateStep(1, 'failed', result.errorMessage);
 		return;
 	}
+	progressModal.updateStep(1, 'complete');
 
-	// Step 5: Push
-	progressModal.updateStep(2, 'active');
-	try {
-		const pushResult = await runGitCommandAsync(worktreeFolder, ['push']);
-		if (pushResult.status !== 0) {
-			const errorMessage = pushResult.stderr.trim() || 'Push failed';
-			progressModal.updateStep(2, 'failed', errorMessage);
-			return;
-		}
-		progressModal.updateStep(2, 'complete');
-	} catch {
-		progressModal.updateStep(2, 'failed', 'Push command failed');
+	if (result.outcome === 'push-failed') {
+		progressModal.updateStep(2, 'failed', result.errorMessage);
 		return;
 	}
+	progressModal.updateStep(2, 'complete');
 
-	// Step 6: Success
+	// Step 5: Success
 	new Notice('Branch synced successfully');
 	progressModal.close();
 	onSuccess();
