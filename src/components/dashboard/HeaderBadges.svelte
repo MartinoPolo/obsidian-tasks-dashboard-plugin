@@ -19,9 +19,11 @@
     isBadgesLoading: boolean;
     shouldCompact: boolean;
     isSyncing: boolean;
+    isPushing: boolean;
     badgesElement: HTMLDivElement | undefined;
     oncontextmenu: (event: MouseEvent) => void;
     onsync: (() => void) | undefined;
+    onpush: (() => void) | undefined;
   }
 
   let {
@@ -29,9 +31,11 @@
     isBadgesLoading,
     shouldCompact,
     isSyncing,
+    isPushing,
     badgesElement = $bindable(),
     oncontextmenu,
-    onsync
+    onsync,
+    onpush
   }: Props = $props();
 
   // Derive branch badge from git status
@@ -55,6 +59,12 @@
     gitStatus !== undefined &&
     gitStatus.behindBaseCount !== undefined &&
     gitStatus.behindBaseCount > 0
+  );
+
+  let isRemoteBehindBase = $derived(
+    gitStatus !== undefined &&
+    gitStatus.remoteBehindBaseCount !== undefined &&
+    gitStatus.remoteBehindBaseCount > 0
   );
 </script>
 
@@ -82,7 +92,7 @@
     {/each}
 
     {#if branchBadge !== undefined}
-      <div class={['tdc-branch-sync-group', isBehindBase && 'tdc-branch-sync-connected']}>
+      <div class={['tdc-branch-sync-group', (isBehindBase || isRemoteBehindBase) && 'tdc-branch-sync-connected']}>
         <GitBadge
           type="branch"
           icon={branchBadge.icon}
@@ -111,17 +121,38 @@
             disabled={isSyncing}
           />
         {/if}
+
+        {#if isRemoteBehindBase}
+          {@const baseName = gitStatus.baseBranch ?? 'base'}
+          {@const clickHint = onpush !== undefined ? (isPushing ? ' (pushing...)' : ' — click to push') : ''}
+          {@const tooltipText = `Remote branch is ${gitStatus.remoteBehindBaseCount} commit${gitStatus.remoteBehindBaseCount === 1 ? '' : 's'} behind ${baseName}${clickHint}`}
+          <GitBadge
+            type="sync"
+            icon="up"
+            text={`${gitStatus.remoteBehindBaseCount} behind`}
+            tooltip={tooltipText}
+            class="tdc-git-badge-push-behind"
+            onclick={onpush !== undefined ? onpush : undefined}
+            spinning={isPushing}
+            disabled={isPushing}
+          />
+        {/if}
       </div>
     {/if}
 
     {#each gitStatus.linkedPullRequests as pr (pr.url)}
+      {@const prLabel = PR_STATE_LABEL[pr.state]}
+      {@const isOpenPr = pr.state === 'open' || pr.state === 'draft' || pr.state === 'review-requested'}
+      {@const hasPrConflicts = isOpenPr && gitStatus.prMergeConflict === true}
+      {@const conflictSuffix = hasPrConflicts ? ' — merge conflicts' : ''}
       <GitBadge
         type="pr"
         icon={PR_STATE_ICON[pr.state]}
-        text={`#${pr.number} ${PR_STATE_LABEL[pr.state]}`}
-        tooltip={`${pr.title} — ${pr.state}`}
+        text={`#${pr.number} ${prLabel}`}
+        tooltip={`${pr.title} — ${pr.state}${conflictSuffix}`}
         class={PR_STATE_CSS_CLASS[pr.state]}
         href={pr.url}
+        secondaryIcon={hasPrConflicts ? 'alertTriangle' : undefined}
       />
     {/each}
   {/if}
@@ -175,6 +206,12 @@
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   border-left: none;
+}
+
+.tdc-branch-sync-connected :global(.tdc-git-badge:not(:first-child):not(:last-child)) {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
 }
 
 </style>

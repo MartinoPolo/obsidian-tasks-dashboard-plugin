@@ -131,6 +131,26 @@ export function createGitHubService(): GitHubServiceInstance {
 		return items;
 	};
 
+	const getPullRequestMergeable = async (
+		owner: string,
+		repo: string,
+		number: number
+	): Promise<boolean | undefined> => {
+		const cacheKey = `pr-mergeable:${owner}/${repo}#${number}`;
+		return cacheStore.getOrLoadOptional(cacheKey, async () => {
+			const data = await requestClient.apiRequest<GitHubPullRequestApiResponse>(
+				`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${number}`
+			);
+			if (data === undefined) {
+				return undefined;
+			}
+			if (data.mergeable === null || data.mergeable === undefined) {
+				return undefined;
+			}
+			return data.mergeable;
+		});
+	};
+
 	const getMetadataFromUrl = async (url: string): Promise<GitHubIssueMetadata | undefined> => {
 		const parsed = parseGitHubUrl(url);
 		if (parsed === undefined) {
@@ -430,6 +450,7 @@ export function createGitHubService(): GitHubServiceInstance {
 		getIssue,
 		getPullRequest,
 		getPullRequestsByBranch,
+		getPullRequestMergeable,
 		searchIssues,
 		searchPullRequests,
 		searchIssuesInMyRepos,

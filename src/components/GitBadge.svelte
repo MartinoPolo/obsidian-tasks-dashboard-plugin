@@ -252,4 +252,13 @@ a.tdc-git-badge:hover,
 .tdc-git-badge-merge-conflict :global(svg) {
   color: color-mix(in srgb, var(--tdc-git-merge-conflict) 60%, var(--tdc-badge-icon-mix));
 }
+
+.tdc-git-badge-push-behind {
+  color: var(--tdc-badge-text);
+  background: color-mix(in srgb, var(--tdc-git-push-behind) 80%, transparent);
+  border-color: color-mix(in srgb, var(--tdc-git-push-behind) 60%, var(--tdc-badge-border-mix));
+}
+.tdc-git-badge-push-behind :global(svg) {
+  color: color-mix(in srgb, var(--tdc-git-push-behind) 60%, var(--tdc-badge-icon-mix));
+}
 </style>
