@@ -3,7 +3,6 @@ import { hasBranchUpstreamConfig } from '../utils/platform/git-operations';
 
 export type MergeAndPushResult =
 	| { outcome: 'success' }
-	| { outcome: 'no-upstream' }
 	| { outcome: 'merge-failed'; errorMessage: string }
 	| { outcome: 'push-failed'; errorMessage: string };
 
@@ -33,12 +32,10 @@ export async function mergeAndPush(
 	}
 
 	const hasUpstream = hasBranchUpstreamConfig(worktreeFolder, branchName);
-	if (!hasUpstream) {
-		return { outcome: 'no-upstream' };
-	}
+	const pushArgs = hasUpstream ? ['push'] : ['push', '-u', 'origin', branchName];
 
 	try {
-		const pushResult = await runGitCommandAsync(worktreeFolder, ['push']);
+		const pushResult = await runGitCommandAsync(worktreeFolder, pushArgs);
 		if (pushResult.status !== 0) {
 			return {
 				outcome: 'push-failed',
