@@ -81,5 +81,9 @@ export interface IssueManagerInstance {
 		worktreeBranch: string | undefined,
 		worktreeOriginFolder: string
 	) => Promise<void>;
-	refreshWorktreeState: (dashboard: DashboardConfig, issueId: string) => Promise<void>;
+	refreshWorktreeState: (
+		dashboard: DashboardConfig,
+		issueId: string,
+		options?: { silent?: boolean }
+	) => Promise<void>;
 }

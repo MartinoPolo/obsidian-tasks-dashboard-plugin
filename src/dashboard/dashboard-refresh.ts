@@ -69,7 +69,9 @@ export async function refreshDashboard(
 		}
 
 		try {
-			await plugin.issueManager.refreshWorktreeState(dashboard, issueInfo.issueId);
+			await plugin.issueManager.refreshWorktreeState(dashboard, issueInfo.issueId, {
+				silent: true
+			});
 			worktreeRefreshCount += 1;
 		} catch {
 			errorCount += 1;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import type { IssueColorEntry } from '../../utils/color';
+  import { getContrastingForegroundColor, type IssueColorEntry } from '../../utils/color';
   import {
     ISSUE_COLOR_PICKER_COLUMNS,
     collectUsedIssueColors,
@@ -35,6 +35,7 @@
   let colorInputValue: string = $state(selectedColor);
   let dashboardIssueIds: Set<string> | undefined = $state.raw(undefined);
   let isLoaded: boolean = $state(false);
+  let previewLetterColor: string = $derived(getContrastingForegroundColor(colorInputValue));
   const presetButtonRefs = new Map<string, HTMLButtonElement>();
 
   onMount(() => {
@@ -225,14 +226,21 @@
         </div>
         <div class="tdc-color-picker-row">
           <span class="tdc-color-picker-label">Custom color</span>
-          <input
-            type="color"
-            class="tdc-color-picker-circle"
-            aria-label="Color picker"
-            bind:value={colorInputValue}
-            oninput={() => { selectedColor = colorInputValue; }}
-            onkeydown={handleColorInputKeydown}
-          />
+          <div class="tdc-color-picker-circle-wrapper">
+            <input
+              type="color"
+              class="tdc-color-picker-circle"
+              aria-label="Color picker"
+              bind:value={colorInputValue}
+              oninput={() => { selectedColor = colorInputValue; }}
+              onkeydown={handleColorInputKeydown}
+            />
+            <span
+              class="tdc-color-picker-preview-letter"
+              style:color={previewLetterColor}
+              aria-hidden="true"
+            >A</span>
+          </div>
         </div>
       {/if}
     {/snippet}

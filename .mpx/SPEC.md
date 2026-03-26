@@ -83,3 +83,51 @@
 
 - [x] Refactor large files; clean code sweep across the project
 - [x] Componentize standalone UI units (e.g., header badges) into isolated modules; analyze Obsidian Plugin componentization approach
+
+## BUGS
+- [x] After worktree creation with quick add worktree, the branch badge says branch deleted.
+- [x] Color picker has custom color picker section. It should have letter A inside the color preview circle. The letter is next to the color preview circle and has incorrect colot. It should be black or white depending on the contrast with the background color. However it currently always have the same color as the background color.
+- [-] The visibility of Git batch icons is very poor, so we should change the icon color to match the text color of the header so that there's always enough contrast with the background of the issue header. We should make the background of the badge more vivid. Currently, I think it's set with some opacity. We should definitely make it less transparent and more colorful, because now the background will be the only thing carrying the color. The text of the badge, the border of the badge, and the icon of the badge will now all share the same color, which will be black for light backgrounds and white for dark backgrounds. Find me the value which sets the transparency, and I'll play with it manually for a while.
+
+- [x] Add one more row at the top of color picker with vivid colors.
+- [x] We now have a sync branch badge and button. The buttons spawns a claude code terminal with /mp-sync skill. This is good but we should improve it. First let's run the claude code with "claude --dangerously-skip-permissions" command instead "claude". Also, it goes to plan mode by default, and I would like it to go to accept edits or bypass permissions mode. This should also be set programmatically. Please see the Claude Code CLI documentation about this. Otherwise, the syncing always asks me, and I would like it to be automatic.
+Let's remove the duplication in the badge and button for syncing. The badge itself should just be a clickable button similar to GitHub issue and GitHub PR badges.
+If there are conflicts, we correctly detect this already; however, we create a separate badge for conflicts. Let's just put the warning icon next to the sync icon in the sync badge and just enrich the tool tip to say something like "sync branch and resolve conflicts".
+
+# Epic 3: Local Git Branch Sync
+
+Replace the GitHub API-based behind-count detection and Claude Code-based sync with direct local git operations. Make syncing reliable, fast, and in-plugin.
+
+## Async git infrastructure
+
+- [ ] Add `runGitCommandAsync(folderPath, args)` → Promise-based spawn wrapper using `child_process.spawn` with stdout/stderr collection. Required for long-running git operations (fetch, merge, push) to avoid freezing the Obsidian UI. Keep existing sync `runGitCommandOutput` for instant local queries (rev-list, status).
+
+## Local behind-count detection
+
+- [ ] On dashboard refresh (manual refresh button, Obsidian reload): deduplicate repo roots across all worktree issues, run `git fetch origin` (async) once per unique repo, then for each worktree issue run `git rev-list --count HEAD..origin/<baseBranch>` (sync, instant) to get the behind count. The base branch is already stored per issue in `worktree_base_branch`.
+- [ ] Remove the GitHub API compare call (`GitHubService.compareBranches`) for behind-count. Local git is the sole source of truth. Remove dead code paths.
+
+## Local conflict detection
+
+- [ ] Use `git merge-tree --write-tree HEAD origin/<baseBranch>` (Git 2.38+) to detect merge conflicts without side effects. Run this on sync badge click before attempting merge. Exit code 1 = conflicts.
+
+## Direct git sync (single branch)
+
+- [ ] On sync badge click for a single branch:
+  1. Check `git status --porcelain` in the worktree.
+  2. **If dirty:** show modal with two options — "Handle yourself" (dismiss) or "Let Claude Code handle it" (opens terminal with Claude instructed to commit/stash uncommitted changes, merge base branch, resolve conflicts if any, and push).
+  3. **If clean:** run `git merge-tree --write-tree HEAD origin/<baseBranch>` to dry-run.
+  4. **No conflicts:** run `git merge origin/<baseBranch> --no-edit` then `git push` (both async). Show progress modal with steps: "Checking for conflicts..." → "Merging origin/<baseBranch>..." → "Pushing..." → "Done" / "Failed: ...". On success: clear git status cache, trigger dashboard refresh, show success notice.
+  5. **Conflicts detected:** open terminal with Claude Code instructed to merge, resolve conflicts, and push.
+
+## Sync All branches
+
+- [ ] The toolbar "Sync All" button triggers sync for all branches that are behind. Enabled whenever at least one branch is behind base.
+- [ ] Flow: single `git fetch origin` per unique repo first, then parallel per-branch sync (dirty check → merge-tree → merge + push). Show a unified progress modal with per-branch status lines, each progressing through: "Checking..." → "Merging..." → "Pushing..." → "Done" / "Conflicts" / "Dirty".
+- [ ] After all direct merges complete, list any branches that need Claude Code (conflicts or dirty). For each, let the user choose: "Let Claude Code handle" (spawns terminal) or "Handle manually" (dismiss).
+
+## Cleanup
+
+- [ ] Remove the GitHub API `compareBranches` usage from `git-status-service.ts`. Remove any now-dead code in `GitHubService.ts` related to branch comparison.
+- [ ] Update `sync-constants.ts` — the `SYNC_COMMAND` / `SYNC_COMMAND_ARGS` constants are now only used as fallback for conflict/dirty cases. Ensure they reflect the correct Claude Code invocation.
+
