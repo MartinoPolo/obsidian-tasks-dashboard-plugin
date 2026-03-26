@@ -1,6 +1,8 @@
 <script lang="ts">
+  import type { App } from 'obsidian';
   import type { IconName } from './icons/index';
   import { attachTooltip } from '../lib/attach-tooltip';
+  import { buildTooltipWithHotkey } from '../lib/format-hotkey';
   import Icon from './Icon.svelte';
 
   type ButtonVariant = 'default' | 'accent' | 'delete' | 'vscode';
@@ -13,6 +15,8 @@
     faded?: boolean;
     disabled?: boolean;
     variant?: ButtonVariant;
+    app?: App;
+    commandId?: string;
     onclick: (event: MouseEvent) => void;
     oncontextmenu?: (event: MouseEvent) => void;
   }
@@ -25,9 +29,17 @@
     faded = false,
     disabled = false,
     variant = 'default',
+    app,
+    commandId,
     onclick,
     oncontextmenu
   }: Props = $props();
+
+  let tooltipText = $derived(
+    app !== undefined && commandId !== undefined
+      ? buildTooltipWithHotkey(label, app, commandId)
+      : label
+  );
 </script>
 
 <button
@@ -37,7 +49,7 @@
   oncontextmenu={oncontextmenu !== undefined
     ? (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); oncontextmenu(event); }
     : undefined}
-  {@attach attachTooltip(label)}
+  {@attach attachTooltip(tooltipText)}
 >
   <Icon name={icon} size={16} />
   {#if labelText}<span class="tdc-btn-label">{labelText}</span>{/if}

@@ -399,12 +399,16 @@
         <ActionButton
           icon="foldAll"
           label="Collapse All"
+          app={plugin.app}
+          commandId="tasks-dashboard:collapse-all-issues"
           onclick={() => onToggleAllIssues(true)}
         />
 
         <ActionButton
           icon="unfoldAll"
           label="Expand All"
+          app={plugin.app}
+          commandId="tasks-dashboard:expand-all-issues"
           onclick={() => onToggleAllIssues(false)}
         />
 
