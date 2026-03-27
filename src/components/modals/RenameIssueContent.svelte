@@ -53,7 +53,7 @@
       bind:this={inputElement}
       {@attach attachAutofocus({ select: true })}
       oninput={() => { hasError = false; }}
-      onkeydown={(event) => { if (event.key === 'Escape') { return; } event.stopPropagation(); }}
+      onkeydown={(event) => { if (event.key === 'Escape' || event.key === 'Enter') { return; } event.stopPropagation(); }}
     />
   {/snippet}
   {#snippet actions()}

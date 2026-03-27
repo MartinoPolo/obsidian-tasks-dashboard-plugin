@@ -128,8 +128,10 @@ export const openIssueColorDropdown = async (options: {
 
 		const previousColor = plugin.settings.issueColors[issueId];
 		if (previousColor === nextColor) {
+			delete plugin.settings.issueColors[issueId];
 			didCommitSelection = true;
-			applyIssueSurfaceStyles(container, nextColor);
+			void plugin.saveSettings();
+			applyIssueSurfaceStyles(container, undefined);
 			closeDropdown();
 			return;
 		}
