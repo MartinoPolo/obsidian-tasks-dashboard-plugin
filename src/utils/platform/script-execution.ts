@@ -85,7 +85,7 @@ export const buildInteractiveWindowsScriptCommand = (
 	args: string[]
 ): string => {
 	const scriptCommand = buildBashCommand(scriptPath, args);
-	return `(${scriptCommand} && echo setup_worktree_completed || echo setup_worktree_failed_exit_${'$'}?) && bash -i || bash -i`;
+	return `(${scriptCommand} && echo script_completed || echo script_failed_exit_${'$'}?) && bash -i || bash -i`;
 };
 
 export const runScriptWithBash = (

@@ -78,7 +78,9 @@ export async function createIssueWithNotice(
 			);
 		}
 		new Notice(`Created issue: ${request.name}`);
-		await openFileAndFocusEnd(app, issue.filePath);
+		if (request.worktree !== true) {
+			await openFileAndFocusEnd(app, issue.filePath);
+		}
 	} catch (error) {
 		new Notice(`Error creating issue: ${getErrorMessage(error)}`);
 	}
@@ -91,13 +93,13 @@ export function getPrefilledIssueName(
 		return undefined;
 	}
 
-	const firstFourWords = metadata.title
+	const firstWords = metadata.title
 		.trim()
 		.split(/\s+/)
 		.filter((word) => word !== '')
-		.slice(0, 4)
+		.slice(0, 6)
 		.join(' ');
-	return firstFourWords === '' ? `${metadata.number}` : `${metadata.number} ${firstFourWords}`;
+	return firstWords === '' ? `${metadata.number}` : `${metadata.number} ${firstWords}`;
 }
 
 export interface AssignedIssueCreationOptions {
