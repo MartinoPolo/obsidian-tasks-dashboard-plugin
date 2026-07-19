@@ -12,6 +12,7 @@
 		"format": "prettier --write \"**/*.{ts,js,json}\"",
 		"format:check": "prettier --check \"**/*.{ts,js,json}\"",
 		"typecheck": "tsc -noEmit -skipLibCheck",
+		"deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy-to-vault.ps1",
 		"test": "vitest run",
 		"test:watch": "vitest"
 	},
