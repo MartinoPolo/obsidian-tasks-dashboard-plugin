@@ -1,0 +1,11 @@
+{
+  "projectId": "MartinoPolo/obsidian-tasks-dashboard-plugin",
+  "repository": {
+    "provider": "github",
+    "remote": "origin"
+  },
+  "issues": {
+    "provider": "github"
+  },
+  "packageManager": "pnpm"
+}
