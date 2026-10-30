@@ -26,6 +26,7 @@
   let authStatusEl: HTMLElement | undefined = $state(undefined);
   let rateLimitEl: HTMLElement | undefined = $state(undefined);
   let tokenSettingEl: HTMLElement | undefined = $state(undefined);
+  let ghCliInfoEl: HTMLElement | undefined = $state(undefined);
   let displayModeEl: HTMLElement | undefined = $state(undefined);
 
   function saveSettings(): void {
@@ -38,6 +39,7 @@
 
   let settings = $derived(plugin.settings);
   let showTokenField = $derived(settings.githubAuth.method === 'pat');
+  let showGhCliInfo = $derived(settings.githubAuth.method === 'gh-cli');
 
   function updateRateLimitDisplay(): void {
     if (rateLimitEl === undefined) {
@@ -79,7 +81,10 @@
       }
 
       authStatusEl.empty();
-      if (settings.githubAuth.method === 'pat' && isNonEmptyString(settings.githubAuth.token)) {
+      const method = settings.githubAuth.method;
+      const shouldValidate =
+        (method === 'pat' && isNonEmptyString(settings.githubAuth.token)) || method === 'gh-cli';
+      if (shouldValidate) {
         authStatusEl.createSpan({ cls: 'tdc-auth-checking', text: 'Checking connection...' });
         const result = await plugin.githubService.validateToken();
         authStatusEl.empty();
@@ -134,7 +139,15 @@
           settings.githubAuth.method = value;
           if (value === 'none') {
             settings.githubAuth.token = undefined;
+            settings.githubAuth.username = undefined;
             plugin.githubService.setAuth({ method: 'none' });
+          } else if (value === 'gh-cli') {
+            // Delegate storage to the GitHub CLI: never keep a token at rest.
+            settings.githubAuth.token = undefined;
+            settings.githubAuth.username = undefined;
+            plugin.githubService.setAuth({ method: 'gh-cli' });
+          } else {
+            plugin.githubService.setAuth(settings.githubAuth);
           }
 
           saveSettingsAndRefreshDashboard();
@@ -190,6 +203,26 @@
   });
 
   $effect(() => {
+    if (ghCliInfoEl === undefined || !showGhCliInfo) {
+      return;
+    }
+
+    ghCliInfoEl.empty();
+    const ghSetting = new Setting(ghCliInfoEl)
+      .setName('GitHub CLI')
+      .setDesc(
+        'The token is read from the GitHub CLI on demand and is never stored in this vault. ' +
+          'Run "gh auth login" once in a terminal to authenticate.'
+      );
+
+    ghSetting.addButton((btn) =>
+      btn.setButtonText('Test').onClick(() => {
+        void updateAuthStatus();
+      })
+    );
+  });
+
+  $effect(() => {
     if (displayModeEl === undefined) {
       return;
     }
@@ -218,5 +251,8 @@
 <div bind:this={rateLimitEl} class="tdc-github-rate-limit"></div>
 {#if showTokenField}
   <div bind:this={tokenSettingEl}></div>
+{/if}
+{#if showGhCliInfo}
+  <div bind:this={ghCliInfoEl}></div>
 {/if}
 <div bind:this={displayModeEl}></div>

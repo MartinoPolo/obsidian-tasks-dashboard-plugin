@@ -7,5 +7,14 @@
   "issues": {
     "provider": "github"
   },
-  "packageManager": "pnpm"
+  "packageManager": "pnpm",
+  "fast_checks": [
+    { "command": "pnpm run format", "cwd": "." },
+    { "command": "pnpm run typecheck", "cwd": "." },
+    { "command": "pnpm run test", "cwd": "." }
+  ],
+  "full_checks": [
+    { "command": "pnpm run lint", "cwd": "." },
+    { "command": "node esbuild.config.mjs production", "cwd": "." }
+  ]
 }

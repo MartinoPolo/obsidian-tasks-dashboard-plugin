@@ -109,10 +109,16 @@ Link your issues to GitHub issues and pull requests for enhanced tracking.
 
 ### Setup
 1. Go to Settings → Tasks Dashboard
-2. Under **GitHub Authentication**, select "Personal Access Token"
-3. Create a token at [GitHub Settings](https://github.com/settings/tokens/new?scopes=repo)
-4. Paste the token and click **Test** to verify
-5. Choose your preferred **GitHub Display Mode** (Minimal/Compact/Full)
+2. Under **GitHub Authentication**, choose one of:
+   - **GitHub CLI (recommended)** — no token is stored in the vault. Install the
+     [GitHub CLI](https://cli.github.com/), run `gh auth login` once, and the plugin
+     reads a token from `gh auth token` on demand. Storage is delegated to your OS
+     credential store, so `data.json` never contains a secret.
+   - **Personal Access Token** — create a token at
+     [GitHub Settings](https://github.com/settings/tokens/new?scopes=repo), paste it,
+     and click **Test**. Note: the token is stored in plaintext in `data.json`.
+3. Click **Test** to verify the connection
+4. Choose your preferred **GitHub Display Mode** (Minimal/Compact/Full)
 
 ### Per-Dashboard Repository
 Optionally link each dashboard to a specific GitHub repository:

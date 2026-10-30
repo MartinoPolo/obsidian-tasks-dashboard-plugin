@@ -12,13 +12,19 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 
+echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════╗${RESET}"
+echo -e "${BOLD}${CYAN}║                                          ║${RESET}"
+echo -e "${BOLD}${CYAN}║              WORKTREE SETUP              ║${RESET}"
+echo -e "${BOLD}${CYAN}║                                          ║${RESET}"
+echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
 NAME=""
 WORKTREE_COLOR=""
-OPEN_CODE=""
 
 usage() {
-  echo -e "${RED}✗${RESET} Usage: bash setup-worktree.sh <name> [--color <hex>] [--open-code]"
-  echo -e "${DIM}   Example: bash setup-worktree.sh feature-auth --color 7C3AED --open-code${RESET}"
+  echo -e "${RED}✗${RESET} Usage: bash setup-worktree.sh <name> [--color <hex>]"
+  echo -e "${DIM}   Example: bash setup-worktree.sh feature-auth --color 7C3AED${RESET}"
 }
 
 normalize_hex_color() {
@@ -43,10 +49,6 @@ while [ "$#" -gt 0 ]; do
         exit 1
       }
       shift 2
-      ;;
-    --open-code)
-      OPEN_CODE="1"
-      shift
       ;;
     -h|--help)
       usage
@@ -206,11 +208,6 @@ if git -C "$SOURCE_DIR" check-ignore -q .mpx 2>/dev/null && [ -d "$SOURCE_DIR/.m
   copy_dir "$SOURCE_DIR/.mpx" "$PWD/.mpx"
 elif [ -d "$SOURCE_DIR/.mpx" ]; then
   echo -e "${DIM}  Skipped .mpx/ (not gitignored in source repo — commit .gitignore first?)${RESET}"
-fi
-
-if [ -n "$OPEN_CODE" ]; then
-  echo -e "${CYAN}→${RESET} Opening VSCode..."
-  code .
 fi
 
 echo -e "${CYAN}→${RESET} Installing dependencies..."

@@ -63,21 +63,27 @@ export interface AsyncGitCommandResult {
 	stderr: string;
 }
 
-export const runGitCommandAsync = (
-	folderPath: string,
-	args: string[]
+/**
+ * Spawn an arbitrary command and collect its stdout/stderr/exit-code.
+ * `cwd` is optional: commands like `gh auth token` read a global credential
+ * store and do not need a working directory.
+ */
+export const runCommandAsync = (
+	command: string,
+	args: string[],
+	cwd?: string
 ): Promise<AsyncGitCommandResult> => {
 	return new Promise((resolve, reject) => {
 		const childProcessModule = loadModule('child_process');
 		const spawnFunction = getRequiredFunction(childProcessModule, 'spawn');
-		const spawnedProcess = spawnFunction('git', args, {
-			shell: false,
-			cwd: folderPath,
-			windowsHide: true
-		});
+		const spawnOptions: Record<string, unknown> = { shell: false, windowsHide: true };
+		if (cwd !== undefined) {
+			spawnOptions.cwd = cwd;
+		}
+		const spawnedProcess = spawnFunction(command, args, spawnOptions);
 
 		if (!isObjectRecord(spawnedProcess)) {
-			reject(new Error('Failed to spawn git process'));
+			reject(new Error(`Failed to spawn process: ${command}`));
 			return;
 		}
 
@@ -128,6 +134,13 @@ export const runGitCommandAsync = (
 			}
 		);
 	});
+};
+
+export const runGitCommandAsync = (
+	folderPath: string,
+	args: string[]
+): Promise<AsyncGitCommandResult> => {
+	return runCommandAsync('git', args, folderPath);
 };
 
 export const notifyOnSpawnError = (childProcess: ChildProcessApi, message: string): void => {

@@ -32,6 +32,7 @@ export const PROGRESS_DISPLAY_OPTIONS: OptionDefinition<ProgressDisplayMode>[] =
 
 export const GITHUB_AUTH_METHOD_OPTIONS: OptionDefinition<GitHubAuthMethod>[] = [
 	{ value: 'none', label: 'Not configured' },
+	{ value: 'gh-cli', label: 'GitHub CLI (recommended — no token stored)' },
 	{ value: 'pat', label: 'Personal Access Token' }
 ];
 

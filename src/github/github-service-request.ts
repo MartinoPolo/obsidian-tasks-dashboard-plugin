@@ -1,5 +1,6 @@
 import { Notice, requestUrl, RequestUrlResponse } from 'obsidian';
 import { GitHubAuth, GitHubRateLimit } from '../types';
+import { clearGhCliTokenCache, resolveGhCliToken } from './gh-cli-token';
 import { API_ACCEPT_HEADER, API_BASE, API_USER_AGENT } from './github-service-constants';
 import { GitHubApiError } from './github-service-types';
 
@@ -20,13 +21,28 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 	let auth: GitHubAuth = { method: 'none' };
 	let rateLimit: GitHubRateLimit | undefined;
 
-	const getHeaders = (): Record<string, string> => {
+	// For the 'gh-cli' method the token is resolved from the GitHub CLI at
+	// request time (never stored in data.json). resolveGhCliToken caches it
+	// in memory; setAuth() clears that cache when auth changes.
+	const getAuthToken = async (): Promise<string | undefined> => {
+		if (auth.method === 'pat') {
+			return auth.token;
+		}
+		if (auth.method === 'gh-cli') {
+			const { token } = await resolveGhCliToken();
+			return token;
+		}
+		return undefined;
+	};
+
+	const getHeaders = async (): Promise<Record<string, string>> => {
 		const headers: Record<string, string> = {
 			Accept: API_ACCEPT_HEADER,
 			'User-Agent': API_USER_AGENT
 		};
-		if (auth.method === 'pat' && auth.token !== undefined) {
-			headers['Authorization'] = `Bearer ${auth.token}`;
+		const token = await getAuthToken();
+		if (token !== undefined && token !== '') {
+			headers['Authorization'] = `Bearer ${token}`;
 		}
 		return headers;
 	};
@@ -96,12 +112,18 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 	};
 
 	const isAuthenticated = (): boolean => {
+		if (auth.method === 'gh-cli') {
+			// Optimistic: the actual token is resolved lazily. validateToken()
+			// performs the real check against the GitHub API.
+			return true;
+		}
 		return auth.method === 'pat' && auth.token !== undefined && auth.token !== '';
 	};
 
 	const setAuth = (newAuth: GitHubAuth): void => {
 		auth = newAuth;
 		rateLimit = undefined;
+		clearGhCliTokenCache();
 	};
 
 	const getRateLimit = (): GitHubRateLimit | undefined => {
@@ -112,7 +134,7 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 		try {
 			const response: RequestUrlResponse = await requestUrl({
 				url: `${API_BASE}${endpoint}`,
-				headers: getHeaders()
+				headers: await getHeaders()
 			});
 			parseRateLimitHeaders(response.headers);
 			return response.json as T;
@@ -141,13 +163,18 @@ export function createGitHubRequestClient(): GitHubRequestClient {
 		username?: string;
 		error?: string;
 	}> => {
-		if (!isAuthenticated()) {
+		if (auth.method === 'gh-cli') {
+			const { token, error } = await resolveGhCliToken();
+			if (token === undefined) {
+				return { valid: false, error: error ?? 'GitHub CLI token unavailable' };
+			}
+		} else if (!isAuthenticated()) {
 			return { valid: false, error: 'No token configured' };
 		}
 		try {
 			const response = await requestUrl({
 				url: `${API_BASE}/user`,
-				headers: getHeaders()
+				headers: await getHeaders()
 			});
 			parseRateLimitHeaders(response.headers);
 			const data = response.json as { login: string };
